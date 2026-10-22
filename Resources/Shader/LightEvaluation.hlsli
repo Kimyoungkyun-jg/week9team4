@@ -23,41 +23,25 @@ struct FShadowCoordinates
 };
 
 // Best-candidate Poisson samples within the unit disk.
-#define POISSON_COUNT 32
+#define POISSON_COUNT 16
 static const float2 PoissonDisk[POISSON_COUNT] =
 {
-    float2(-0.68341047, -0.26169425),
-    float2(0.92626810, 0.36191782),
-    float2(-0.22649025, 0.95149655),
-    float2(0.49230477, -0.86085707),
-    float2(0.08114958, 0.14360106),
-    float2(-0.26010181, -0.93738593),
-    float2(-0.85894994, 0.50310161),
-    float2(0.43717422, 0.85403625),
-    float2(0.93843458, -0.32464634),
-    float2(0.09392068, -0.43937528),
-    float2(-0.37764098, 0.36231411),
-    float2(0.49220528, -0.12107827),
-    float2(-0.65549162, -0.71528620),
-    float2(-0.24774403, -0.16076377),
-    float2(0.46676082, 0.40285104),
-    float2(0.05545897, 0.60007380),
-    float2(-0.94426393, 0.08583122),
-    float2(-0.30051113, -0.55052650),
-    float2(-0.58954771, 0.78290908),
-    float2(0.11683487, -0.93823656),
-    float2(0.52408168, -0.49861045),
-    float2(0.72293188, 0.65095385),
-    float2(0.81920464, 0.00911533),
-    float2(-0.57186791, 0.07081329),
-    float2(0.11791642, 0.98891043),
-    float2(-0.86593411, -0.48262448),
-    float2(-0.25818098, 0.65025289),
-    float2(0.20555281, -0.13129390),
-    float2(-0.97871542, -0.20254113),
-    float2(-0.03298199, -0.69704464),
-    float2(0.78394164, -0.61996089),
-    float2(0.27027231, -0.67373301)
+    float2(0.758417f, 0.604537f),
+    float2(0.666262f, -0.501792f),
+    float2(0.044159f, 0.940217f),
+    float2(-0.618833f, 0.442616f),
+    float2(0.276293f, 0.651964f),
+    float2(-0.399537f, -0.290897f),
+    float2(-0.104335f, -0.698866f),
+    float2(0.260315f, -0.652012f),
+    float2(0.129753f, 0.215359f),
+    float2(0.333606f, -0.138314f),
+    float2(0.484882f, 0.283357f),
+    float2(-0.074304f, -0.153791f),
+    float2(-0.255648f, 0.191645f),
+    float2(-0.649947f, -0.709589f),
+    float2(0.838194f, 0.199567f),
+    float2(-0.354359f, 0.686538f)
 };
 
 float InterleavedGradientNoise(float2 pixelPos)
@@ -224,7 +208,7 @@ float CalculateShadowDepthBias(FShadowCoordinates Coordinates, FLightShadowRende
     return ConstantBias + SlopeBias;
 }
 
-bool FindAverageBlockerDepth(FShadowCoordinates Coordinates, float2 SearchRadiusUV, float DepthBias, FLightShadowRenderData Shadow, bool bPerspective, Texture2DArray Atlas, SamplerState PointSampler, out float AverageBlockerDepth)
+bool FindAverageBlockerDepth(float3 PixelPosition, FShadowCoordinates Coordinates, float2 SearchRadiusUV, float DepthBias, FLightShadowRenderData Shadow, bool bPerspective, Texture2DArray Atlas, SamplerState PointSampler, out float AverageBlockerDepth)
 {
     AverageBlockerDepth = 0.0;
 
@@ -239,11 +223,15 @@ bool FindAverageBlockerDepth(FShadowCoordinates Coordinates, float2 SearchRadius
         BlockerCount++;
     }
 
+    float S, C;
+    sincos(InterleavedGradientNoise(PixelPosition.xy) * 6.28318530718f, S, C);
+
     // PCF와 같은 이유로 펼치지 않는다.
     [loop]
     for (uint i = 0; i < POISSON_COUNT; i++)
     {
-        float2 Offset = PoissonDisk[i] * SearchRadiusUV;
+        float2 Rotated = float2(C * PoissonDisk[i].x - S * PoissonDisk[i].y, S * PoissonDisk[i].x + C * PoissonDisk[i].y);
+        float2 Offset = Rotated * SearchRadiusUV;
         float2 UV = Coordinates.CenterUV + Offset;
 
         if (any(UV < Coordinates.MinUV) || any(UV > Coordinates.MaxUV))
@@ -304,7 +292,7 @@ float CalculateDirectionalShadowPCSS(float3 PixelPosition, float3 P, float3 N, F
 
     // Blocker를 탐색한다.
     float AverageBlockerDepth;
-    if (!FindAverageBlockerDepth(Coordinates, SearchRadiusUV, DepthBias, Shadow, false, Atlas, PointSampler, AverageBlockerDepth))
+    if (!FindAverageBlockerDepth(PixelPosition, Coordinates, SearchRadiusUV, DepthBias, Shadow, false, Atlas, PointSampler, AverageBlockerDepth))
     {
         return 1.0f;
     }
@@ -315,9 +303,6 @@ float CalculateDirectionalShadowPCSS(float3 PixelPosition, float3 P, float3 N, F
     // 필터 반지름과 그 값을 통해 FilterRadiusUV를 구한다.
     float FilterRadiusWorld = Light.SourceSize * RecieverDist;
     float2 FilterRadiusUV = FilterRadiusWorld * WorldToLocalUV * LocalToAtlasUV;
-
-    float2 FilterRadiusTexels = FilterRadiusUV * AtlasSize;
-    float RadiusTexels = max(FilterRadiusTexels.x, FilterRadiusTexels.y);
 
     return PCF(POISSON_COUNT, Coordinates, PixelPosition, P, FilterRadiusUV, DepthBias, Atlas, Shadow.AtlasIndex, ShadowSampler);
 }
@@ -348,7 +333,7 @@ float CalculatePointShadowPCSS(float3 PixelPosition, float3 P, float3 N, FLightR
 
     // Blocker를 탐색한다.
     float AverageBlockerDepth;
-    if (!FindAverageBlockerDepth(Coordinates, SearchRadiusUV, DepthBias, Shadow, true, Atlas, PointSampler, AverageBlockerDepth))
+    if (!FindAverageBlockerDepth(PixelPosition, Coordinates, SearchRadiusUV, DepthBias, Shadow, true, Atlas, PointSampler, AverageBlockerDepth))
     {
         return 1.0f;
     }
@@ -390,7 +375,7 @@ float CalculateSpotShadowPCSS(float3 PixelPosition, float3 P, float3 N, FLightRe
 
     // Blocker를 탐색한다.
     float AverageBlockerDepth;
-    if (!FindAverageBlockerDepth(Coordinates, SearchRadiusUV, DepthBias, Shadow, true, Atlas, PointSampler, AverageBlockerDepth))
+    if (!FindAverageBlockerDepth(PixelPosition, Coordinates, SearchRadiusUV, DepthBias, Shadow, true, Atlas, PointSampler, AverageBlockerDepth))
     {
         return 1.0f;
     }
