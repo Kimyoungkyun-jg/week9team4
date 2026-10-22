@@ -3,9 +3,24 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
+#include "GameFramework/Actor.h"
+#include <sol/sol.hpp>
+
+UGameInstance::UGameInstance() = default;
+UGameInstance::~UGameInstance() = default;
+
+void UGameInstance::Init()
+{
+	LuaState = MakeUnique<sol::state>();
+	LuaState->open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
+	LuaState->set_function("Log", [](const FString& Message) { HTR_LOG(Info, "[Lua] {}", Message); });
+	LuaState->new_usertype<AActor>("Actor", sol::no_constructor,
+		"GetName", &AActor::GetName);
+}
 
 void UGameInstance::Shutdown()
 {
+	LuaState.reset();
 	if (!WorldContext) return;
 	if (WorldContext->GameViewport)
 	{

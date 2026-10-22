@@ -516,11 +516,16 @@ bool UWorld::DestroyActor(AActor* Actor)
 {
 	if (!Actor)
 		return false;
+	if (Actor->bIsEndingPlay) return false;
 
 	ULevel* Level = Actor->GetLevel();
 
 	if (!Level)
 		return false;
+	bool bOwnedByLevel = false;
+	for (AActor* Current : Level->Actors)
+		if (Current == Actor) { bOwnedByLevel = true; break; }
+	if (!bOwnedByLevel) return false;
 
 	// 1. BeginPlay 대기열에서 제거
 	TQueue<AActor*> NewBeginPlayList;
@@ -560,19 +565,23 @@ bool UWorld::DestroyActor(AActor* Actor)
 	//}
 
 	// 4. Level의 Actors에서 제거
+	bool bRemovedFromLevel = false;
 	for (int32 i = Level->Actors.Num() - 1; i >= 0; --i)
 	{
 		if (Level->Actors[i] == Actor)
 		{
 			Level->Actors.RemoveAt(i, 1);
+			bRemovedFromLevel = true;
 			break;
 		}
 	}
+	if (!bRemovedFromLevel) return false;
 
 	FString ActorName = Actor->GetName();
 	uint32 ActorUUID = Actor->GetUUID();
 
 	// 5. 프록시 제거
+	Actor->EndPlayActor();
 	Actor->UnregisterAllComponents();
 
 	Actor->RegisterAllActorTickFunctions(false);
@@ -795,7 +804,27 @@ void UWorld::BeginPlay()
 
 void UWorld::EndPlay()
 {
+	if (!bBegunPlay) return;
 	bBegunPlay = false;
+	TArray<AActor*> EndingActors;
+	for (ULevel* Level : Levels)
+		if (Level)
+			for (AActor* Actor : Level->GetActors())
+				if (Actor && Actor->HasBegunPlay()) EndingActors.Add(Actor);
+
+	for (AActor* Actor : EndingActors)
+	{
+		// EndPlay 콜백에서 다른 액터가 파괴될 수 있으므로 아직 월드에 있는지 확인한다.
+		bool bStillInWorld = false;
+		for (ULevel* Level : Levels)
+		{
+			if (!Level) continue;
+			for (AActor* Current : Level->GetActors())
+				if (Current == Actor) { bStillInWorld = true; break; }
+			if (bStillInWorld) break;
+		}
+		if (bStillInWorld) Actor->EndPlayActor();
+	}
 	if (PlayerController)
 	{
 		PlayerController->ClearInputState();

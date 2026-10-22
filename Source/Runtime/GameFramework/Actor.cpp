@@ -31,12 +31,33 @@ AActor::~AActor()
 
 void AActor::BeginPlay()
 {
-	if (bHasBegunPlay || !World || !World->HasBegunPlay()) return;
+	if (bHasBegunPlay || bHasEndedPlay || !World || !World->HasBegunPlay()) return;
 	RegisterAllComponents();
 	bHasBegunPlay = true;
 	for (UActorComponent* Component : Components)
 		if (Component) Component->BeginPlayComponent();
 	RegisterAllActorTickFunctions(true);
+}
+
+void AActor::EndPlayActor()
+{
+	if (!bHasBegunPlay || bHasEndedPlay) return;
+	bHasEndedPlay = true;
+	bHasBegunPlay = false;
+	bIsEndingPlay = true;
+	EndPlay();
+
+	TArray<UActorComponent*> EndingComponents = Components;
+	for (UActorComponent* Component : EndingComponents)
+	{
+		for (UActorComponent* Current : Components)
+		{
+			if (Current != Component) continue;
+			Component->EndPlayComponent();
+			break;
+		}
+	}
+	bIsEndingPlay = false;
 }
 
 void AActor::RegisterAllActorTickFunctions(bool bRegister)
@@ -285,12 +306,17 @@ void AActor::DestroyComponent(UActorComponent* Component)
 {
 	if (!Component)
 		return;
+	if (Component->IsEndingPlay()) return;
 
 	if (Component == RootComponent)
 	{
 		HTR_LOG(Warning, "DefaultSceneRoot cannot be deleted.");
 		return;
 	}
+	const bool bWasEndingPlay = bIsEndingPlay;
+	bIsEndingPlay = true;
+	Component->EndPlayComponent();
+	bIsEndingPlay = bWasEndingPlay;
 
 	if (USceneComponent* Parent = Cast<USceneComponent>(Component))
 	{

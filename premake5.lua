@@ -21,6 +21,11 @@ IncludeDir["stb"]   = "Source/ThirdParty/stb"
 IncludeDir["json"]  = "Source/ThirdParty/json"
 IncludeDir["DDSLoader"] = "Source/ThirdParty/DDSLoader"
 
+local VcpkgRoot = os.getenv("VCPKG_ROOT")
+assert(VcpkgRoot and VcpkgRoot ~= "", "VCPKG_ROOT must point to the vcpkg installation")
+VcpkgRoot = VcpkgRoot:gsub("\\", "/")
+local LuaJitDir = path.join(VcpkgRoot, "installed/x64-windows")
+
 -- premake의 filter는 project()를 만나면 초기화된다.
 -- 두 프로젝트가 같은 런타임(/MDd vs /MD)으로 컴파일되지 않으면 링크가 실패하므로
 -- 공통 설정을 함수로 묶어 각 프로젝트에서 호출한다.
@@ -145,6 +150,8 @@ project "HitoriEngine"
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.json}",
 		"%{IncludeDir.DDSLoader}",
+		path.join(LuaJitDir, "include/luajit"),
+		path.join(LuaJitDir, "include"),
 	}
 
 	links
@@ -188,6 +195,14 @@ project "HitoriEditor"
 		"%{IncludeDir.ImGui}/backends",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.json}",
+		path.join(LuaJitDir, "include/luajit"),
+		path.join(LuaJitDir, "include"),
+	}
+
+	libdirs { path.join(LuaJitDir, "lib") }
+	links { "lua51.lib" }
+	postbuildcommands {
+		"{COPYFILE} %[" .. path.join(LuaJitDir, "bin/lua51.dll") .. "] %[%{!cfg.targetdir}/lua51.dll]"
 	}
 
 	links

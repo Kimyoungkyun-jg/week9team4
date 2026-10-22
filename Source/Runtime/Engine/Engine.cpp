@@ -74,6 +74,8 @@ void UEngine::DestroyWorldContext(UWorld* InWorld)
 		if (WorldContextlist[idx].World() == InWorld)
 		{
 			const EWorldType ContextType = WorldContextlist[idx].WorldType;
+			if (InWorld && ContextType == EWorldType::PIE)
+				InWorld->EndPlay();
 			if (WorldContextlist[idx].GameViewport)
 			{
 				WorldContextlist[idx].GameViewport->LostFocus();
