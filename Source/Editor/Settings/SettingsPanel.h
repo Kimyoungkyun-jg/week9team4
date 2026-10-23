@@ -82,6 +82,7 @@ public:
 
 	void SetWorld(UWorld* InWorld);
 	void SetViewportsPanel(FViewportsPanel* InPanel) { ViewportsPanel = InPanel; }
+	void SetEditScriptCallback(std::function<void(const FString&)> InCallback) { EditScriptCallback = std::move(InCallback); }
 
 	const FEditorSettings& GetSettings() const { return Settings; }
 	// 실행 중 레이아웃 변경을 editor.ini 저장 대상과 동일한 설정 객체에 반영한다.
@@ -109,5 +110,6 @@ private:
 	UWorld* World = nullptr;
 	UWorld* EditorWorld = nullptr;
 	FViewportsPanel* ViewportsPanel = nullptr;
+	std::function<void(const FString&)> EditScriptCallback;
 	FEditorSettings Settings;
 };

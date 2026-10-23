@@ -21,6 +21,7 @@ public:
 	bool Init() override;
 	void Tick(float DeltaTime) override;
 	void OnRender() override;
+	void OpenScriptEditor(const FString& Path);
 
 	void SelectComponent(UActorComponent* Component);
 	void DrawCompoenetList(AActor* SelectedActor, UActorComponent*& OutSelectedComponent);
@@ -46,6 +47,7 @@ public:
 
 private:
 	void DrawShadowPreview();
+	void DrawScriptEditor();
 	FShadowPreviewQuery QueryShadowPreview;
 	FImGuiRenderer* ImGuiRenderer = nullptr;
 	float ShadowPreviewContrast = 32.0f;
@@ -68,5 +70,10 @@ private:
 
 	USceneComponent* PendingDroppedComponent = nullptr;
 	USceneComponent* PendingDragComponent = nullptr;
+	FString EditingScriptPath;
+	std::string EditingScriptText;
+	FString ScriptEditorStatus;
+	bool bScriptEditorOpen = false;
+	bool bScriptEditorDirty = false;
 };
 

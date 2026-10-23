@@ -10,6 +10,7 @@
 #include "GameFramework/GameMode.h"
 #include "GameFramework/TestGameMode.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/ScriptComponent.h"
 #include "UObject/UObjectIterator.h"
 #include "UObject/UObjectHash.h"
 
@@ -124,9 +125,9 @@ void FSettingsPanel::OnRender()
 	ImGui::SeparatorText("World Settings");
 	if (World)
 	{
-		UClass* Selected = World->GetGameModeClass();
+		UClass* GameModeClass = World->GetGameModeClass();
 		ImGui::SetNextItemWidth(200.0f);
-		if (ImGui::BeginCombo("GameMode Class", Selected ? Selected->Name.c_str() : "None"))
+		if (ImGui::BeginCombo("GameMode Class", GameModeClass ? GameModeClass->Name.c_str() : "None"))
 		{
 			ATestGameMode::StaticClass();
 			TArray<UClass*> Classes{ AGameMode::StaticClass() };
@@ -134,13 +135,40 @@ void FSettingsPanel::OnRender()
 			for (UClass* Class : Classes)
 			{
 				if (!Class->Constructor) continue;
-				if (ImGui::Selectable(Class->Name.c_str(), Class == Selected)) World->SetGameModeClass(Class);
-				if (Class == Selected) ImGui::SetItemDefaultFocus();
+				if (ImGui::Selectable(Class->Name.c_str(), Class == GameModeClass)) World->SetGameModeClass(Class);
+				if (Class == GameModeClass) ImGui::SetItemDefaultFocus();
 			}
 			ImGui::EndCombo();
 		}
+		GameModeClass = World->GetGameModeClass();
 		if (ImGui::CollapsingHeader("Selected GameMode", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			AGameMode* GameMode = World->GetGameMode();
+			if (!GameMode && GameModeClass && GameModeClass->IsChildOf(AGameMode::StaticClass()) && GameModeClass->Constructor)
+				GameMode = static_cast<AGameMode*>(GameModeClass->GetDefaultObject());
+			if (GameMode)
+			{
+				bool bFoundScript = false;
+				for (UActorComponent* Component : GameMode->GetComponents())
+				{
+					UScriptComponent* Script = Cast<UScriptComponent>(Component);
+					if (!Script) continue;
+					bFoundScript = true;
+					const FString& Path = Script->GetScriptPath();
+					std::error_code Error;
+					const bool bValidScript = !Path.empty() && std::filesystem::path(Path).extension() == ".lua" &&
+						std::filesystem::is_regular_file(Path, Error);
+					ImGui::PushID(Script);
+					ImGui::TextWrapped("%s: %s", Script->GetName().c_str(), Path.c_str());
+					ImGui::BeginDisabled(World->IsPlayInEditor() || !bValidScript);
+					if (ImGui::Button("Edit Lua Script") && EditScriptCallback)
+						EditScriptCallback(Path);
+					ImGui::EndDisabled();
+					if (!bValidScript) ImGui::TextDisabled("Lua file not found.");
+					ImGui::PopID();
+				}
+				if (!bFoundScript) ImGui::TextDisabled("Selected GameMode has no ScriptComponent.");
+			}
 			const auto DrawClassPicker = [](const char* Label, UClass* BaseClass, UClass* CurrentClass, auto OnSelect)
 			{
 				ImGui::SetNextItemWidth(200.0f);

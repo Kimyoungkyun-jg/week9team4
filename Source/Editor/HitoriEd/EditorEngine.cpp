@@ -162,6 +162,11 @@ bool UEditorEngine::Init()
 	FireBallRenderer->Init(Renderer);
 
 	SettingsPanel = EditorUI->AddEditorPanel<FSettingsPanel>();
+	SettingsPanel->SetEditScriptCallback([this](const FString& Path)
+	{
+		DetailsPanel->SetOpen(true);
+		DetailsPanel->OpenScriptEditor(Path);
+	});
 	OutputLogPanel->SetEditorSettings(&SettingsPanel->GetMutableSettings());
 
 

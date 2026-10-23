@@ -5,11 +5,11 @@ function OnProjectileHit(hit)
     if endSequence then return end
 
     hitCount = hitCount + 1
-    Log("Impact " .. hitCount .. "/5")
+    Log("Impact " .. hitCount .. "/7")
 
-    if hitCount == 5 then
+    if hitCount == 7 then
         endSequence = coroutine.create(function()
-            Log("Game Over") -- 우선 콘솔 표시. 화면 UI는 별도 연결 필요
+            Log("Game Over")
             local elapsed = 0
             while elapsed < 2 do
                 elapsed = elapsed + coroutine.yield()
