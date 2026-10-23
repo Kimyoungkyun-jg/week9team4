@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+#include <utility>
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 
@@ -16,6 +18,8 @@ public:
 	virtual ~UGameInstance() override;
 	virtual void Init();
 	virtual void Shutdown();
+	void RequestEndSession();
+	void SetEndSessionHandler(std::function<void()> Handler) { EndSessionHandler = std::move(Handler); }
 	sol::state* GetLuaState() const { return LuaState.get(); }
 	UWorld* GetWorld() const;
 	FWorldContext* GetWorldContext() const { return WorldContext; }
@@ -28,4 +32,6 @@ public:
 private:
 	FWorldContext* WorldContext = nullptr;
 	TUniquePtr<sol::state> LuaState;
+	std::function<void()> EndSessionHandler;
+	bool bEndSessionRequested = false;
 };

@@ -3,7 +3,6 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/Actor.h"
-#include <sol/sol.hpp>
 
 struct FScriptRuntime
 {
@@ -23,17 +22,6 @@ namespace
 		return Value.get_type() == sol::type::function ? Value.as<sol::protected_function>() : sol::protected_function{};
 	}
 
-	template <typename... Args>
-	void CallScript(const FString& Path, const char* Name, sol::protected_function& Function, Args&&... Arguments)
-	{
-		if (!Function.valid()) return;
-		sol::protected_function_result Result = Function(std::forward<Args>(Arguments)...);
-		if (!Result.valid())
-		{
-			sol::error Error = Result;
-			HTR_LOG(Error, "Lua {} ({}): {}", Name, Path, Error.what());
-		}
-	}
 }
 
 UScriptComponent::UScriptComponent()
@@ -42,6 +30,11 @@ UScriptComponent::UScriptComponent()
 }
 
 UScriptComponent::~UScriptComponent() = default;
+
+sol::protected_function UScriptComponent::FindScriptFunction(const char* Name)
+{
+	return Runtime ? FindCallback(Runtime->Environment, Name) : sol::protected_function{};
+}
 
 void UScriptComponent::BeginPlay()
 {

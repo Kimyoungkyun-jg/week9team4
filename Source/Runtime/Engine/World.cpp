@@ -185,13 +185,12 @@ void UWorld::ClearWorld()
 			Actor->UnregisterAllComponents();
 			Actor->RegisterAllActorTickFunctions(false);
 		}
-		Level->ClearActors();
 	}
-	GameMode = nullptr;
-	// 액터를 지우기 전에 렌더 프록시와 틱 등록부터 푼다. ClearActors는 액터를 delete만 하므로,
-	// 그대로 두면 지워진 컴포넌트를 가리키는 프록시가 FScene에 남아 다음 프레임에 터진다.
 	Scene.RemoveAllLights();
 	Scene.RemoveAllPrimitives();
+	for (ULevel* Level : Levels)
+		Level->ClearActors();
+	GameMode = nullptr;
 	HTR_LOG(Info, "{} : ", PersistentLevel->GetActorNum());
 }
 

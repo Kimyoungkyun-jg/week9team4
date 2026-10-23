@@ -1172,6 +1172,7 @@ void UEditorEngine::DrawPIEWindows()
 void UEditorEngine::PreExit()
 {
 	EndPlayMap();
+	if (SettingsPanel) SettingsPanel->SaveSettings();
 	EditorWorld->ClearWorld();
 	// PIE 창이 열린 채 종료하면 Device가 살아 있을 때 Swapchain과 타깃을 먼저 정리한다.
 	DestroyPIEWindow();
@@ -1221,7 +1222,9 @@ void UEditorEngine::StartPlayInEditorSession()
 	PIEContext.PIEInstance = 0;
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	GameInstance->SetWorldContext(&PIEContext);
-	if (!GameInstance->InitializeForPlayInEditor(0) ||
+	GameInstance->SetEndSessionHandler([this]() { RequestEndPlayMap(); });
+	const bool bInitialized = GameInstance->InitializeForPlayInEditor(0);
+	if (!bInitialized ||
 		!GameInstance->StartPlayInEditorGameInstance())
 	{
 		UWorld* FailedWorld = PIEContext.World();

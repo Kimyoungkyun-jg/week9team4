@@ -60,6 +60,7 @@ function CommonSettings()
 		defines { "ENGINE_DEBUG", "_DEBUG" }
 		runtime  "Debug"
 		symbols  "on"
+		linkoptions { "/DEBUG:FULL" }
 
 	filter "configurations:Release"
 		defines  { "ENGINE_RELEASE", "NDEBUG" }
@@ -78,6 +79,7 @@ function CommonSettings()
 		defines  { "ENGINE_DEBUG", "_DEBUG", "BENCHMARK" }
 		runtime  "Debug"
 		symbols  "on"
+		linkoptions { "/DEBUG:FULL" }
 
 	filter "configurations:Benchmark"
 		defines  { "ENGINE_RELEASE", "NDEBUG", "BENCHMARK" }
