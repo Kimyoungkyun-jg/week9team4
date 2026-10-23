@@ -23,6 +23,7 @@
 #include "Text/Font.h"
 #include "UObject/UObjectIterator.h"
 #include "GameFramework/Actor.h"
+#include "UObject/Class.h"
 #include "Core/EngineLog.h"
 
 
@@ -733,6 +734,31 @@ namespace
 			else if (Property.Class == UStaticMesh::StaticClass())
 			{
 				DrawMeshSlot(Object, reinterpret_cast<UStaticMesh**>(ObjPtr));
+			}
+			break;
+		}
+		case EPropertyType::Class:
+		{
+			UClass** Selected = static_cast<UClass**>(ValuePtr);
+			const char* CurrentName = *Selected ? (*Selected)->Name.c_str() : "None";
+			if (ImGui::BeginCombo(Label.c_str(), CurrentName))
+			{
+				TArray<UClass*> Classes;
+				if (Property.Class)
+				{
+					Classes.Add(Property.Class);
+					GetDerivedClasses(Property.Class, Classes);
+				}
+				for (UClass* Candidate : Classes)
+				{
+					if (!Candidate || !Candidate->Constructor) continue;
+					if (ImGui::Selectable(Candidate->Name.c_str(), *Selected == Candidate))
+					{
+						*Selected = Candidate;
+						bChanged = true;
+					}
+				}
+				ImGui::EndCombo();
 			}
 			break;
 		}

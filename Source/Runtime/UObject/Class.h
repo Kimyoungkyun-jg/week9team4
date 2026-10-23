@@ -47,6 +47,11 @@ public:
 	{
 		Properties.Add({ InName, InType, InOffset, sizeof(T), nullptr, InFlags });
 	}
+
+	void AddClassProperty(const FString& InName, uint64 InOffset, UClass* BaseClass, uint32 InFlags = CPF_Default)
+	{
+		Properties.Add({ InName, EPropertyType::Class, InOffset, sizeof(UClass*), BaseClass, InFlags });
+	}
 private:
 	mutable int32 ClassUnique = 0;
 	friend FName MakeUniqueObjectName(UObject*, const UClass*, FName);

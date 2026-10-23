@@ -7,6 +7,7 @@
 #include "Editor/Viewports/ViewportsPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "GameFramework/DefaultPawn.h"
+#include "GameFramework/GameMode.h"
 #include "Components/StaticMeshComponent.h"
 #include "UObject/UObjectIterator.h"
 
@@ -112,6 +113,48 @@ void FSettingsPanel::OnRender()
 
 	//////////////////////////////////////////////////////////
 	DrawShadowMapSettings();
+	//////////////////////////////////////////////////////////
+
+	ImGui::Dummy(ImVec2(0.0f, SectionGap));
+	ImGui::SeparatorText("World Settings");
+	if (World)
+	{
+		UClass* Selected = World->GetGameModeClass();
+		ImGui::SetNextItemWidth(200.0f);
+		if (ImGui::BeginCombo("GameMode Class", Selected ? Selected->Name.c_str() : "None"))
+		{
+			TArray<UClass*> Classes{ AGameMode::StaticClass() };
+			GetDerivedClasses(AGameMode::StaticClass(), Classes);
+			for (UClass* Class : Classes)
+			{
+				if (!Class->Constructor) continue;
+				if (ImGui::Selectable(Class->Name.c_str(), Class == Selected)) World->SetGameModeClass(Class);
+				if (Class == Selected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		if (ImGui::CollapsingHeader("Selected GameMode", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			const auto DrawClassPicker = [](const char* Label, UClass* BaseClass, UClass* CurrentClass, auto OnSelect)
+			{
+				ImGui::SetNextItemWidth(200.0f);
+				if (!ImGui::BeginCombo(Label, CurrentClass ? CurrentClass->Name.c_str() : "None")) return;
+				TArray<UClass*> Classes{ BaseClass };
+				GetDerivedClasses(BaseClass, Classes);
+				for (UClass* Class : Classes)
+				{
+					if (!Class->Constructor) continue;
+					if (ImGui::Selectable(Class->Name.c_str(), Class == CurrentClass)) OnSelect(Class);
+					if (Class == CurrentClass) ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			};
+			DrawClassPicker("Default Pawn Class", APawn::StaticClass(), World->GetDefaultPawnClass(),
+				[this](UClass* Class) { World->SetDefaultPawnClass(Class); });
+			DrawClassPicker("Player Controller Class", APlayerController::StaticClass(), World->GetPlayerControllerClass(),
+				[this](UClass* Class) { World->SetPlayerControllerClass(Class); });
+		}
+	}
 	//////////////////////////////////////////////////////////
 
 	//////////////////////////////////////////////////////////

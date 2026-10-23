@@ -10,6 +10,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/GameMode.h"
 #include "Input/InputSystem.h"
 
 #include "UObject/UObjectIterator.h"
@@ -186,6 +187,7 @@ void UWorld::ClearWorld()
 		}
 		Level->ClearActors();
 	}
+	GameMode = nullptr;
 	// 액터를 지우기 전에 렌더 프록시와 틱 등록부터 푼다. ClearActors는 액터를 delete만 하므로,
 	// 그대로 두면 지워진 컴포넌트를 가리키는 프록시가 FScene에 남아 다음 프레임에 터진다.
 	Scene.RemoveAllLights();
@@ -587,6 +589,7 @@ bool UWorld::DestroyActor(AActor* Actor)
 	Actor->RegisterAllActorTickFunctions(false);
 
 	// 6. Actor 삭제
+	if (Actor == GameMode) GameMode = nullptr;
 	delete Actor;
 
 	HTR_LOG(Info, "Destroy Actor : {} UUID {}", ActorName, ActorUUID);
@@ -768,20 +771,17 @@ bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 void UWorld::BeginPlay()
 {
 	if (WorldType != EWorldType::PIE || bBegunPlay) return;
-	if (!PlayerPawn)
+	UClass* ModeClass = GameModeClass;
+	if (!ModeClass || !ModeClass->IsChildOf(AGameMode::StaticClass()) || !ModeClass->Constructor)
 	{
-		for (AActor* Actor : PersistentLevel->GetActors())
-		{
-			if (APawn* Pawn = Cast<APawn>(Actor)) { PlayerPawn = Pawn; break; }
-		}
+		HTR_LOG(Warning, "Invalid GameModeClass; using AGameMode");
+		ModeClass = AGameMode::StaticClass();
 	}
-	if (!PlayerPawn)
-	{
-		FTransform Transform = MainCamera ? MainCamera->GetActorTransform() : FTransform::Identity;
-		PlayerPawn = SpawnActor<ADefaultPawn>(NAME_None, &Transform);
-	}
-	if (!PlayerController) PlayerController = SpawnActor<APlayerController>();
-	if (PlayerController && PlayerPawn) PlayerController->Possess(PlayerPawn);
+	GameMode = Cast<AGameMode>(SpawnActor(ModeClass));
+	if (!GameMode) return;
+	if (DefaultPawnClass) GameMode->SetDefaultPawnClass(DefaultPawnClass);
+	if (PlayerControllerClass) GameMode->SetPlayerControllerClass(PlayerControllerClass);
+	GameMode->SpawnPlayer(PlayerPawn, PlayerController);
 
 	// 기존 액터 목록을 고정한 후 시작한다. BeginPlay 중 생성된 액터는 대기열로 간다.
 	TArray<AActor*> InitialActors;
@@ -800,6 +800,41 @@ void UWorld::BeginPlay()
 		BeginPlayList.Dequeue();
 		if (Actor) Actor->BeginPlay();
 	}
+}
+
+bool UWorld::SetGameModeClass(UClass* Class)
+{
+	if (!Class || !Class->IsChildOf(AGameMode::StaticClass()) || !Class->Constructor) return false;
+	GameModeClass = Class;
+	DefaultPawnClass = nullptr;
+	PlayerControllerClass = nullptr;
+	return true;
+}
+
+UClass* UWorld::GetDefaultPawnClass() const
+{
+	if (DefaultPawnClass) return DefaultPawnClass;
+	return static_cast<AGameMode*>(GameModeClass->GetDefaultObject())->GetDefaultPawnClass();
+}
+
+UClass* UWorld::GetPlayerControllerClass() const
+{
+	if (PlayerControllerClass) return PlayerControllerClass;
+	return static_cast<AGameMode*>(GameModeClass->GetDefaultObject())->GetPlayerControllerClass();
+}
+
+bool UWorld::SetDefaultPawnClass(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(APawn::StaticClass()) || !Class->Constructor)) return false;
+	DefaultPawnClass = Class;
+	return true;
+}
+
+bool UWorld::SetPlayerControllerClass(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(APlayerController::StaticClass()) || !Class->Constructor)) return false;
+	PlayerControllerClass = Class;
+	return true;
 }
 
 void UWorld::EndPlay()
@@ -832,6 +867,7 @@ void UWorld::EndPlay()
 	}
 	PlayerController = nullptr;
 	PlayerPawn = nullptr;
+	GameMode = nullptr;
 	bIsPaused = false;
 }
 

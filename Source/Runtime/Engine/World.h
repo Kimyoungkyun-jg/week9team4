@@ -3,6 +3,7 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/GameMode.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/MovementComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -28,6 +29,11 @@ struct FViewContext;
 class UWorld : public UObject
 {
 	DECLARE_CLASS(UWorld, UObject)
+	REFLECT_START(ClassName)
+		CLASS_PROPERTY(GameModeClass, AGameMode)
+		CLASS_PROPERTY(DefaultPawnClass, APawn)
+		CLASS_PROPERTY(PlayerControllerClass, APlayerController)
+	REFLECT_END()
 
 public:
 	UWorld() = default;
@@ -81,6 +87,13 @@ public:
 	bool HasBegunPlay() const { return bBegunPlay; }
 	APawn* GetPlayerPawn() const { return PlayerPawn; }
 	APlayerController* GetPlayerController() const { return PlayerController; }
+	AGameMode* GetGameMode() const { return GameMode; }
+	UClass* GetGameModeClass() const { return GameModeClass; }
+	bool SetGameModeClass(UClass* Class);
+	UClass* GetDefaultPawnClass() const;
+	UClass* GetPlayerControllerClass() const;
+	bool SetDefaultPawnClass(UClass* Class);
+	bool SetPlayerControllerClass(UClass* Class);
 	bool IsPaused() const { return bIsPaused; }
 	void SetPaused(bool bPaused) { bIsPaused = bPaused; }
 
@@ -128,6 +141,10 @@ private:
 	ACameraActor* MainCamera = nullptr;
 	APawn* PlayerPawn = nullptr;
 	APlayerController* PlayerController = nullptr;
+	AGameMode* GameMode = nullptr;
+	UClass* GameModeClass = AGameMode::StaticClass();
+	UClass* DefaultPawnClass = nullptr;
+	UClass* PlayerControllerClass = nullptr;
 	bool bIsPaused = false;
 	bool bBegunPlay = false;
 

@@ -14,8 +14,8 @@ void UGameInstance::Init()
 	LuaState = MakeUnique<sol::state>();
 	LuaState->open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
 	LuaState->set_function("Log", [](const FString& Message) { HTR_LOG(Info, "[Lua] {}", Message); });
-	LuaState->new_usertype<AActor>("Actor", sol::no_constructor,
-		"GetName", &AActor::GetName);
+	LuaState->new_usertype<UObject>("UObject", sol::no_constructor,
+		"UUID", &UObject::GetUUID);
 }
 
 void UGameInstance::Shutdown()
