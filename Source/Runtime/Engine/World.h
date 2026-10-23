@@ -121,16 +121,15 @@ private:
 
 	struct alignas(64) FGatherChunk
 	{
-		TArray<FRenderPacket> Packets;              // 스태틱 묶음에 못 들어가는 것 (반투명 섹션, Renderer 없는 호출)
+		TArray<FRenderPacket> Packets;
 		TArray<uint32> SlowPathIndices;
-		std::vector<FStaticDrawGroup> Groups;       // 불투명 스태틱 메시: (머티리얼, 메시, LOD)별 묶음. 항목만 매 프레임 비운다
-		uint32 LastGroup = 0;                       // 바로 전 물체가 들어간 묶음 (연속한 물체는 대개 같은 묶음)
-		uint32 StaticDrawCount = 0;
 		uint32 LODCounts[4] = {};
 		uint64 LODTriangles[4] = {};
 	};
 
 	TArray<FGatherChunk> GatherChunks;
+	void GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
+		const FViewContext* LODView, const uint8* OccludedMask, uint8* SlotDest);
 
 	// 등록된 Tick 함수만 실행한다. Actor보다 먼저 사라져도 남은 함수와의 연결을 스스로 끊는다.
 	FTickTaskManager TickTaskManager;

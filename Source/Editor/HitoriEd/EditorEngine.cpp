@@ -22,15 +22,6 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Actor/LightActorBase.h"
-#include "GameFramework/Actor/PointLightActor.h"
-#include "GameFramework/Actor/SpotLightActor.h"
-#include "GameFramework/Actor/RectLightActor.h"
-#include "Components/PointLightComponent.h"
-#include "Components/SpotLightComponent.h"
-#include "Components/RectLightComponent.h"
-#include "Components/ExponentialHeightFogComponent.h"
-#include "Components/FireBallComponent.h"
-#include "Components/TextRenderComponent.h"
 
 #include "Asset/AssetManager.h"
 #include "Render/RenderResourceManager.h"
@@ -39,7 +30,6 @@
 #include "Editor/Outliner/OutlinerPanel.h"
 #include "Editor/HitoriEd/EditorFileUtils.h"
 #include "Editor/Viewports/EditorViewportClient.h"
-#include "UObject/UObjectIterator.h"
 
 #include "Core/EngineLog.h"
 #include "Core/Stats/LightweightStats.h"
@@ -152,15 +142,6 @@ bool UEditorEngine::Init()
 	CascadeFloorRenderer = MakeUnique<FCascadeFloorRenderer>();
 	CascadeFloorRenderer->Init();
 
-	HeightFogRenderer = MakeUnique<FHeightFogRenderer>();
-	HeightFogRenderer->Init(Renderer);
-
-	FXAARenderer = MakeUnique<FFXAARenderer>();
-	FXAARenderer->Init(Renderer);
-
-	FireBallRenderer = MakeUnique<FFireBallRenderer>();
-	FireBallRenderer->Init(Renderer);
-
 	SettingsPanel = EditorUI->AddEditorPanel<FSettingsPanel>();
 	SettingsPanel->SetEditScriptCallback([this](const FString& Path)
 	{
@@ -269,8 +250,7 @@ bool UEditorEngine::Init()
 	}
 	SettingsPanel->ApplyViewportSettings();
 
-	SkyboxRenderer = MakeUnique<FSkyboxRenderer>();
-	SkyboxRenderer->Init("Assets/SkySphere/Sky.hdr");
+	ViewPipeline.Init(Renderer);
 
 	const ImVec4 White = { 1, 1, 1, 1 };
 	const ImVec4 Green = { 0.40f, 0.80f, 0.30f, 1.0f };
@@ -851,192 +831,30 @@ void UEditorEngine::RenderGameFrame(FGameViewportClient* GameClient, const FScen
 	if (!GameClient) return;
 
 	FSceneViewTargets& Targets = GameClient->GetViewTargets();
-	const bool bRendered = RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions,
-		[this, &Targets, &SceneView, bIsSIEMode](FSceneOverlayCallbacks& Overlays)
-	{
-		if (!bIsSIEMode) return;
-		const FViewportSettings ViewportSetting{ 0, 0, Targets.SceneColor->GetWidth(),
-			Targets.SceneColor->GetHeight(), 0.0f, 1.0f };
-		if (Outline->GetTarget())
-			Overlays.SIEOutline = [this, &SceneView, ViewportSetting]
-				{
-					OutlineRenderer->OnRender(*Outline, SceneView.ViewProjectionMatrix, ViewportSetting);
-				};
-		if (Gizmo->GetTarget())
-			Overlays.SIEGizmo = [this, &SceneView]
-				{
-					GizmoRenderer->OnRender(*Gizmo, SceneView.ViewProjectionMatrix,
-						SceneView.ViewLocation, !SceneView.bIsPerspective);
-				};
-	});
+	if (!Targets.SceneColor || !Targets.Depth) return;
+	const bool bRendered = RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(),
+		RenderOptions, nullptr, false, bIsSIEMode);
 	if (!bRendered) return;
 }
 
 bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& SceneView,
 	FSceneRenderer& SceneRenderer, UWorld* TargetWorld, const FSceneRenderOptions& Options,
-	const std::function<void(FSceneOverlayCallbacks&)>& BuildOverlays)
+	FEditorViewportClient* ViewClient, bool bIsPIE, bool bIsSIE)
 {
-	FTexture2D* ColorTarget = Targets.SceneColor.get();
-	FTexture2D* DepthTarget = Targets.Depth.get();
-	if (!TargetWorld || !Renderer || !ColorTarget || !DepthTarget)
-		return false;
-	const uint32 Width = ColorTarget->GetWidth();
-	const uint32 Height = ColorTarget->GetHeight();
-	if (!Width || !Height || !Targets.IsValidFor(Width, Height))
-		return false;
-
-	FScenePassCallbacks Callbacks;
-	Callbacks.FireBall = [this, TargetWorld, &SceneView, DepthTarget, ColorTarget]
-	{
-		RenderFireBall(TargetWorld, SceneView, DepthTarget, ColorTarget);
-	};
-	Callbacks.HeightFog = [this, TargetWorld, &SceneView, DepthTarget, ColorTarget]
-	{
-		return RenderHeightFog(TargetWorld, SceneView, DepthTarget, ColorTarget);
-	};
-	Callbacks.TranslucentFogConstants = [this](bool bHasFog)
-	{
-		return HeightFogRenderer ? HeightFogRenderer->GetTranslucentFogConstants(bHasFog) : nullptr;
-	};
-	Callbacks.SceneText = [this, TargetWorld, &SceneView] { RenderSceneText(TargetWorld, SceneView); };
-	if (SceneDepthRenderer)
-		Callbacks.DepthVisualization = [this, &SceneView, DepthTarget, ColorTarget, Range = Options.SceneDepthRange]
-		{
-			SceneDepthRenderer->OnRender(SceneView, DepthTarget, ColorTarget, Range);
-		};
-	if (Options.bShowCascade && CascadeFloorRenderer)
-		Callbacks.CascadeVisualization = [this, &SceneView, &SceneRenderer, DepthTarget, ColorTarget]
-		{
-			CascadeFloorRenderer->OnRender(SceneView, SceneRenderer.GetRenderData(), DepthTarget, ColorTarget);
-		};
-
-	const bool bUseFXAA = Options.bEnableFXAA && !Options.bShowSceneDepth &&
-		!Options.bShowWorldNormal && FXAARenderer && FXAARenderer->PrepareOutput(ColorTarget);
-	if (bUseFXAA)
-	{
-		Callbacks.FXAAOutput = FXAARenderer->GetOutputTarget().get();
-		Callbacks.FXAA = [this, ColorTarget] { return FXAARenderer->OnRender(ColorTarget); };
-	}
-
-	if (BuildOverlays) BuildOverlays(Callbacks.Overlays);
-
+	FEditorViewPasses EditorPasses(Options, SceneView, Targets.SceneColor.get(), Targets.Depth.get(), SceneDepthRenderer.get(), CascadeFloorRenderer.get());
+	const FEditorOverlayResources OverlayResources{ GridRenderer.get(), GizmoRenderer.get(), LineBatcher.get(),
+		Outline.get(), OutlineRenderer.get(), Gizmo.get(), TextRenderer.get(), SystemFont,
+		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr };
+	if (ViewClient)
+		EditorPasses.ConfigureViewportOverlays(OverlayResources, ViewClient, bIsPIE,
+			ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex());
+	else if (bIsSIE)
+		EditorPasses.ConfigureSIEOverlays(OverlayResources);
 	FRenderGraphBuilder Graph;
-	if (!SceneRenderer.AddViewportPasses(Graph, Renderer, Targets, Options, SkyboxRenderer.get(), Callbacks) ||
-		!Graph.Execute() || !SceneRenderer.DidCorePassSucceed() || !SceneRenderer.DidFXAAPassSucceed())
-		return false;
-	if (bUseFXAA && !Targets.SwapSceneColorAndBind(FXAARenderer->GetOutputTarget()))
-		return false;
-
-	RenderCommand::EndRenderPass();
-	return true;
-}
-
-void UEditorEngine::RenderSceneText(UWorld* TargetWorld, const FSceneView& SceneView)
-{
-	if (!TextRenderer) return;
-	for (TObjectIterator<UTextRenderComponent> Text; Text; ++Text)
-	{
-		if (!Text || !Text->IsRegistered() || !Text->GetFont() || !Text->IsShown(SceneView.bGameView) || !Text->GetOwner() ||
-			Text->GetOwner()->GetWorld() != TargetWorld)
-			continue;
-		TextRenderer->OnRender(Text->GetText(), Text->GetWorldMatrix(), Text->GetTextSize(),
-			*Text->GetFont(), SceneView.ViewProjectionMatrix);
-	}
-}
-
-bool UEditorEngine::RenderHeightFog(UWorld* TargetWorld, const FSceneView& SceneView,
-	FTexture2D* DepthTarget, FTexture2D* ColorTarget)
-{
-	if (!TargetWorld || !HeightFogRenderer || !DepthTarget || !ColorTarget ||
-		!SceneView.bIsPerspective)
-		return false;
-
-	for (TObjectIterator<UExponentialHeightFogComponent> Fog; Fog; ++Fog)
-	{
-		if (!Fog || !Fog->IsRegistered() || !Fog->IsShown(SceneView.bGameView) || !Fog->GetOwner() ||
-			Fog->GetOwner()->GetWorld() != TargetWorld)
-			continue;
-
-		FHeightFogSetting Setting;
-		Setting.FogDensity = Fog->GetFogDensity();
-		Setting.FogHeightFalloff = Fog->GetFogHeightFalloff();
-		Setting.FogHeight = Fog->GetFogHeight();
-		Setting.FogColor = Fog->GetFogColor();
-		Setting.StartDistance = Fog->GetStartDistance();
-		Setting.FogMaxOpacity = Fog->GetFogMaxOpacity();
-		Setting.FogCutoffDistance = Fog->GetFogCutoffDistance();
-		if (HeightFogRenderer->OnRender(SceneView, DepthTarget, ColorTarget, Setting))
-			return true;
-	}
-	return false;
-}
-
-bool UEditorEngine::RenderFireBall(UWorld* TargetWorld, const FSceneView& SceneView, FTexture2D* DepthTarget, FTexture2D* ColorTarget)
-{
-	if (!TargetWorld || !FireBallRenderer || !DepthTarget || !ColorTarget)
-		return false;
-	bool bRendered = false;
-	for (TObjectIterator<UFireBallComponent> FireBall; FireBall; ++FireBall)
-	{
-		if (!FireBall || !FireBall->IsRegistered() || !FireBall->IsVisible() ||
-			!FireBall->IsShown(SceneView.bGameView) || !FireBall->GetOwner() ||
-			FireBall->GetOwner()->GetWorld() != TargetWorld)
-			continue;
-		FFireBallData Data{};
-		Data.Center = FireBall->GetWorldLocation();
-		Data.Radius = FireBall->GetRadius();
-		Data.Color = FireBall->GetColor();
-		Data.Intensity = FireBall->GetIntensity();
-		Data.RadiusFallOff = FireBall->GetRadiusFallOff();
-
-		bRendered |= FireBallRenderer->OnRender(SceneView, DepthTarget, ColorTarget, Data);
-	}
-	return bRendered;
-}
-
-void UEditorEngine::RenderActorUUIDs(const FSceneView& SceneView)
-{
-	const bool bOrtho = !SceneView.bIsPerspective;
-	UWorld* TargetWorld = PlayWorld ? PlayWorld : EditorWorld;
-
-	for (AActor* Actor : TargetWorld->GetPersistentLevel()->GetActors())
-	{
-		if (!Actor)
-			continue;
-		USceneComponent* Root = Actor->GetRootComponent();
-
-		if (!Root)
-			continue;
-
-		FBox Box = Root->CalcBounds();
-		FVector UUIDLoc((Box.Min.X + Box.Max.X) * 0.5f,
-			(Box.Min.Y + Box.Max.Y) * 0.5f, Box.Max.Z + 0.5f);
-
-		FString Text = "UUID : " + std::to_string(Actor->GetUUID());
-		TextRenderer->BuildTextMesh(Text, 0.5f, *SystemFont);
-
-		FVector Facing = bOrtho ? (SceneView.ViewForward * -1.0f)
-			: (SceneView.ViewLocation - UUIDLoc).Normalized();
-		FVector Up = FVector(0.0f, 0.0f, 1.0f);
-		FVector Right = FVector::Cross(Up, Facing).Normalized();
-		FVector RealUp = FVector::Cross(Facing, Right).Normalized();
-		FMatrix BillboardWorld = FMatrix::Identity;
-		BillboardWorld.M[0][0] = Facing.X;
-		BillboardWorld.M[0][1] = Facing.Y;
-		BillboardWorld.M[0][2] = Facing.Z;
-		BillboardWorld.M[1][0] = Right.X;
-		BillboardWorld.M[1][1] = Right.Y;
-		BillboardWorld.M[1][2] = Right.Z;
-		BillboardWorld.M[2][0] = RealUp.X;
-		BillboardWorld.M[2][1] = RealUp.Y;
-		BillboardWorld.M[2][2] = RealUp.Z;
-		BillboardWorld.M[3][0] = UUIDLoc.X;
-		BillboardWorld.M[3][1] = UUIDLoc.Y;
-		BillboardWorld.M[3][2] = UUIDLoc.Z;
-
-		TextRenderer->OnRender(Text, BillboardWorld, 0.5f, *SystemFont,
-			SceneView.ViewProjectionMatrix);
-	}
+	FSceneViewPipeline::FPreparedView Prepared;
+	return ViewPipeline.Prepare(Graph, Prepared, SceneRenderer, Renderer, Targets, TargetWorld, SceneView, Options) &&
+		EditorPasses.AddPasses(Graph, SceneRenderer, Renderer, Prepared.FinalColor, Prepared.Depth) &&
+		ViewPipeline.Execute(Graph, Prepared, SceneRenderer, Targets);
 }
 
 // 뷰포트 하나의 씬과 에디터 요소를 렌더링한다
@@ -1050,101 +868,9 @@ void UEditorEngine::RenderFrame(FEditorViewportClient* ViewClient,
 	if (!ViewClient || !SettingsPanel) return;
 
 	FSceneViewTargets& Targets = ViewClient->GetViewTargets();
+	if (!Targets.SceneColor || !Targets.Depth) return;
 	const bool bRendered = RenderScene(Targets, SceneView, SceneRenderer, TargetWorld, Options,
-		[this, ViewClient, &SceneView, &Targets, bIsPIE](FSceneOverlayCallbacks& Overlays)
-	{
-		if (bIsPIE) return;
-		const FViewportSettings ViewportSetting{ 0, 0, Targets.SceneColor->GetWidth(),Targets.SceneColor->GetHeight(), 0.0f, 1.0f };
-		const bool bIsActiveViewport = ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex();
-		
-		const bool bDrawSelectedLight = bIsActiveViewport && Gizmo->GetTarget() &&
-			(Cast<ASpotLightActor>(Gizmo->GetTarget()->GetOwner()) ||
-			 Cast<APointLightActor>(Gizmo->GetTarget()->GetOwner()) ||
-			 Cast<ARectLightActor>(Gizmo->GetTarget()->GetOwner()));
-
-		const bool bDrawCascadeBounds = SettingsPanel->GetSettings().bDrawCascadeBounds;
-		if (SettingsPanel->GetSettings().bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds)
-		{
-			Overlays.EditorLines = [this, ViewClient, &SceneView, bDrawSelectedLight, bDrawCascadeBounds]
-				{
-					LineBatcher->BeginFrame();
-					if (bDrawCascadeBounds)
-					{
-						FSceneRenderData& Data = ViewClient->GetRenderData();
-						const FVector4 Colors[4] = {
-							FVector4(1.f, 0.2f, 0.2f, 1.f),
-							FVector4(1.f, 0.8f, 0.2f, 1.f),
-							FVector4(0.2f, 1.f, 0.4f, 1.f),
-							FVector4(0.2f, 0.6f, 1.f, 1.f)
-						};
-						const FBox ClipBox{ FVector(-1.f, -1.f, 0.f), FVector(1.f, 1.f, 1.f) };
-						// 셰이더와 같이 광원의 ShadowIndex로 찾는다. 그림자를 끈 방향광은 cascade가 없으므로 건너뛴다.
-						const uint32 DirectionalOffset = Data.GetDirectionalLightOffset();
-						for (uint32 LightIndex = 0; LightIndex < Data.GetDirectionalLightCount(); ++LightIndex)
-						{
-							const uint32 FirstCascade = Data.VisibleLights[DirectionalOffset + LightIndex].ShadowIndex;
-							if (FirstCascade == FLightRenderParameters::InvalidShadowIndex) continue;
-							for (uint32 CascadeIndex = 0; CascadeIndex < Data.CascadeShadowCount; ++CascadeIndex)
-							{
-								const uint32 ShadowIndex = FirstCascade + CascadeIndex;
-								if (ShadowIndex >= static_cast<uint32>(Data.LightShadows.Num())) break;
-								LineBatcher->AddOrientedBox(ClipBox, Data.LightShadows[ShadowIndex].ViewProjection.Inverse(), Colors[CascadeIndex]);
-							}
-						}
-					}
-					if (SettingsPanel->GetSettings().bDrawBatchLine && SettingsPanel->GetSettings().bDrawBoundingBox)
-					{
-						LineBatcher->BuildVertexBuffer();
-						EditorWorld->GetPathTracker().OnRender(LineBatcher.get());
-					}
-					if (bDrawSelectedLight)
-					{
-						if (ASpotLightActor* Light = Cast<ASpotLightActor>(Gizmo->GetTarget()->GetOwner()))
-							Light->GetSpotLightComponent()->DrawDebug(LineBatcher.get());
-						else if (APointLightActor* Light = Cast<APointLightActor>(Gizmo->GetTarget()->GetOwner()))
-							Light->GetPointLightComponent()->DrawDebug(LineBatcher.get());
-						else if (ARectLightActor* Light = Cast<ARectLightActor>(Gizmo->GetTarget()->GetOwner()))
-							Light->GetRectLightComponent()->DrawDebug(LineBatcher.get());
-					}
-					LineBatcher->OnRender(SceneView.ViewProjectionMatrix);
-				};
-		}
-		if (SettingsPanel->GetSettings().bDrawBatchLine)
-		{
-			Overlays.EditorGrid = [this, ViewClient, &SceneView, ViewportSetting]
-				{
-					EGridPlane GridPlane = EGridPlane::XY;
-					switch (ViewClient->GetViewportType())
-					{
-					case ELevelViewportType::Front: GridPlane = EGridPlane::YZ; break;
-					case ELevelViewportType::Right: GridPlane = EGridPlane::XZ; break;
-					default: break;
-					}
-					if (SettingsPanel->GetSettings().bDrawPSGrid && SceneView.bIsPerspective)
-						GridRenderer->OnRenderPSGrid(SceneView.ViewProjectionMatrix, SceneView.ViewLocation,
-							SettingsPanel->GetSettings(), ViewportSetting);
-					else
-						GridRenderer->OnRenderBatchGrid(SceneView.ViewProjectionMatrix, SceneView.ViewLocation,
-							SceneView.ViewForward, GridPlane,
-							static_cast<float>(SettingsPanel->GetSettings().GridSpacing),
-							SceneView.bIsPerspective, ViewportSetting);
-				};
-		}
-		if (bIsActiveViewport && Outline->GetTarget())
-			Overlays.EditorOutline = [this, &SceneView, ViewportSetting]
-				{
-					OutlineRenderer->OnRender(*Outline, SceneView.ViewProjectionMatrix, ViewportSetting);
-				};
-		if (bIsActiveViewport && Gizmo->GetTarget())
-			Overlays.EditorGizmo = [this, &SceneView]
-				{
-					GizmoRenderer->OnRender(*Gizmo, SceneView.ViewProjectionMatrix,
-						SceneView.ViewLocation, !SceneView.bIsPerspective);
-				};
-		Overlays.bClearEditorDepth = true;
-		if (SettingsPanel->GetSettings().bShowUUID)
-			Overlays.EditorUUID = [this, &SceneView] { RenderActorUUIDs(SceneView); };
-	});
+		ViewClient, bIsPIE, false);
 	if (!bRendered) return;
 }
 

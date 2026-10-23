@@ -1,5 +1,5 @@
 #include "EnginePCH.h"
-#include "Editor/Rendering/FXAARenderer.h"
+#include "Render/Effects/FXAARenderer.h"
 #include "Render/RenderCommand.h"
 #include "Render/RenderResourceManager.h"
 #include "Render/Texture2D.h"

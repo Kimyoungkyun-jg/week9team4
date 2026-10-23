@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Engine.h"
+#include "Engine/Engine.h"
+#include "Render/SceneViewPipeline.h"
 
 class UGameEngine : public UEngine
 {
@@ -10,6 +11,9 @@ public:
 
 	virtual bool Init() override;
 	virtual void Tick(float DeltaTime)override;
+	void Render() override;
+	virtual void PreExit() override;
 private:
-	
+	FWorldContext* GameContext = nullptr;
+	FSceneViewPipeline ViewPipeline;
 };

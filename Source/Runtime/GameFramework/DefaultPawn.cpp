@@ -27,7 +27,7 @@ void ADefaultPawn::BeginPlay()
 {
 	Super::BeginPlay();
 	UWorld* PawnWorld = GetWorld();
-	if (!PawnWorld || PawnWorld->GetWorldType() != EWorldType::PIE) return;
+	if (!PawnWorld || (PawnWorld->GetWorldType() != EWorldType::PIE && PawnWorld->GetWorldType() != EWorldType::Game)) return;
 	for (AProjectileActor*& Projectile : Projectiles)
 		if (!Projectile) Projectile = PawnWorld->SpawnActor<AProjectileActor>();
 }
@@ -56,7 +56,7 @@ void ADefaultPawn::AddControllerPitchInput(float Value)
 
 void ADefaultPawn::FireProjectile()
 {
-	if (!GetWorld() || GetWorld()->GetWorldType() != EWorldType::PIE || !CameraComponent) return;
+	if (!GetWorld() || (GetWorld()->GetWorldType() != EWorldType::PIE && GetWorld()->GetWorldType() != EWorldType::Game) || !CameraComponent) return;
 	if (bUseStaticMeshProjectiles && !ProjectileMesh) return;
 	int32 SelectedIndex = -1;
 	for (int32 Offset = 0; Offset < ProjectilePoolSize; ++Offset)

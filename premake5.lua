@@ -227,6 +227,34 @@ project "HitoriEditor"
 	filter {}
 
 
+-- 에디터 UI와 ImGui 없이 실행되는 게임 애플리케이션.
+project "HitoriGame"
+	location "Source/Game"
+	kind     "WindowedApp"
+	CommonSettings()
+
+	pchheader "EnginePCH.h"
+	pchsource "Source/Game/GamePCH.cpp"
+
+	files { "Source/Game/**.h", "Source/Game/**.cpp" }
+	includedirs
+	{
+		"Source/Runtime",
+		"%{IncludeDir.stb}",
+		"%{IncludeDir.json}",
+		path.join(LuaJitDir, "include/luajit"),
+		path.join(LuaJitDir, "include"),
+	}
+
+	libdirs { path.join(LuaJitDir, "lib") }
+	links { "HitoriEngine", "lua51.lib", "d3d11.lib", "dxgi.lib", "dxguid.lib", "d3dcompiler.lib" }
+	postbuildcommands {
+		"{COPYFILE} %[" .. path.join(LuaJitDir, "bin/lua51.dll") .. "] %[%{!cfg.targetdir}/lua51.dll]"
+	}
+
+	filter {}
+
+
 -- 셰이더를 VS에서 편집하기 위한 보기 전용 프로젝트 (언리얼의 Shaders와 같은 역할).
 -- 에셋(Assets)은 에디터 Content Drawer에서 다루므로 솔루션에 넣지 않는다.
 -- 새 셰이더 파일은 SlnGenerator.bat을 다시 돌려야 목록에 반영된다.

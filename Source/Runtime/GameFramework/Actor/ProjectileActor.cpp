@@ -47,7 +47,7 @@ AProjectileActor::AProjectileActor()
 
 void AProjectileActor::Launch(const FVector& Position, const FVector& Direction, bool bUseStaticMesh)
 {
-    if (!GetWorld() || GetWorld()->GetWorldType() != EWorldType::PIE || Direction.Dot(Direction) <= 0.0001f)
+    if (!GetWorld() || (GetWorld()->GetWorldType() != EWorldType::PIE && GetWorld()->GetWorldType() != EWorldType::Game) || Direction.Dot(Direction) <= 0.0001f)
         return;
     ReturnToPool();
     const FVector Forward = Direction.Normalized();

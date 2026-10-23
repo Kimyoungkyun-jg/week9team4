@@ -270,12 +270,7 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 		Chunk.SlowPathIndices.Reset();
 		std::fill(std::begin(Chunk.LODCounts), std::end(Chunk.LODCounts), 0u);
 		std::fill(std::begin(Chunk.LODTriangles), std::end(Chunk.LODTriangles), 0ull);
-		for (FStaticDrawGroup& Group : Chunk.Groups)
-			Group.Items.clear();             // 용량은 유지
-		Chunk.StaticDrawCount = 0;
 	}
-
-	const bool bStaticGroups = false;
 
 	{
 		SCOPE_CYCLE_COUNTER(STAT_GatherElements);
@@ -289,87 +284,9 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 			SelectLODs(LODInputs, *LODView, SelectedLODs);
 		}
 		Pool.ParallelFor(VisibleCount, ChunkCount, [&](uint32 Begin, uint32 End, uint32 ChunkIndex)
-			{
-				FGatherChunk& Out = GatherChunks[ChunkIndex];      // 이 조각 전용. 다른 스레드는 절대 안 건드림
-				// (머티리얼, 메시, LOD) 묶음 찾기. 조합이 몇 개뿐이라 선형 탐색이면 충분하고, 바로 전 묶음을 먼저 본다.
-				const auto FindGroup = [&Out](UMaterial* Material, UStaticMesh* Mesh, uint8 LOD) -> FStaticDrawGroup&
-					{
-						if (Out.LastGroup < Out.Groups.size())
-						{
-							FStaticDrawGroup& Last = Out.Groups[Out.LastGroup];
-							if (Last.Material == Material && Last.Mesh == Mesh && Last.LODIndex == LOD)
-								return Last;
-						}
-						for (uint32 g = 0; g < Out.Groups.size(); ++g)
-						{
-							FStaticDrawGroup& Group = Out.Groups[g];
-							if (Group.Material == Material && Group.Mesh == Mesh && Group.LODIndex == LOD)
-							{
-								Out.LastGroup = g;
-								return Group;
-							}
-						}
-						Out.LastGroup = static_cast<uint32>(Out.Groups.size());
-						FStaticDrawGroup& Group = Out.Groups.emplace_back();
-						Group.Material = Material;
-						Group.Mesh = Mesh;
-						Group.LODIndex = LOD;
-						return Group;
-					};
-
-				for (uint32 VisibleIndex = Begin; VisibleIndex < End; ++VisibleIndex)
-				{
-					FPrimitiveSceneProxy* Proxy = VisibleProxies[VisibleIndex];   // 읽기만
-					if (!Proxy->IsVisible()) continue;
-
-					UStaticMesh* Mesh = Proxy->GetMesh();
-					if (!Mesh)
-					{
-						Out.SlowPathIndices.Add(VisibleIndex);     // 컴포넌트를 건드리는 경로는 메인이 나중에
-						continue;
-					}
-
-					const uint32 LOD = LODView ? SelectedLODs[VisibleIndex] : 0;
-					const FCachedMeshLOD& CachedLOD = Proxy->GetLOD(LOD);
-					++Out.LODCounts[LOD];                          // RenderStats 대신 조각 전용 통계
-
-					uint32 Slot = InvalidObjectSlot;
-					if (SlotDest)
-					{
-						// 칸 VisibleIndex는 이 반복만 쓴다 → 스레드끼리 겹치지 않음
-						WritePerObjectConstants(SlotDest + size_t(VisibleIndex) * ObjectSlotBytes,
-							Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal());
-						Slot = VisibleIndex;
-					}
-
-					const bool bOccludedByGpu = OccludedMask && OccludedMask[VisibleIndex];
-					for (uint32 i = 0; i < CachedLOD.NumSections; ++i)
-					{
-						const FCachedMeshSection& Section = Proxy->GetSection(CachedLOD.FirstSection + i);
-						Out.LODTriangles[LOD] += Section.IndexCount / 3;
-
-						if (bStaticGroups && Section.Material && Section.Material->BlendState == EBlendState::Opaque)
-						{
-							FStaticDrawGroup& Group = FindGroup(Section.Material, Mesh, static_cast<uint8>(LOD));
-							Group.Items.push_back({ Proxy, Slot, Section.StartIndex, Section.IndexCount, bOccludedByGpu ? 1u : 0u });
-							++Out.StaticDrawCount;
-							continue;
-						}
-
-						FRenderPacket& Packet = Out.Packets.AddDefaulted_GetRef();   // 조각 전용 배열에 추가
-						Packet.Proxy = Proxy;
-						Packet.Mesh = Mesh;
-						Packet.Material = Section.Material;
-						Packet.StartIndex = Section.StartIndex;
-						Packet.IndexCount = Section.IndexCount;
-						Packet.LODIndex = static_cast<uint8>(LOD);
-						Packet.Slot = Slot;
-						Packet.bOccludedByGpu = bOccludedByGpu;
-					}
-				}
-			});
-
-		uint32 StaticDraws = 0;
+		{
+			GatherPacketChunk(Begin, End, ChunkIndex, LODView, OccludedMask, SlotDest);
+		});
 
 		uint32 TotalPackets = 0;
 		for (uint32 c = 0; c < ChunkCount; ++c)
@@ -424,8 +341,52 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 			}
 
 		if (SlotDest) Renderer->EndObjectConstants();
-		RenderStats.DrawCalls = RenderQueue.Num() + StaticDraws;
+		RenderStats.DrawCalls = RenderQueue.Num();
 		for (uint64 T : RenderStats.LODTriangles) RenderStats.Triangles += T;
+	}
+}
+
+void UWorld::GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
+	const FViewContext* LODView, const uint8* OccludedMask, uint8* SlotDest)
+{
+	FGatherChunk& Out = GatherChunks[ChunkIndex];
+	for (uint32 VisibleIndex = Begin; VisibleIndex < End; ++VisibleIndex)
+	{
+		FPrimitiveSceneProxy* Proxy = VisibleProxies[VisibleIndex];
+		if (!Proxy->IsVisible()) continue;
+		UStaticMesh* Mesh = Proxy->GetMesh();
+		if (!Mesh)
+		{
+			Out.SlowPathIndices.Add(VisibleIndex);
+			continue;
+		}
+
+		const uint32 LOD = LODView ? SelectedLODs[VisibleIndex] : 0;
+		const FCachedMeshLOD& CachedLOD = Proxy->GetLOD(LOD);
+		++Out.LODCounts[LOD];
+		uint32 Slot = InvalidObjectSlot;
+		if (SlotDest)
+		{
+			WritePerObjectConstants(SlotDest + size_t(VisibleIndex) * ObjectSlotBytes,
+				Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal());
+			Slot = VisibleIndex;
+		}
+
+		const bool bOccludedByGpu = OccludedMask && OccludedMask[VisibleIndex];
+		for (uint32 Index = 0; Index < CachedLOD.NumSections; ++Index)
+		{
+			const FCachedMeshSection& Section = Proxy->GetSection(CachedLOD.FirstSection + Index);
+			Out.LODTriangles[LOD] += Section.IndexCount / 3;
+			FRenderPacket& Packet = Out.Packets.AddDefaulted_GetRef();
+			Packet.Proxy = Proxy;
+			Packet.Mesh = Mesh;
+			Packet.Material = Section.Material;
+			Packet.StartIndex = Section.StartIndex;
+			Packet.IndexCount = Section.IndexCount;
+			Packet.LODIndex = static_cast<uint8>(LOD);
+			Packet.Slot = Slot;
+			Packet.bOccludedByGpu = bOccludedByGpu;
+		}
 	}
 }
 
@@ -769,7 +730,7 @@ bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 
 void UWorld::BeginPlay()
 {
-	if (WorldType != EWorldType::PIE || bBegunPlay) return;
+	if ((WorldType != EWorldType::PIE && WorldType != EWorldType::Game) || bBegunPlay) return;
 	UClass* ModeClass = GameModeClass;
 	if (!ModeClass || !ModeClass->IsChildOf(AGameMode::StaticClass()) || !ModeClass->Constructor)
 	{

@@ -13,33 +13,19 @@ class FScene;
 class FRenderer;
 class FConstantBuffer;
 class FTexture2D;
+class FStructuredBuffer;
 class FSkyboxRenderer;
+struct FPipelineState;
 struct FSceneViewTargets;
 
-// 에디터는 실행할 작업만 제공한다. 패스 생성과 순서는 FSceneRenderer가 결정한다.
-struct FSceneOverlayCallbacks
-{
-	std::function<void()> EditorLines;
-	std::function<void()> EditorGrid;
-	std::function<void()> EditorOutline;
-	std::function<void()> EditorGizmo;
-	std::function<void()> SIEOutline;
-	std::function<void()> SIEGizmo;
-	bool bClearEditorDepth = false;
-	std::function<void()> EditorUUID;
-};
-
-struct FScenePassCallbacks // 기본 도형 다 그려진 후 그려져야 될 목록들
+struct FScenePassCallbacks // 공통 화면 효과의 실행 작업
 {
 	std::function<void()> FireBall;
 	std::function<bool()> HeightFog;
 	std::function<FConstantBuffer*(bool)> TranslucentFogConstants;
 	std::function<void()> SceneText;
-	std::function<void()> DepthVisualization;
-	std::function<void()> CascadeVisualization;
 	std::function<bool()> FXAA;
 	FTexture2D* FXAAOutput = nullptr;
-	FSceneOverlayCallbacks Overlays;
 };
 
 
@@ -67,7 +53,10 @@ public:
 
 	// 한 뷰의 모든 패스를 정해진 순서로 등록한다.
 	bool AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Renderer, FSceneViewTargets& Targets,
-		const FSceneRenderOptions& Options, FSkyboxRenderer* Skybox, const FScenePassCallbacks& Callbacks);
+		const FSceneRenderOptions& Options, FSkyboxRenderer* Skybox, const FScenePassCallbacks& Callbacks,
+		FRenderGraphTextureRef& OutFinalColor);
+	bool AddLightCullingDebugPass(FRenderGraphBuilder& Graph, FRenderer* Renderer,
+		FRenderGraphTextureRef Color, FRenderGraphTextureRef Depth);
 	bool DidCorePassSucceed() const { return bCorePassSucceeded; }
 	bool DidFXAAPassSucceed() const { return bFXAAPassSucceeded; }
 
@@ -83,10 +72,26 @@ public:
 	const FSceneRenderData& GetRenderData() const { return RenderData; }
 	
 private:
+	static void GatherPacketChunk(FSceneRenderData& Data, uint32 Begin, uint32 End, uint32 ChunkIndex,
+		bool bPrepareObjectSlots, bool bStaticGroups, const uint8* OccludedMask);
 	bool AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Renderer, FSceneViewTargets& Targets,
 		const FSceneRenderOptions& Options, FSkyboxRenderer* Skybox);
+	bool AddPostProcessingPasses(FRenderGraphBuilder& Graph, FRenderer* Renderer, FSceneViewTargets& Targets,
+		const FSceneRenderOptions& Options, const FScenePassCallbacks& Callbacks,
+		FRenderGraphTextureRef& OutFinalColor);
 	bool AddWorldNormalPass(FRenderGraphBuilder& Graph, FRenderer* Renderer, FSceneViewTargets& Targets,
 		const FSceneRenderOptions& Options);
+	void RenderWorldNormal(FRenderer* Renderer, bool bDrawPrimitives);
+	void RenderSkybox(FSkyboxRenderer* Skybox);
+	void RenderGBuffer(FRenderer* Renderer);
+	void RenderShadowMapPass(FRenderer* Renderer, FRenderGraphBuilder& Graph,
+		FRenderGraphTextureRef ShadowMapRef, bool bClearWholeAtlas);
+	void RenderDeferredLighting(FRenderer* Renderer, uint32 Width, uint32 Height, EPcfMode PcfMode, float ShadowDepthBias);
+	void RenderDepthPrepass(FRenderer* Renderer, FPipelineState* DepthPipeline);
+	void BuildForwardLightTiles(FRenderer* Renderer, FTexture2D* DepthTexture, FStructuredBuffer* SceneLights);
+	void RenderForwardOpaque(FRenderer* Renderer, const FSceneRenderOptions& Options, bool bUseDepthPrepass);
+	void RenderToneMap();
+	void RenderLightCullingDebug(FRenderer* Renderer);
 	bool BindDeferredLighting(FRenderer* Renderer, uint32 Width, uint32 Height, EPcfMode PcfMode, float ShadowDepthBias);
 	bool BindForwardLighting(FRenderer* Renderer, const FSceneRenderOptions& Options);
 	void UnbindForwardLighting(FRenderer* Renderer);

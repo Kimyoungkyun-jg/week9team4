@@ -67,8 +67,9 @@ public:
 
 	// Device·Window·Swapchain·AssetManager가 준비된 뒤 호출된다.
 	virtual bool Init();
-	// 한 프레임의 갱신과 모든 렌더 패스를 기록한다. Present는 FEngineLoop가 호출 직후에 한다.
+	// FEngineLoop가 Tick → Render → Present 순서로 호출한다.
 	virtual void Tick(float DeltaTime) = 0;
+	virtual void Render() {}
 	virtual void OnResize(uint32 Width, uint32 Height) {}
 	// UObject 일괄 정리와 GPU 자원 해제 전에 호출된다.
 	virtual void PreExit() {};
