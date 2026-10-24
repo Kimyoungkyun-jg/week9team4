@@ -2,6 +2,7 @@
 
 #include "ActorComponent.h"
 #include "Lua/LuaMacros.h"
+#include <filesystem>
 
 class ULuaScriptComponent : public UActorComponent
 {
@@ -20,6 +21,8 @@ public:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime) override;
 	virtual void EndPlay() override;
+
+	bool LoadOrReloadScript(bool bIsReload);
 	sol::table GetScriptInstance() const { return LuaSelfTable; }
 private:
 	FString LuaScriptPath;
@@ -28,5 +31,6 @@ private:
 	sol::protected_function LuaBeginPlayFunc;
 	sol::protected_function LuaTickFunc;
 
-
+	std::filesystem::file_time_type LastWriteTime{};
+	float FileWatchTimer = 0.0f;
 };
