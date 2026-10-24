@@ -1,4 +1,5 @@
 #include "EnginePCH.h"
+#include "Components/PrimitiveComponent.h"
 #include "Editor/Rendering/EditorViewPasses.h"
 #include "Editor/Rendering/SceneDepthRenderer.h"
 #include "Editor/Rendering/CascadeFloorRenderer.h"
@@ -143,7 +144,12 @@ void FEditorViewPasses::RenderEditorLines(FEditorViewportClient* ViewClient,
 		else if (ARectLightActor* Light = Cast<ARectLightActor>(Owner))
 			Light->GetRectLightComponent()->DrawDebug(Lines);
 	}
-	Lines->OnRender(View.ViewProjectionMatrix);
+	if (USceneComponent* Target = OverlayResources.Gizmo->GetTarget())
+    {
+        for (UActorComponent* Component : Target->GetOwner()->GetComponents())
+            if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
+    }
+    Lines->OnRender(View.ViewProjectionMatrix);
 }
 
 void FEditorViewPasses::RenderEditorGrid(FEditorViewportClient* ViewClient,

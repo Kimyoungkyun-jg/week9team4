@@ -8,13 +8,13 @@ class URotatingMovementComponent : public UMovementComponent
 		REFLECT_START(ClassName)
 			PROPERTY(RotationRate)
 			PROPERTY(PivotTranslation)
-			PROPERTY(bRotaionInLocalSpace)									
+			PROPERTY(bRotationInLocalSpace)
 		REFLECT_END()
 
 public:	
 	FRotator RotationRate = FRotator(0,0,0);
 	FVector PivotTranslation = FVector::ZeroVector; // Rotate Pivot or Orbit
-	bool bRotaionInLocalSpace = true;
+	bool bRotationInLocalSpace = true;
 
 	virtual void TickComponent(float DeltaTime) override;
 };

@@ -27,6 +27,15 @@ class UGameInstance;
 
 struct FViewContext;
 
+struct FCollisionQueryStats
+{
+    uint64 IndexBuilds = 0;
+    uint64 IndexRefits = 0;
+    uint64 GeometryUpdates = 0;
+    uint64 SweepQueries = 0;
+    uint64 NarrowPhaseTests = 0;
+};
+
 class UWorld : public UObject
 {
 	DECLARE_CLASS(UWorld, UObject)
@@ -81,7 +90,20 @@ public:
 	// 현재 World의 Component에 Ray를 전달하고 가장 가까운 유효 교차를 반환한다.
 	bool LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 		FBillboardTraceTransform ResolveBillboard = nullptr, const void* ViewContext = nullptr);
-	bool SweepSingle(const FRay& WorldRay, float MaxDistance, float Radius, FHitResult& OutHit, AActor* IgnoreActor = nullptr);
+	bool SweepSingle(const UPrimitiveComponent& Moving, const FCollisionGeometry& Geometry, const FVector& Delta, FHitResult& OutHit,
+		TArray<UPrimitiveComponent*>* SweptOverlaps = nullptr);
+	bool LineTraceByChannel(const FRay& Ray, float Distance, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
+	bool OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeometry& Geometry, TArray<UPrimitiveComponent*>& OutComponents);
+	void RegisterCollisionComponent(UPrimitiveComponent* Component);
+	void UnregisterCollisionComponent(UPrimitiveComponent* Component);
+	void MarkCollisionDirty(UPrimitiveComponent* Component);
+	void UpdateComponentOverlaps(UPrimitiveComponent* Component);
+	void NotifySweptOverlaps(UPrimitiveComponent* Component, const TArray<UPrimitiveComponent*>& Components);
+	void QueueHit(UPrimitiveComponent* Component, const FHitResult& Hit);
+	void DispatchCollisionEvents();
+	void RemoveCollisionListeners(const void* Listener);
+	const FCollisionQueryStats& GetCollisionQueryStats() const { return CollisionQueryStats; }
+	bool DeferComponentDestruction(AActor* Owner, UActorComponent* Component);
 
 	void BeginPlay();
 	void EndPlay();
@@ -120,6 +142,28 @@ public:
 	using Super::Serialize;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 private:
+	struct FCollisionEntry { UPrimitiveComponent* Component; FCollisionGeometry Geometry; FBox Bounds; };
+	TArray<UPrimitiveComponent*> CollisionComponents;
+	TArray<FCollisionEntry> CollisionEntries;
+	TBVH<uint32> CollisionBVH{ [this](const uint32& Index) { return CollisionEntries[Index].Bounds; } };
+	bool bCollisionTopologyDirty = true;
+	TArray<UPrimitiveComponent*> DirtyCollisionComponents;
+	FCollisionQueryStats CollisionQueryStats;
+	void UpdateCollisionIndex();
+	void SetOverlapPair(UPrimitiveComponent* A, UPrimitiveComponent* B, bool bOverlapping);
+	struct FCollisionEvent
+	{
+		int32 Type; // 0: hit, 1: begin overlap, 2: end overlap
+		UPrimitiveComponent* Component;
+		UPrimitiveComponent* Other;
+		uint32 ComponentID, OtherID;
+		FHitResult Hit;
+	};
+	TArray<FCollisionEvent> CollisionEvents;
+	TArray<UPrimitiveComponent*> PendingOverlapUpdates;
+	bool bDispatchingCollisionEvents = false;
+	TArray<AActor*> DeferredActorDestruction;
+	TArray<std::pair<AActor*, UActorComponent*>> DeferredComponentDestruction;
 	EWorldType WorldType = EWorldType::None;
 
 	struct alignas(64) FGatherChunk

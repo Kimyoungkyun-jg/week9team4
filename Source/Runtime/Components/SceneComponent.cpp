@@ -211,114 +211,67 @@ FMatrix USceneComponent::GetWorldMatrix() const
 
 void USceneComponent::SetWorldTransform(const FMatrix& InWorldMatrix, bool bSweep)
 {
-	FMatrix LocalMatrix = InWorldMatrix;
-	if (AttachParent)
-	{
-		FMatrix ParentWorldMatrix = AttachParent->GetWorldMatrix();
-		LocalMatrix = InWorldMatrix * ParentWorldMatrix.Inverse();
-	}
-
-	Transform.Location = FVector(LocalMatrix[3][0], LocalMatrix[3][1], LocalMatrix[3][2]);
-
-	FVector XAxis(LocalMatrix[0][0], LocalMatrix[0][1], LocalMatrix[0][2]);
-	FVector YAxis(LocalMatrix[1][0], LocalMatrix[1][1], LocalMatrix[1][2]);
-	FVector ZAxis(LocalMatrix[2][0], LocalMatrix[2][1], LocalMatrix[2][2]);
-
-	const float XAxisSize = XAxis.Size();
-	const float YAxisSize = YAxis.Size();
-	const float ZAxisSize = ZAxis.Size();
-
-	Transform.Scale = FVector(XAxisSize, YAxisSize, ZAxisSize);
-
-	XAxis = XAxis.Normalized();
-	YAxis = YAxis.Normalized();
-	ZAxis = ZAxis.Normalized();
-
-	FMatrix RotationMatrix = FMatrix::Identity;
-	RotationMatrix.SetAxis(0, XAxis);
-	RotationMatrix.SetAxis(1, YAxis);
-	RotationMatrix.SetAxis(2, ZAxis);
-
-	Transform.Rotation = MatrixToRotator(RotationMatrix);
-		
-	MarkTransformDirty();
+    FMatrix RotationMatrix = InWorldMatrix;
+    FVector Scale;
+    for (int Axis = 0; Axis < 3; ++Axis)
+    {
+        FVector Vector(InWorldMatrix[Axis][0], InWorldMatrix[Axis][1], InWorldMatrix[Axis][2]);
+        Scale[Axis] = Vector.Size();
+        RotationMatrix.SetAxis(Axis, Vector.GetSafeNormal());
+    }
+    SetWorldScale3D(Scale);
+    SetWorldLocationAndRotation(FVector(InWorldMatrix[3][0], InWorldMatrix[3][1], InWorldMatrix[3][2]), MatrixToRotator(RotationMatrix), bSweep);
 }
 
 void USceneComponent::SetWorldLocation(FVector NewLocation, bool bSweep)
 {
-	FVector NewRelLocation = NewLocation;
-
-	if (GetAttachParent() != nullptr)
-	{		
-		NewRelLocation = GetAttachParent()->GetWorldMatrix().Inverse().TransformPosition(NewRelLocation);
-	}
-
-	SetRelativeLocation(NewRelLocation);
+    MoveComponent(NewLocation - GetWorldLocation(), GetWorldRotation(), bSweep);
 }
 
 void USceneComponent::SetWorldRotation(FRotator NewRotation, bool bSweep)
 {
-	FRotator NewRelRotation = NewRotation;
-
-	if (GetAttachParent() != nullptr)
-	{
-		FQuat NewRelQuat = GetAttachParent()->GetWorldRotation().Quaternion().Inverse() * NewRelRotation.Quaternion();
-		NewRelRotation = NewRelQuat.ToFRotator();
-	}
-
-	SetRelativeRotation(NewRelRotation);
+    MoveComponent(FVector::ZeroVector, NewRotation, bSweep);
 }
 
 void USceneComponent::SetWorldLocationAndRotation(FVector NewLocation, FRotator NewRotation, bool bSweep)
 {
-	FVector NewRelLocation = NewLocation;
-	FRotator NewRelRotation = NewRotation;
+    MoveComponent(NewLocation - GetWorldLocation(), NewRotation, bSweep);
+}
 
-	if (GetAttachParent() != nullptr)
-	{
-		NewRelLocation = GetAttachParent()->GetWorldMatrix().Inverse().TransformPosition(NewRelLocation);
-
-		FQuat NewRelQuat = GetAttachParent()->GetWorldRotation().Quaternion().Inverse() * NewRelRotation.Quaternion();
-		NewRelRotation = NewRelQuat.ToFRotator();
-	}
-
-	SetRelativeLocationAndRotation(NewRelLocation, NewRelRotation);
+void USceneComponent::ApplyWorldLocationAndRotation(const FVector& Location, const FRotator& Rotation)
+{
+    FVector RelativeLocation = Location;
+    FRotator RelativeRotation = Rotation;
+    if (AttachParent)
+    {
+        RelativeLocation = AttachParent->GetWorldMatrix().Inverse().TransformPosition(Location);
+        RelativeRotation = (AttachParent->GetWorldRotation().Quaternion().Inverse() * Rotation.Quaternion()).ToFRotator();
+    }
+    Transform.Location = RelativeLocation;
+    Transform.Rotation = RelativeRotation;
+    MarkTransformDirty();
 }
 
 void USceneComponent::SetWorldScale3D(FVector NewScale)
 {
+    FVector RelativeScale = NewScale;
+    if (AttachParent)
+    {
+        const FVector ParentScale = AttachParent->GetWorldScale3D();
+        for (int Axis = 0; Axis < 3; ++Axis)
+            RelativeScale[Axis] = std::abs(ParentScale[Axis]) > SMALL_NUMBER ? NewScale[Axis] / ParentScale[Axis] : 0.f;
+    }
+    SetRelativeScale3D(RelativeScale);
 }
 
 bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
 {
-	FHitResult LocalHit(1.0f);
-	FHitResult& Result = Hit ? *Hit : LocalHit;
-	Result = FHitResult(1.0f);
-	const FVector Start = GetWorldLocation();
-	FVector Destination = Start + Delta;
-	bool bBlocked = false;
-	AActor* Owner = GetOwner();
-	if (bSweep && Delta.SizeSquared() > SMALL_NUMBER && Owner && Owner->GetActorEnableCollision())
-	{
-		if (UWorld* World = Owner->GetWorld())
-		{
-			Result.Init(Start, Destination);
-			bBlocked = World->SweepSingle(FRay(Start, Delta.Normalized()), Delta.Size(), GetCollisionRadius(), Result, Owner);
-			if (bBlocked)
-				Destination = Start + Delta * Result.Time + Result.ImpactNormal * 0.001f;
-		}
-	}
-	SetWorldLocationAndRotation(Destination, NewRotation, false);
-	return !bBlocked;
-}
-
-float USceneComponent::GetCollisionRadius() const
-{
-	if (CollisionRadiusOverride >= 0.0f) return CollisionRadiusOverride;
-	const FBox Bounds = CalcBounds();
-	const FVector Extent = (Bounds.Max - Bounds.Min) * 0.5f;
-	if (Extent.SizeSquared() <= SMALL_NUMBER) return 10.0f;
-	return std::min({ Extent.X, Extent.Y, Extent.Z });
+    const FVector Start = GetWorldLocation();
+    if (Hit) { *Hit = FHitResult(1.f); Hit->Init(Start, Start + Delta); Hit->Location = Start + Delta; }
+    for (int Axis = 0; Axis < 3; ++Axis)
+        if (!std::isfinite(Delta[Axis]) || !std::isfinite(NewRotation[Axis])) return false;
+    ApplyWorldLocationAndRotation(Start + Delta, NewRotation);
+    return true;
 }
 
 void USceneComponent::MarkTransformDirty()

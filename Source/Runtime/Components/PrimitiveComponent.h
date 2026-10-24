@@ -6,8 +6,11 @@
 #include "Render/RenderPacket.h"
 #include "Render/GeometryGenerator.h"
 #include "Collision/HitResult.h"
+#include "Collision/CollisionShape.h"
+#include "Core/Delegates/Delegate.h"
 
 class FPrimitiveSceneProxy;
+class FLineBatcher;
 
 enum class EPrimitiveType
 {
@@ -35,6 +38,23 @@ public:
 	virtual ~UPrimitiveComponent();
 
 	virtual void BeginPlay() override;
+	using Super::Serialize;
+	void Serialize(FStructuredArchive::FRecord Record) override;
+	virtual bool BuildCollisionShape(FCollisionShape& OutShape) const { return false; }
+	bool GetCollisionGeometry(FCollisionGeometry& OutGeometry) const;
+	void DrawCollision(FLineBatcher& Lines, const FVector4& Color) const;
+	bool IsCollisionEnabled() const;
+	const FCollisionSettings& GetCollisionSettings() const { return CollisionSettings; }
+	void SetCollisionEnabled(bool bEnabled);
+	void SetCollisionObjectType(ECollisionChannel Channel);
+	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse Response);
+	void SetCollisionResponseToAllChannels(ECollisionResponse Response);
+	void SetGenerateOverlapEvents(bool bEnabled);
+	void UpdateOverlaps();
+	const TArray<UPrimitiveComponent*>& GetOverlappingComponents() const { return OverlappingComponents; }
+	TMulticastDelegate<UPrimitiveComponent*, UPrimitiveComponent*, const FHitResult&> OnComponentHit;
+	TMulticastDelegate<UPrimitiveComponent*, UPrimitiveComponent*> OnComponentBeginOverlap;
+	TMulticastDelegate<UPrimitiveComponent*, UPrimitiveComponent*> OnComponentEndOverlap;
 
 	// Todo: subuv
 	//void SubmitToRenderQueue(TQueue<FRenderPacket>& RenderQueue);
@@ -80,6 +100,9 @@ public:
 	bool bReceiveShadow = true;
 
 protected:
+	void OnRegister() override;
+	void OnUnregister() override;
+	FCollisionSettings CollisionSettings;
 	virtual bool ShouldCreateRenderState() const override
 	{
 		return true;
@@ -94,5 +117,9 @@ protected:
 
 private:
 	friend class FScene;
+	friend class UWorld;
+	int32 CollisionEntryIndex = INDEX_NONE;
+	bool bCollisionUpdateQueued = false;
+	TArray<UPrimitiveComponent*> OverlappingComponents;
 	FPrimitiveSceneProxy* SceneProxy = nullptr;
 };
