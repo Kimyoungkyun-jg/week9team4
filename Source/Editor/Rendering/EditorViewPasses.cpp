@@ -226,6 +226,7 @@ bool FEditorViewPasses::AddPasses(FRenderGraphBuilder& Graph, FSceneRenderer& Sc
 				CascadeFloor->OnRender(View, SceneRenderer.GetRenderData(), Depth, Color);
 			})) return false;
 	}
+
 	if (!AddOverlay(Graph, FinalColor, DepthRef, "EditorLines", Overlays.EditorLines) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGrid", Overlays.EditorGrid) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorOutline", Overlays.EditorOutline) ||

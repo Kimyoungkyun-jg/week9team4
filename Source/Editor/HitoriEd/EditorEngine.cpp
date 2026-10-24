@@ -832,9 +832,10 @@ void UEditorEngine::RenderGameFrame(FGameViewportClient* GameClient, const FScen
 
 	FSceneViewTargets& Targets = GameClient->GetViewTargets();
 	if (!Targets.SceneColor || !Targets.Depth) return;
-	const bool bRendered = RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(),
-		RenderOptions, nullptr, false, bIsSIEMode);
-	if (!bRendered) return;
+	if (bIsSIEMode)
+		RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions, nullptr, false, true);
+	else
+		ViewPipeline.Render(SceneRenderer, Renderer, Targets, GameClient->GetWorld(), SceneView, RenderOptions);
 }
 
 bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& SceneView,
