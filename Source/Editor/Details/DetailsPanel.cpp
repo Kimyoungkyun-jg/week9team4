@@ -1180,7 +1180,7 @@ void FDetailsPanel::OnRender()
 			ImGui::SeparatorText("Component Properties");
 			DrawProperties(TargetComponent, CustomFont);
 			DrawShadowPreview();
-			if (UScriptComponent* ScriptComponent = Cast<UScriptComponent>(TargetComponent))
+			if (ULuaScriptComponent* ScriptComponent = Cast<ULuaScriptComponent>(TargetComponent))
 			{
 				const FString& ScriptPath = ScriptComponent->GetScriptPath();
 				std::error_code Error;

@@ -2,7 +2,7 @@
 #include "GameFramework/DefaultPawn.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/ScriptComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Asset/AssetManager.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor/ProjectileActor.h"
@@ -12,7 +12,7 @@ ADefaultPawn::ADefaultPawn()
 	SetActorEnableCollision(false);
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("CameraComponent");
 	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("StaticMeshComponent");
-	UScriptComponent* ScriptComponent = CreateDefaultSubobject<UScriptComponent>("ScriptComponent");
+	ULuaScriptComponent* ScriptComponent = CreateDefaultSubobject<ULuaScriptComponent>("LuaScriptComponent");
 	ScriptComponent->SetScriptPath("Assets/Scripts/player.lua");
 	SetRootComponent(StaticMeshComponent);
 	StaticMeshComponent->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Hitori/Hitori.obj"));

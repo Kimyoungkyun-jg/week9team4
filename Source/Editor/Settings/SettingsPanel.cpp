@@ -10,7 +10,7 @@
 #include "GameFramework/GameMode.h"
 #include "GameFramework/TestGameMode.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/ScriptComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "UObject/UObjectIterator.h"
 #include "UObject/UObjectHash.h"
 
@@ -151,7 +151,7 @@ void FSettingsPanel::OnRender()
 				bool bFoundScript = false;
 				for (UActorComponent* Component : GameMode->GetComponents())
 				{
-					UScriptComponent* Script = Cast<UScriptComponent>(Component);
+					ULuaScriptComponent* Script = Cast<ULuaScriptComponent>(Component);
 					if (!Script) continue;
 					bFoundScript = true;
 					const FString& Path = Script->GetScriptPath();
@@ -167,7 +167,7 @@ void FSettingsPanel::OnRender()
 					if (!bValidScript) ImGui::TextDisabled("Lua file not found.");
 					ImGui::PopID();
 				}
-				if (!bFoundScript) ImGui::TextDisabled("Selected GameMode has no ScriptComponent.");
+				if (!bFoundScript) ImGui::TextDisabled("Selected GameMode has no LuaScriptComponent.");
 			}
 			const auto DrawClassPicker = [](const char* Label, UClass* BaseClass, UClass* CurrentClass, auto OnSelect)
 			{

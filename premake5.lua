@@ -20,8 +20,6 @@ IncludeDir["ImGui"] = "Source/ThirdParty/ImGui"
 IncludeDir["stb"]   = "Source/ThirdParty/stb"
 IncludeDir["json"]  = "Source/ThirdParty/json"
 IncludeDir["DDSLoader"] = "Source/ThirdParty/DDSLoader"
-IncludeDir["lua"]   = "Source/ThirdParty/lua/include"
-IncludeDir["sol2"]  = "Source/ThirdParty/sol2/include"
 
 local VcpkgRoot = os.getenv("VCPKG_ROOT")
 assert(VcpkgRoot and VcpkgRoot ~= "", "VCPKG_ROOT must point to the vcpkg installation")
@@ -155,14 +153,11 @@ project "HitoriEngine"
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.json}",
 		"%{IncludeDir.DDSLoader}",
-		"%{IncludeDir.lua}",
-		"%{IncludeDir.sol2}",
+		path.join(LuaJitDir, "include/luajit"),
+		path.join(LuaJitDir, "include"),
 	}
 
-	libdirs
-	{
-		"Source/ThirdParty/lua/lib",
-	}
+	libdirs { path.join(LuaJitDir, "lib") }
 
 	links
 	{
@@ -170,7 +165,7 @@ project "HitoriEngine"
 		"dxgi.lib",
 		"dxguid.lib",
 		"d3dcompiler.lib",
-		"lua54.lib",
+		"lua51.lib",
 	}
 
 	filter "files:Source/ThirdParty/DDSLoader/**.cpp"
@@ -206,14 +201,11 @@ project "HitoriEditor"
 		"%{IncludeDir.ImGui}/backends",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.json}",
-		"%{IncludeDir.lua}",
-		"%{IncludeDir.sol2}",
+		path.join(LuaJitDir, "include/luajit"),
+		path.join(LuaJitDir, "include"),
 	}
 
-	libdirs
-	{
-		"Source/ThirdParty/lua/lib",
-	}
+	libdirs { path.join(LuaJitDir, "lib") }
 
 	links
 	{
@@ -221,7 +213,10 @@ project "HitoriEditor"
 		"dxgi.lib",
 		"dxguid.lib",
 		"d3dcompiler.lib",
-		"lua54.lib",
+		"lua51.lib",
+	}
+	postbuildcommands {
+		"{COPYFILE} %[" .. path.join(LuaJitDir, "bin/lua51.dll") .. "] %[%{!cfg.targetdir}/lua51.dll]"
 	}
 
 

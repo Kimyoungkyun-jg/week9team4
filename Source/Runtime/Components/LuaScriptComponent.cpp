@@ -5,7 +5,7 @@
 #include "Engine/GameInstance.h"
 #include "Lua/LuaManager.h"
 
-#include <sol.hpp>
+#include <sol/sol.hpp>
 
 #include <filesystem>
 #include "Core/EngineLog.h"
@@ -101,4 +101,12 @@ void ULuaScriptComponent::TickComponent(float DeltaTime)
 			HTR_LOG(Error, "[Lua] Tick error: {}", Err.what());
 		}
 	}
+}
+
+void ULuaScriptComponent::EndPlay()
+{
+	LuaBeginPlayFunc = {};
+	LuaTickFunc = {};
+	LuaSelfTable = {};
+	Super::EndPlay();
 }

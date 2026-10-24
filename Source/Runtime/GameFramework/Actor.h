@@ -23,6 +23,7 @@ class AActor : public UObject
 	LUA_BIND_START(AActor)
 		LUA_FUNC(Destroy)
 		LUA_FUNC(GetRootComponent)
+		LUA_FUNC(GetName)
 		LUA_BIND_END()
 public:
 	AActor();

@@ -3,7 +3,7 @@
 #include "GameFramework/GameMode.h"
 
 struct FHitResult;
-class UScriptComponent;
+class ULuaScriptComponent;
 
 class ATestGameMode : public AGameMode
 {
@@ -14,5 +14,5 @@ public:
 	void NotifyProjectileHit(const FHitResult& Hit);
 
 private:
-	UScriptComponent* ScriptComponent = nullptr;
+	ULuaScriptComponent* ScriptComponent = nullptr;
 };

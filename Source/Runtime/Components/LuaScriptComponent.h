@@ -19,6 +19,8 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime) override;
+	virtual void EndPlay() override;
+	sol::table GetScriptInstance() const { return LuaSelfTable; }
 private:
 	FString LuaScriptPath;
 	sol::table LuaSelfTable;

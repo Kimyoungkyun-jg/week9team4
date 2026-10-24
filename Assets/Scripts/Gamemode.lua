@@ -1,7 +1,8 @@
+local GameMode = {}
 local hitCount = 0
 local endSequence = nil
 
-function OnProjectileHit(hit)
+function GameMode:OnProjectileHit(hit)
     if endSequence then return end
 
     hitCount = hitCount + 1
@@ -22,9 +23,11 @@ function OnProjectileHit(hit)
     end
 end
 
-function Tick(deltaTime)
+function GameMode:Tick(deltaTime)
     if not endSequence or coroutine.status(endSequence) ~= "suspended" then return end
 
     local ok, err = coroutine.resume(endSequence, deltaTime)
     if not ok then Log(err) end
 end
+
+return GameMode
