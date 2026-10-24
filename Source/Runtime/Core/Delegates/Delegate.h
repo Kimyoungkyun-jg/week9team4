@@ -121,11 +121,17 @@ public:
 			return {};
 		}
 
-		FDelegateHandle newHandle = FDelegateHandle::GetHandle();
+		auto Entry = MakeUnique<FDelegateEntry>();
 
-		Functions.Add(FDelegateEntry({newHandle, std::move(func), InOwner}));
-		
-		return newHandle;
+		Entry->Handle = FDelegateHandle::GetHandle();
+		Entry->Function = std::move(func);
+		Entry->Owner = InOwner;
+
+		const FDelegateHandle NewHandle = Entry->Handle;
+
+		Functions.Add(std::move(Entry));
+
+		return NewHandle;
 	}
 
 	// 클래스 멤버 함수 바인딩
@@ -151,7 +157,6 @@ public:
 		);
 	}
 
-	// 호출 중 Add, Remove, Clear는 거절
 	// 같은 Delegate 중첩 Broadcast는 허용
 	// Depth를 통해 관리한다
 	// 이번 Broadcast가 시작될 때 등록되어 있던 콜백까지만 실행
@@ -186,20 +191,20 @@ public:
 
 		for (int32 i = 0; i < FunctionsSize; ++i)
 		{
-			if (Functions[i].bPendingRemove)
+			FDelegateEntry* Entry = Functions[i].get();
+
+			if (!Entry->bPendingRemove)
 			{
-				continue;
+				Entry->Function(args...);
 			}
-			FDelegateEntry tmp = Functions[i];
-			tmp.Function(args...);
 		}
 	}
 
 	bool IsBound() const
 	{
-		for (const FDelegateEntry& Entry : Functions)
+		for (const auto& Entry : Functions)
 		{
-			if (!Entry.bPendingRemove)
+			if (!Entry->bPendingRemove)
 			{
 				return true;
 			}
@@ -217,7 +222,7 @@ public:
 
 		for (int32 i = 0; i< Functions.Num(); ++i)
 		{
-			if (Functions[i].Handle == Handle && !Functions[i].bPendingRemove)
+			if (Functions[i]->Handle == Handle && !Functions[i]->bPendingRemove)
 			{
 				RemoveEntryAt(i);
 				return true;
@@ -226,34 +231,6 @@ public:
 		return false;
 	}
 
-	// Cube()
-	// {
-	//		TArray<FDelegateHandle> handles;
-	//		A1();
-	//		A2();
-	// 
-	// ~Cube()
-	// {
-	//		Player.onDamaged.RemoveAll(this);
-	//		Player.onDamaged.Remove();
-	// }
-	// 
-	// }
-	//
-
-	// Cube::A1();
-	// Cube::A2();
-	// Cube temp
-	// Sphere::B();
-	// Player.onDamaged.add(&Cube::A1(), nullptr); // 이거는 RemoveAll()에서 삭제 안됨 => 주의!
-	// Player.onDamaged.add(&Cube::A2(), &temp);
-	// Player.onDamaged.add(&Sphere::B());
-	// 
-	// 
-	// 
-	// 여기서 Cube의 함수 콜백만 해제하고 싶다. => A1, A2;
-	// Owner == Cube인 콜백만 해제한다.
-	// 
 	// 해당 Delegate에 들어간 특정객체 함수콜백을 모두 제거하고, 제거한 개수를 반환
 	int32 RemoveAll(const void* Owner)
 	{
@@ -269,7 +246,7 @@ public:
 		{
 			const int32 Index = i - 1;
 
-			if (Functions[Index].Owner == Owner && !Functions[Index].bPendingRemove)
+			if (Functions[Index]->Owner == Owner && !Functions[Index]->bPendingRemove)
 			{
 				RemoveEntryAt(Index);
 				++RemovedCount;
@@ -283,10 +260,11 @@ public:
 	{
 		if (BroadcastDepth > 0)
 		{
-			for (FDelegateEntry& Entry : Functions)
+			for (const auto& Entry : Functions)
 			{
-				Entry.bPendingRemove = true;
+				Entry->bPendingRemove = true;
 			}
+
 			return;
 		}
 
@@ -302,28 +280,18 @@ private:
 		bool bPendingRemove = false;
 	};
 
-	TArray<FDelegateEntry>Functions;
-	TArray<TUniquePtr<FDelegateEntry>> FunctionList;
+	TArray<TUniquePtr<FDelegateEntry>> Functions;
 	// 현재 실행 중인 Broadcast의 중첩 깊이
 	// Add는 깊이에 관계없이 허용한다.
 	// 제거는 깊이가 0이면 즉시 삭제하고, 1 이상이면 삭제를 미룬다.
 	int32 BroadcastDepth = 0;
-
-	bool CanModify() const
-	{
-		const bool bAllowed = (BroadcastDepth == 0);
-
-		assert(bAllowed && "Cannot add delegate during Broadcast");
-
-		return bAllowed;
-	}
 
 	// 실행 중이면 표시만, 실행 중이 아니면 즉시 삭제
 	void RemoveEntryAt(int32 Index)
 	{
 		if (BroadcastDepth > 0)
 		{
-			Functions[Index].bPendingRemove = true;
+			Functions[Index]->bPendingRemove = true;
 		}
 		else
 		{
@@ -340,7 +308,7 @@ private:
 		{
 			const int32 Index = i - 1;
 
-			if (Functions[Index].bPendingRemove)
+			if (Functions[Index]->bPendingRemove)
 			{
 				Functions.RemoveAt(Index);
 			}
