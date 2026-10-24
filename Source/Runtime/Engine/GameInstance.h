@@ -2,6 +2,7 @@
 
 #include "UObject/Object.h"
 #include "UObject/Class.h"
+#include "Lua/LuaManager.h"
 
 class UWorld;
 class UEngine;
@@ -11,7 +12,8 @@ class UGameInstance : public UObject
 {
 	DECLARE_CLASS(UGameInstance, UObject)
 public:
-	virtual void Init() {}
+	virtual ~UGameInstance() override = default;
+	virtual void Init();
 	virtual void Shutdown();
 	UWorld* GetWorld() const;
 	FWorldContext* GetWorldContext() const { return WorldContext; }
@@ -21,6 +23,8 @@ public:
 	virtual bool StartPlayInEditorGameInstance();
 	
 	UEngine* GetEngine() const;
+	FLuaManager* GetLuaManager() { return LuaManager.get(); }
 private:
 	FWorldContext* WorldContext = nullptr;
+	TUniquePtr<FLuaManager> LuaManager;
 };

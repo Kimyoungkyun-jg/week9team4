@@ -4,8 +4,20 @@
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
 
+void UGameInstance::Init()
+{
+	LuaManager = MakeUnique<FLuaManager>();
+	LuaManager->Init();
+}
+
 void UGameInstance::Shutdown()
 {
+	if (LuaManager)
+	{
+		LuaManager->Shutdown();
+		LuaManager.reset();
+	}
+
 	if (!WorldContext) return;
 	if (WorldContext->GameViewport)
 	{

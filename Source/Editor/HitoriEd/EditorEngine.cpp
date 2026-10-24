@@ -1211,6 +1211,14 @@ void UEditorEngine::StartPlayInEditorSession()
 	const bool bNewWindow = (PlayMode == EPlayModeType::InEditorFloating);
 
 	PIEStartEditorViewIndex = ViewportsPanel ? ViewportsPanel->GetActiveViewIndex() : 0;
+	if (PIEStartEditorViewIndex >= 0 && PIEStartEditorViewIndex < AllViewportClients.Num())
+	{
+		if (FEditorViewportClient* View = AllViewportClients[PIEStartEditorViewIndex])
+		{
+			SavedEditorCameraLocation = View->GetViewLocation();
+			SavedEditorCameraRotation = View->GetViewRotation();
+		}
+	}
 	if (bNewWindow && CreatePIEWindow())
 		PIEViewIndex = -2;
 	else
@@ -1276,6 +1284,21 @@ void UEditorEngine::EndPlayMap()
 	bStepRequested = false;
 
 	ResetSceneSelection();
+
+	// PIE 종료 시 에디터 카메라 복원
+	if (ViewportsPanel && ViewportsPanel->IsRestoreCameraOnPIEExit())
+	{
+		const int32 RestoreIndex = (PIEStartEditorViewIndex >= 0) ? PIEStartEditorViewIndex : (ViewportsPanel ? ViewportsPanel->GetActiveViewIndex() : 0);
+		if (RestoreIndex >= 0 && RestoreIndex < AllViewportClients.Num())
+		{
+			if (FEditorViewportClient* View = AllViewportClients[RestoreIndex])
+			{
+				View->SetViewLocation(SavedEditorCameraLocation);
+				View->SetViewRotation(SavedEditorCameraRotation);
+			}
+		}
+	}
+
 	if (ViewportsPanel)
 		ViewportsPanel->ClearGameViewportClient();
 	DestroyWorldContext(PlayWorld);

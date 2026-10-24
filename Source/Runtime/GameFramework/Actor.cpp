@@ -5,6 +5,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/ParticleSubUVComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Core/EngineLog.h"
 #include "UObject/Object.h"
 

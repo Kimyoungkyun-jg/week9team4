@@ -181,6 +181,10 @@ private:
 	int32 PIEViewIndex = -1;
 	int32 PIEStartEditorViewIndex = -1;
 
+	// PIE 시작 시점의 에디터 카메라 백업 (종료 시 복원용)
+	FVector SavedEditorCameraLocation{};
+	FRotator SavedEditorCameraRotation{};
+
 	// Play 버튼이 다음 세션을 띄울 위치
 	EPlayModeType PlayMode = EPlayModeType::InViewport;
 

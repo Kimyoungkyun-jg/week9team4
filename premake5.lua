@@ -20,6 +20,8 @@ IncludeDir["ImGui"] = "Source/ThirdParty/ImGui"
 IncludeDir["stb"]   = "Source/ThirdParty/stb"
 IncludeDir["json"]  = "Source/ThirdParty/json"
 IncludeDir["DDSLoader"] = "Source/ThirdParty/DDSLoader"
+IncludeDir["lua"]   = "Source/ThirdParty/lua/include"
+IncludeDir["sol2"]  = "Source/ThirdParty/sol2/include"
 
 -- premake의 filter는 project()를 만나면 초기화된다.
 -- 두 프로젝트가 같은 런타임(/MDd vs /MD)으로 컴파일되지 않으면 링크가 실패하므로
@@ -41,6 +43,7 @@ function CommonSettings()
 		"NOMINMAX",
 		"UNICODE",
 		"_UNICODE",
+		"SOL_ALL_SAFETIES_ON=1",
 	}
 
 	filter "files:**.hlsl"
@@ -145,6 +148,13 @@ project "HitoriEngine"
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.json}",
 		"%{IncludeDir.DDSLoader}",
+		"%{IncludeDir.lua}",
+		"%{IncludeDir.sol2}",
+	}
+
+	libdirs
+	{
+		"Source/ThirdParty/lua/lib",
 	}
 
 	links
@@ -153,6 +163,7 @@ project "HitoriEngine"
 		"dxgi.lib",
 		"dxguid.lib",
 		"d3dcompiler.lib",
+		"lua54.lib",
 	}
 
 	filter "files:Source/ThirdParty/DDSLoader/**.cpp"
@@ -188,6 +199,13 @@ project "HitoriEditor"
 		"%{IncludeDir.ImGui}/backends",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.json}",
+		"%{IncludeDir.lua}",
+		"%{IncludeDir.sol2}",
+	}
+
+	libdirs
+	{
+		"Source/ThirdParty/lua/lib",
 	}
 
 	links
@@ -196,7 +214,9 @@ project "HitoriEditor"
 		"dxgi.lib",
 		"dxguid.lib",
 		"d3dcompiler.lib",
+		"lua54.lib",
 	}
+
 
 	filter "configurations:ObjViewer"
 		targetname "ObjViewer"

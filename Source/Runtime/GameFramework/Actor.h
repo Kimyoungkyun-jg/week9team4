@@ -8,6 +8,8 @@
 #include "Containers/Set.h"
 #include "Engine/EngineBaseTypes.h"
 
+#include "Lua/LuaMacros.h"
+
 class UWorld;
 class ULevel;
 
@@ -17,6 +19,11 @@ class AActor : public UObject
 	REFLECT_START(ClassName)
 		PROPERTY(bActorEnableCollision)
 		REFLECT_END()
+
+	LUA_BIND_START(AActor)
+		LUA_FUNC(Destroy)
+		LUA_FUNC(GetRootComponent)
+		LUA_BIND_END()
 public:
 	AActor();
 	virtual ~AActor();

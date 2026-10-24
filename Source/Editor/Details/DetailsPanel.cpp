@@ -17,6 +17,7 @@
 #include "Components/RotatingMovementComponent.h"
 #include "Components/ProjectileMovementComponent.h"
 #include "Components/FireBallComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Asset/AssetManager.h"
 #include "Render/Material.h"
 #include "Render/Texture2D.h"
@@ -306,6 +307,92 @@ namespace
 			}
 			ImGui::EndCombo();
 		}
+	}
+
+	bool IsLuaScriptExtension(const fs::path& Path)
+	{
+		FString Extension = Path.extension().string();
+		for (char& Ch : Extension)
+		{
+			Ch = static_cast<char>(std::tolower(static_cast<unsigned char>(Ch)));
+		}
+		return Extension == ".lua";
+	}
+
+	bool DrawLuaScriptSlot(FString& ScriptPath)
+	{
+		bool bChanged = false;
+
+		const FString CurrentFileName = !ScriptPath.empty() ? GetAssetDisplayName(ScriptPath) : "None";
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool bOpen = ImGui::BeginCombo("##LuaScript", CurrentFileName.c_str());
+		if (ImGui::IsItemHovered() && !ScriptPath.empty())
+		{
+			ImGui::SetTooltip("%s", ScriptPath.c_str());
+		}
+
+		if (bOpen)
+		{
+			if (ImGui::Selectable("None", ScriptPath.empty()))
+			{
+				if (!ScriptPath.empty())
+				{
+					ScriptPath.clear();
+					bChanged = true;
+				}
+			}
+
+			std::error_code Error;
+			if (fs::exists("Assets", Error))
+			{
+				for (const fs::directory_entry& Entry : fs::recursive_directory_iterator("Assets", Error))
+				{
+					if (!Entry.is_regular_file() || !IsLuaScriptExtension(Entry.path()))
+					{
+						continue;
+					}
+
+					const FString ItemPath = Entry.path().generic_string();
+					const FString ItemFileName = GetAssetDisplayName(ItemPath);
+					const bool bSelected = (ItemPath == ScriptPath);
+
+					ImGui::PushID(ItemPath.c_str());
+					if (ImGui::Selectable(ItemFileName.c_str(), bSelected))
+					{
+						if (ScriptPath != ItemPath)
+						{
+							ScriptPath = ItemPath;
+							bChanged = true;
+						}
+					}
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetTooltip("%s", ItemPath.c_str());
+					}
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndCombo();
+		}
+		else if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::LuaScript))
+			{
+				const char* DroppedPath = static_cast<const char*>(Payload->Data);
+				if (DroppedPath && ScriptPath != DroppedPath)
+				{
+					ScriptPath = DroppedPath;
+					bChanged = true;
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		return bChanged;
 	}
 
 	UMaterial* EnsureMaterialOverride(UMeshComponent* MeshComponent, int32 Slot, UMaterial* Effective, UMaterial* Override)
@@ -680,6 +767,11 @@ namespace
 		case EPropertyType::String:
 		{
 			FString* Value = static_cast<FString*>(ValuePtr);
+			if (Object && Object->IsA<ULuaScriptComponent>() && Property.Name == "LuaScriptPath")
+			{
+				bChanged = DrawLuaScriptSlot(*Value);
+				break;
+			}
 
 			char Buffer[256] = {};
 			strncpy_s(Buffer, Value->c_str(), sizeof(Buffer) - 1);
@@ -687,6 +779,7 @@ namespace
 			if (ImGui::InputText(Label.c_str(), Buffer, sizeof(Buffer)))
 			{
 				*Value = Buffer;
+				bChanged = true;
 			}
 			if (CustomFont) ImGui::PopFont();
 			break;

@@ -90,6 +90,7 @@ void FContentDrawerPanel::OnRender()
 				// 폴더/파일 아이콘은 끌 수 없어야 하므로 썸네일과 구분해서 들고 있는다.
 				UTexture2D* TextureAsset = nullptr;
 				UFont* FontAsset = nullptr;
+				bool bIsLuaScript = false;
 
 				// 폴더 또는 파일 아이콘 표시
 				if (bIsDirectory)
@@ -98,6 +99,13 @@ void FContentDrawerPanel::OnRender()
 				}
 				else // 파일인 경우
 				{
+					FString Extension = Path.extension().string();
+					for (char& Ch : Extension)
+					{
+						Ch = static_cast<char>(std::tolower(static_cast<unsigned char>(Ch)));
+					}
+					bIsLuaScript = (Extension == ".lua");
+
 					URenderAsset* Asset = UAssetManager::GetAssetByPath<URenderAsset>(PathString);
 					if (Asset && Asset->IsA<UTexture2D>())
 					{
@@ -136,6 +144,14 @@ void FContentDrawerPanel::OnRender()
 				if (FontAsset && ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload(EditorDragDrop::Font, &FontAsset, sizeof(UFont*));
+
+					ImGui::TextUnformatted(FilenameString.c_str());
+
+					ImGui::EndDragDropSource();
+				}
+				if (bIsLuaScript && ImGui::BeginDragDropSource())
+				{
+					ImGui::SetDragDropPayload(EditorDragDrop::LuaScript, PathString.c_str(), PathString.size() + 1);
 
 					ImGui::TextUnformatted(FilenameString.c_str());
 
