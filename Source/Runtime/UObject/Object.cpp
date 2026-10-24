@@ -148,6 +148,20 @@ void UObject::Serialize(json& Handle, bool bIsLoading)
 				else Handle[Property.Name] = Value;
 				break;
 			}
+			case EPropertyType::Class:
+			{
+				UClass*& Selected = *static_cast<UClass**>(Ptr);
+				if (bIsLoading)
+				{
+					const FString ClassName = Handle[Property.Name].get<FString>();
+					if (ClassName.empty()) { Selected = nullptr; break; }
+					UClass* Found = FindClass(ClassName);
+					if (Found && (!Property.Class || Found->IsChildOf(Property.Class))) Selected = Found;
+					else HTR_LOG(Warning, "Load: invalid class '{}' for {}", ClassName, Property.Name);
+				}
+				else Handle[Property.Name] = Selected ? Selected->Name : "";
+				break;
+			}
 			case EPropertyType::Object:
 			{
 				UObject*& Value = *static_cast<UObject**>(Ptr);
@@ -241,6 +255,20 @@ void UObject::SerializeScriptProperties(FStructuredArchive::FSlot Slot)
 			case EPropertyType::Color:     Value << *static_cast<FColor*>(Ptr); break;
 			case EPropertyType::Rotator:   Value << *static_cast<FRotator*>(Ptr); break;
 			case EPropertyType::Transform: Value << *static_cast<FTransform*>(Ptr); break;
+			case EPropertyType::Class:
+			{
+				UClass*& Selected = *static_cast<UClass**>(Ptr);
+				FString ClassName = !bIsLoading && Selected ? Selected->Name : "";
+				Value << ClassName;
+				if (bIsLoading)
+				{
+					if (ClassName.empty()) { Selected = nullptr; break; }
+					UClass* Found = FindClass(ClassName);
+					if (Found && (!Property.Class || Found->IsChildOf(Property.Class))) Selected = Found;
+					else HTR_LOG(Warning, "Load: invalid class '{}' for {}", ClassName, Property.Name);
+				}
+				break;
+			}
 			case EPropertyType::Object:
 			{
 				UObject*& Ref = *static_cast<UObject**>(Ptr);

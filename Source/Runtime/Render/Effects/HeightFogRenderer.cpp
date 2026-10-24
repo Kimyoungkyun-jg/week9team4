@@ -1,5 +1,5 @@
 #include "EnginePCH.h"
-#include "Editor/Rendering/HeightFogRenderer.h"
+#include "Render/Effects/HeightFogRenderer.h"
 #include "Render/RenderCommand.h"
 #include "Render/RenderResourceManager.h"
 #include "Render/Texture2D.h"
@@ -29,13 +29,13 @@ bool FHeightFogRenderer::OnRender(const FSceneView& View, FTexture2D* DepthTarge
 		DepthTarget->GetHeight() != Height)
 		return false;
 
-	if (Settings.FogDensity <= 0.0f || Settings.FogMaxOpacity <= 0.0f) 
+	if (Settings.FogDensity <= 0.0f || Settings.FogMaxOpacity <= 0.0f)
 		return false;
 
 	FHeightFogData Data{};
 	Data.InverseViewProjection = View.ViewProjectionMatrix.Inverse();
 	Data.CameraPosition = FVector4(View.ViewLocation.X, View.ViewLocation.Y, View.ViewLocation.Z, 0.0f);
-	Data.FogColor = FVector4(FMath::Clamp(Settings.FogColor.X, 0.0f, 1.0f), FMath::Clamp(Settings.FogColor.Y, 0.0f, 1.0f), 
+	Data.FogColor = FVector4(FMath::Clamp(Settings.FogColor.X, 0.0f, 1.0f), FMath::Clamp(Settings.FogColor.Y, 0.0f, 1.0f),
 							 FMath::Clamp(Settings.FogColor.Z, 0.0f, 1.0f), 1.0f);
 	Data.DensityHeight = FVector4(Settings.FogDensity, std::max(Settings.FogHeightFalloff, 0.0f),
 								  Settings.FogHeight, std::max(Settings.StartDistance, 0.0f));

@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "ProjectileMovementComponent.h"
+#include "Engine/World.h"
+#include "GameFramework/TestGameMode.h"
 #include <cmath>
 
 const float UProjectileMovementComponent::MIN_TICK_TIME = 1e-6f;
@@ -218,6 +220,10 @@ FVector UProjectileMovementComponent::ComputeBounceResult(const FHitResult& Hit,
 
 void UProjectileMovementComponent::HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta)
 {	
+	if (UWorld* World = GetWorld())
+		if (ATestGameMode* GameMode = Cast<ATestGameMode>(World->GetGameMode()))
+			GameMode->NotifyProjectileHit(Hit);
+
 	if (bShouldBounce)
 	{
 		const FVector OldVelocity = Velocity;

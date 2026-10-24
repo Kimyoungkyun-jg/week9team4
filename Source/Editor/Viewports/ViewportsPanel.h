@@ -61,9 +61,13 @@ public:
 
 	void SetShowNoCamera(bool bValue) { bShowNoCamera = bValue; }
 
+	bool IsRestoreCameraOnPIEExit() const { return bRestoreCameraOnPIEExit; }
+	void SetRestoreCameraOnPIEExit(bool bValue) { bRestoreCameraOnPIEExit = bValue; }
+
 private:
 	int32 ActiveViewIndex = 0;
 	bool bShowNoCamera = false;
+	bool bRestoreCameraOnPIEExit = true;
 
 	// 통계 정보 출력
 	void DrawStatOverlay(ImDrawList* DrawList, const ImVec2& ViewMin, FEditorViewportClient* Client) const;

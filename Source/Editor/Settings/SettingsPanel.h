@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include "Core/EngineString.h"
 #include "Editor/EditorUI/EditorPanel.h"
 #include "Math/Quat.h"
 #include "Math/Vector.h"
@@ -35,6 +36,9 @@ struct FEditorSettings
 	float CameraSpeed = 1.0f;
 	float MouseSensitivity = 1.0f;
 	int32 GridSpacing = 1;
+	FString GameModeClassName;
+	FString DefaultPawnClassName;
+	FString PlayerControllerClassName;
 	float MultipleViewportsHorizontal = 0.5f;
 	float MultipleViewportsVertical = 0.5f;
 	bool bMultipleViewportsSingle = false;
@@ -69,15 +73,16 @@ class FSettingsPanel : public IEditorPanel
 {
 public:
 	FSettingsPanel() = default;
-	~FSettingsPanel();
+	~FSettingsPanel() override = default;
 
 	bool Init() override;
 	void Tick(float DeltaTime)override;
 	void OnRender() override;
 	const char* GetPanelName() const override { return "Settings"; }
 
-	void SetWorld(UWorld* InWorld) { World = InWorld; }
+	void SetWorld(UWorld* InWorld);
 	void SetViewportsPanel(FViewportsPanel* InPanel) { ViewportsPanel = InPanel; }
+	void SetEditScriptCallback(std::function<void(const FString&)> InCallback) { EditScriptCallback = std::move(InCallback); }
 
 	const FEditorSettings& GetSettings() const { return Settings; }
 	// 실행 중 레이아웃 변경을 editor.ini 저장 대상과 동일한 설정 객체에 반영한다.
@@ -96,11 +101,15 @@ private:
 
     // View별 Transform·투영·표시 설정을 읽어 저장용 스냅샷에 반영한다.
     void ReadViewportSettings(FEditorSettings& Out) const;
+	void ReadWorldSettings(FEditorSettings& Out) const;
+	void ApplyWorldSettings();
 	void ApplySceneDepthRange();
 	void DrawDefaultPawnSettings();
 	void DrawShadowMapSettings();
 
 	UWorld* World = nullptr;
+	UWorld* EditorWorld = nullptr;
 	FViewportsPanel* ViewportsPanel = nullptr;
+	std::function<void(const FString&)> EditScriptCallback;
 	FEditorSettings Settings;
 };

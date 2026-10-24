@@ -2,6 +2,9 @@
 #include "World.h"
 #include "Level.h"
 
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
+
 #include "Core/EngineStatics.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
 
@@ -10,6 +13,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/GameMode.h"
 #include "Input/InputSystem.h"
 
 #include "UObject/UObjectIterator.h"
@@ -184,12 +188,12 @@ void UWorld::ClearWorld()
 			Actor->UnregisterAllComponents();
 			Actor->RegisterAllActorTickFunctions(false);
 		}
-		Level->ClearActors();
 	}
-	// 액터를 지우기 전에 렌더 프록시와 틱 등록부터 푼다. ClearActors는 액터를 delete만 하므로,
-	// 그대로 두면 지워진 컴포넌트를 가리키는 프록시가 FScene에 남아 다음 프레임에 터진다.
 	Scene.RemoveAllLights();
 	Scene.RemoveAllPrimitives();
+	for (ULevel* Level : Levels)
+		Level->ClearActors();
+	GameMode = nullptr;
 	HTR_LOG(Info, "{} : ", PersistentLevel->GetActorNum());
 }
 
@@ -269,12 +273,7 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 		Chunk.SlowPathIndices.Reset();
 		std::fill(std::begin(Chunk.LODCounts), std::end(Chunk.LODCounts), 0u);
 		std::fill(std::begin(Chunk.LODTriangles), std::end(Chunk.LODTriangles), 0ull);
-		for (FStaticDrawGroup& Group : Chunk.Groups)
-			Group.Items.clear();             // 용량은 유지
-		Chunk.StaticDrawCount = 0;
 	}
-
-	const bool bStaticGroups = false;
 
 	{
 		SCOPE_CYCLE_COUNTER(STAT_GatherElements);
@@ -288,87 +287,9 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 			SelectLODs(LODInputs, *LODView, SelectedLODs);
 		}
 		Pool.ParallelFor(VisibleCount, ChunkCount, [&](uint32 Begin, uint32 End, uint32 ChunkIndex)
-			{
-				FGatherChunk& Out = GatherChunks[ChunkIndex];      // 이 조각 전용. 다른 스레드는 절대 안 건드림
-				// (머티리얼, 메시, LOD) 묶음 찾기. 조합이 몇 개뿐이라 선형 탐색이면 충분하고, 바로 전 묶음을 먼저 본다.
-				const auto FindGroup = [&Out](UMaterial* Material, UStaticMesh* Mesh, uint8 LOD) -> FStaticDrawGroup&
-					{
-						if (Out.LastGroup < Out.Groups.size())
-						{
-							FStaticDrawGroup& Last = Out.Groups[Out.LastGroup];
-							if (Last.Material == Material && Last.Mesh == Mesh && Last.LODIndex == LOD)
-								return Last;
-						}
-						for (uint32 g = 0; g < Out.Groups.size(); ++g)
-						{
-							FStaticDrawGroup& Group = Out.Groups[g];
-							if (Group.Material == Material && Group.Mesh == Mesh && Group.LODIndex == LOD)
-							{
-								Out.LastGroup = g;
-								return Group;
-							}
-						}
-						Out.LastGroup = static_cast<uint32>(Out.Groups.size());
-						FStaticDrawGroup& Group = Out.Groups.emplace_back();
-						Group.Material = Material;
-						Group.Mesh = Mesh;
-						Group.LODIndex = LOD;
-						return Group;
-					};
-
-				for (uint32 VisibleIndex = Begin; VisibleIndex < End; ++VisibleIndex)
-				{
-					FPrimitiveSceneProxy* Proxy = VisibleProxies[VisibleIndex];   // 읽기만
-					if (!Proxy->IsVisible()) continue;
-
-					UStaticMesh* Mesh = Proxy->GetMesh();
-					if (!Mesh)
-					{
-						Out.SlowPathIndices.Add(VisibleIndex);     // 컴포넌트를 건드리는 경로는 메인이 나중에
-						continue;
-					}
-
-					const uint32 LOD = LODView ? SelectedLODs[VisibleIndex] : 0;
-					const FCachedMeshLOD& CachedLOD = Proxy->GetLOD(LOD);
-					++Out.LODCounts[LOD];                          // RenderStats 대신 조각 전용 통계
-
-					uint32 Slot = InvalidObjectSlot;
-					if (SlotDest)
-					{
-						// 칸 VisibleIndex는 이 반복만 쓴다 → 스레드끼리 겹치지 않음
-						WritePerObjectConstants(SlotDest + size_t(VisibleIndex) * ObjectSlotBytes,
-							Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal());
-						Slot = VisibleIndex;
-					}
-
-					const bool bOccludedByGpu = OccludedMask && OccludedMask[VisibleIndex];
-					for (uint32 i = 0; i < CachedLOD.NumSections; ++i)
-					{
-						const FCachedMeshSection& Section = Proxy->GetSection(CachedLOD.FirstSection + i);
-						Out.LODTriangles[LOD] += Section.IndexCount / 3;
-
-						if (bStaticGroups && Section.Material && Section.Material->BlendState == EBlendState::Opaque)
-						{
-							FStaticDrawGroup& Group = FindGroup(Section.Material, Mesh, static_cast<uint8>(LOD));
-							Group.Items.push_back({ Proxy, Slot, Section.StartIndex, Section.IndexCount, bOccludedByGpu ? 1u : 0u });
-							++Out.StaticDrawCount;
-							continue;
-						}
-
-						FRenderPacket& Packet = Out.Packets.AddDefaulted_GetRef();   // 조각 전용 배열에 추가
-						Packet.Proxy = Proxy;
-						Packet.Mesh = Mesh;
-						Packet.Material = Section.Material;
-						Packet.StartIndex = Section.StartIndex;
-						Packet.IndexCount = Section.IndexCount;
-						Packet.LODIndex = static_cast<uint8>(LOD);
-						Packet.Slot = Slot;
-						Packet.bOccludedByGpu = bOccludedByGpu;
-					}
-				}
-			});
-
-		uint32 StaticDraws = 0;
+		{
+			GatherPacketChunk(Begin, End, ChunkIndex, LODView, OccludedMask, SlotDest);
+		});
 
 		uint32 TotalPackets = 0;
 		for (uint32 c = 0; c < ChunkCount; ++c)
@@ -423,8 +344,52 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 			}
 
 		if (SlotDest) Renderer->EndObjectConstants();
-		RenderStats.DrawCalls = RenderQueue.Num() + StaticDraws;
+		RenderStats.DrawCalls = RenderQueue.Num();
 		for (uint64 T : RenderStats.LODTriangles) RenderStats.Triangles += T;
+	}
+}
+
+void UWorld::GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
+	const FViewContext* LODView, const uint8* OccludedMask, uint8* SlotDest)
+{
+	FGatherChunk& Out = GatherChunks[ChunkIndex];
+	for (uint32 VisibleIndex = Begin; VisibleIndex < End; ++VisibleIndex)
+	{
+		FPrimitiveSceneProxy* Proxy = VisibleProxies[VisibleIndex];
+		if (!Proxy->IsVisible()) continue;
+		UStaticMesh* Mesh = Proxy->GetMesh();
+		if (!Mesh)
+		{
+			Out.SlowPathIndices.Add(VisibleIndex);
+			continue;
+		}
+
+		const uint32 LOD = LODView ? SelectedLODs[VisibleIndex] : 0;
+		const FCachedMeshLOD& CachedLOD = Proxy->GetLOD(LOD);
+		++Out.LODCounts[LOD];
+		uint32 Slot = InvalidObjectSlot;
+		if (SlotDest)
+		{
+			WritePerObjectConstants(SlotDest + size_t(VisibleIndex) * ObjectSlotBytes,
+				Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal());
+			Slot = VisibleIndex;
+		}
+
+		const bool bOccludedByGpu = OccludedMask && OccludedMask[VisibleIndex];
+		for (uint32 Index = 0; Index < CachedLOD.NumSections; ++Index)
+		{
+			const FCachedMeshSection& Section = Proxy->GetSection(CachedLOD.FirstSection + Index);
+			Out.LODTriangles[LOD] += Section.IndexCount / 3;
+			FRenderPacket& Packet = Out.Packets.AddDefaulted_GetRef();
+			Packet.Proxy = Proxy;
+			Packet.Mesh = Mesh;
+			Packet.Material = Section.Material;
+			Packet.StartIndex = Section.StartIndex;
+			Packet.IndexCount = Section.IndexCount;
+			Packet.LODIndex = static_cast<uint8>(LOD);
+			Packet.Slot = Slot;
+			Packet.bOccludedByGpu = bOccludedByGpu;
+		}
 	}
 }
 
@@ -516,11 +481,16 @@ bool UWorld::DestroyActor(AActor* Actor)
 {
 	if (!Actor)
 		return false;
+	if (Actor->bIsEndingPlay) return false;
 
 	ULevel* Level = Actor->GetLevel();
 
 	if (!Level)
 		return false;
+	bool bOwnedByLevel = false;
+	for (AActor* Current : Level->Actors)
+		if (Current == Actor) { bOwnedByLevel = true; break; }
+	if (!bOwnedByLevel) return false;
 
 	// 1. BeginPlay 대기열에서 제거
 	TQueue<AActor*> NewBeginPlayList;
@@ -560,24 +530,29 @@ bool UWorld::DestroyActor(AActor* Actor)
 	//}
 
 	// 4. Level의 Actors에서 제거
+	bool bRemovedFromLevel = false;
 	for (int32 i = Level->Actors.Num() - 1; i >= 0; --i)
 	{
 		if (Level->Actors[i] == Actor)
 		{
 			Level->Actors.RemoveAt(i, 1);
+			bRemovedFromLevel = true;
 			break;
 		}
 	}
+	if (!bRemovedFromLevel) return false;
 
 	FString ActorName = Actor->GetName();
 	uint32 ActorUUID = Actor->GetUUID();
 
 	// 5. 프록시 제거
+	Actor->EndPlayActor();
 	Actor->UnregisterAllComponents();
 
 	Actor->RegisterAllActorTickFunctions(false);
 
 	// 6. Actor 삭제
+	if (Actor == GameMode) GameMode = nullptr;
 	delete Actor;
 
 	HTR_LOG(Info, "Destroy Actor : {} UUID {}", ActorName, ActorUUID);
@@ -758,21 +733,18 @@ bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 
 void UWorld::BeginPlay()
 {
-	if (WorldType != EWorldType::PIE || bBegunPlay) return;
-	if (!PlayerPawn)
+	if ((WorldType != EWorldType::PIE && WorldType != EWorldType::Game) || bBegunPlay) return;
+	UClass* ModeClass = GameModeClass;
+	if (!ModeClass || !ModeClass->IsChildOf(AGameMode::StaticClass()) || !ModeClass->Constructor)
 	{
-		for (AActor* Actor : PersistentLevel->GetActors())
-		{
-			if (APawn* Pawn = Cast<APawn>(Actor)) { PlayerPawn = Pawn; break; }
-		}
+		HTR_LOG(Warning, "Invalid GameModeClass; using AGameMode");
+		ModeClass = AGameMode::StaticClass();
 	}
-	if (!PlayerPawn)
-	{
-		FTransform Transform = MainCamera ? MainCamera->GetActorTransform() : FTransform::Identity;
-		PlayerPawn = SpawnActor<ADefaultPawn>(NAME_None, &Transform);
-	}
-	if (!PlayerController) PlayerController = SpawnActor<APlayerController>();
-	if (PlayerController && PlayerPawn) PlayerController->Possess(PlayerPawn);
+	GameMode = Cast<AGameMode>(SpawnActor(ModeClass));
+	if (!GameMode) return;
+	if (DefaultPawnClass) GameMode->SetDefaultPawnClass(DefaultPawnClass);
+	if (PlayerControllerClass) GameMode->SetPlayerControllerClass(PlayerControllerClass);
+	GameMode->SpawnPlayer(PlayerPawn, PlayerController);
 
 	// 기존 액터 목록을 고정한 후 시작한다. BeginPlay 중 생성된 액터는 대기열로 간다.
 	TArray<AActor*> InitialActors;
@@ -793,9 +765,64 @@ void UWorld::BeginPlay()
 	}
 }
 
+bool UWorld::SetGameModeClass(UClass* Class)
+{
+	if (!Class || !Class->IsChildOf(AGameMode::StaticClass()) || !Class->Constructor) return false;
+	GameModeClass = Class;
+	DefaultPawnClass = nullptr;
+	PlayerControllerClass = nullptr;
+	return true;
+}
+
+UClass* UWorld::GetDefaultPawnClass() const
+{
+	if (DefaultPawnClass) return DefaultPawnClass;
+	return static_cast<AGameMode*>(GameModeClass->GetDefaultObject())->GetDefaultPawnClass();
+}
+
+UClass* UWorld::GetPlayerControllerClass() const
+{
+	if (PlayerControllerClass) return PlayerControllerClass;
+	return static_cast<AGameMode*>(GameModeClass->GetDefaultObject())->GetPlayerControllerClass();
+}
+
+bool UWorld::SetDefaultPawnClass(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(APawn::StaticClass()) || !Class->Constructor)) return false;
+	DefaultPawnClass = Class;
+	return true;
+}
+
+bool UWorld::SetPlayerControllerClass(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(APlayerController::StaticClass()) || !Class->Constructor)) return false;
+	PlayerControllerClass = Class;
+	return true;
+}
+
 void UWorld::EndPlay()
 {
+	if (!bBegunPlay) return;
 	bBegunPlay = false;
+	TArray<AActor*> EndingActors;
+	for (ULevel* Level : Levels)
+		if (Level)
+			for (AActor* Actor : Level->GetActors())
+				if (Actor && Actor->HasBegunPlay()) EndingActors.Add(Actor);
+
+	for (AActor* Actor : EndingActors)
+	{
+		// EndPlay 콜백에서 다른 액터가 파괴될 수 있으므로 아직 월드에 있는지 확인한다.
+		bool bStillInWorld = false;
+		for (ULevel* Level : Levels)
+		{
+			if (!Level) continue;
+			for (AActor* Current : Level->GetActors())
+				if (Current == Actor) { bStillInWorld = true; break; }
+			if (bStillInWorld) break;
+		}
+		if (bStillInWorld) Actor->EndPlayActor();
+	}
 	if (PlayerController)
 	{
 		PlayerController->ClearInputState();
@@ -803,6 +830,7 @@ void UWorld::EndPlay()
 	}
 	PlayerController = nullptr;
 	PlayerPawn = nullptr;
+	GameMode = nullptr;
 	bIsPaused = false;
 }
 
@@ -867,6 +895,13 @@ void UWorld::PostDuplicate(bool bDuplicateForPIE)
 	}
 
 	Scene.BuildBVH();
+}
+
+UGameInstance* UWorld::GetGameInstance() const
+{
+	FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(this) : nullptr;
+	UGameInstance* GameInstance = Context ? Context->OwningGameInstance : nullptr;
+	return GameInstance;
 }
 
 void UWorld::Serialize(FStructuredArchive::FRecord Record)

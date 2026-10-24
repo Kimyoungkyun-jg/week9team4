@@ -208,6 +208,19 @@ void FEditorControlsPanel::DrawCameraProperties()
 	ImGui::Dummy(ImVec2(0.0f, SectionGap));
 	ImGui::SeparatorText("Viewport");
 
+	if (ViewportsPanel)
+	{
+		bool bRestoreCam = ViewportsPanel->IsRestoreCameraOnPIEExit();
+		if (ImGui::Checkbox("Restore Camera On PIE Exit", &bRestoreCam))
+		{
+			ViewportsPanel->SetRestoreCameraOnPIEExit(bRestoreCam);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Restore editor camera position & rotation when exiting PIE mode.");
+		}
+	}
+
 	UCameraComponent* CamCom = World && World->GetMainCamera() ? World->GetMainCamera()->GetCameraComponent() : nullptr;
 	if (!CamCom) return;
 

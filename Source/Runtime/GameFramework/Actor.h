@@ -8,6 +8,8 @@
 #include "Containers/Set.h"
 #include "Engine/EngineBaseTypes.h"
 
+#include "Lua/LuaMacros.h"
+
 class UWorld;
 class ULevel;
 
@@ -17,6 +19,12 @@ class AActor : public UObject
 	REFLECT_START(ClassName)
 		PROPERTY(bActorEnableCollision)
 		REFLECT_END()
+
+	LUA_BIND_START(AActor)
+		LUA_FUNC(Destroy)
+		LUA_FUNC(GetRootComponent)
+		LUA_FUNC(GetName)
+		LUA_BIND_END()
 public:
 	AActor();
 	virtual ~AActor();
@@ -26,6 +34,7 @@ public:
 	// 액터 자신의 로직. 컴포넌트는 각자의 PrimaryComponentTick으로 따로 실행된다.
 	virtual void Tick(float DeltaTime) {}
 	virtual void EndPlay() {};
+	void EndPlayActor();
 	// FActorTickFunction이 호출하는 진입점
 	void TickActor(float DeltaTime) { Tick(DeltaTime); }
 
@@ -80,5 +89,7 @@ protected:
 private:
 	bool bActorEnableCollision = true;
 	bool bHasBegunPlay = false;
+	bool bHasEndedPlay = false;
+	bool bIsEndingPlay = false;
 
 };

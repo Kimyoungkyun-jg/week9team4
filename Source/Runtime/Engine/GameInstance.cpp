@@ -4,8 +4,31 @@
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
 
+UGameInstance::UGameInstance() = default;
+UGameInstance::~UGameInstance() = default;
+
+void UGameInstance::Init()
+{
+	bEndSessionRequested = false;
+	LuaManager = MakeUnique<FLuaManager>();
+	LuaManager->Init(*this);
+}
+
+void UGameInstance::RequestEndSession()
+{
+	if (bEndSessionRequested || !EndSessionHandler) return;
+	bEndSessionRequested = true;
+	EndSessionHandler();
+}
+
 void UGameInstance::Shutdown()
 {
+	if (LuaManager)
+	{
+		LuaManager->Shutdown();
+		LuaManager.reset();
+	}
+
 	if (!WorldContext) return;
 	if (WorldContext->GameViewport)
 	{

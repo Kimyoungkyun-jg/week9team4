@@ -11,12 +11,12 @@ namespace
 {
 	// D3D11은 같은 리소스를 SRV와 RTV/DSV/UAV로 동시에 사용할 수 없다.
 	// 현재 상태를 직접 조회하므로 RenderCommand 밖에서 바인딩한 SRV도 처리한다.
-	template <typename TGet, typename TSet>
-	void UnbindConflictingSRVs(TGet GetViews, TSet SetViews,
+	template <auto GetViews, auto SetViews>
+	void UnbindConflictingSRVs(ID3D11DeviceContext* Context,
 		const std::vector<ID3D11Resource*>& Outputs)
 	{
 		ID3D11ShaderResourceView* Views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
-		GetViews(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, Views);
+		(Context->*GetViews)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, Views);
 		for (uint32 Slot = 0; Slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; ++Slot)
 		{
 		ID3D11ShaderResourceView* View = Views[Slot];
@@ -27,7 +27,7 @@ namespace
 		if (bConflict)
 		{
 			ID3D11ShaderResourceView* NullView = nullptr;
-			SetViews(Slot, 1, &NullView);
+			(Context->*SetViews)(Slot, 1, &NullView);
 		}
 		if (Resource) Resource->Release();
 		View->Release(); // GetShaderResources가 반환한 참조를 해제한다.
@@ -39,24 +39,18 @@ namespace
 	{
 		// 이번 패스가 RTV/DSV로 쓸 리소스가 이전 셰이더의 SRV 슬롯에 남아 있으면 해제한다.
 		// 동일한 검사 함수를 VS, PS, GS, HS, DS, CS의 조회/설정 함수에 각각 적용한다.
-		UnbindConflictingSRVs(
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView** Views) { Context->VSGetShaderResources(Start, Count, Views); },
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView* const* Views) { Context->VSSetShaderResources(Start, Count, Views); }, Outputs);
-		UnbindConflictingSRVs(
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView** Views) { Context->PSGetShaderResources(Start, Count, Views); },
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView* const* Views) { Context->PSSetShaderResources(Start, Count, Views); }, Outputs);
-		UnbindConflictingSRVs(
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView** Views) { Context->GSGetShaderResources(Start, Count, Views); },
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView* const* Views) { Context->GSSetShaderResources(Start, Count, Views); }, Outputs);
-		UnbindConflictingSRVs(
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView** Views) { Context->HSGetShaderResources(Start, Count, Views); },
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView* const* Views) { Context->HSSetShaderResources(Start, Count, Views); }, Outputs);
-		UnbindConflictingSRVs(
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView** Views) { Context->DSGetShaderResources(Start, Count, Views); },
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView* const* Views) { Context->DSSetShaderResources(Start, Count, Views); }, Outputs);
-		UnbindConflictingSRVs(
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView** Views) { Context->CSGetShaderResources(Start, Count, Views); },
-			[Context](UINT Start, UINT Count, ID3D11ShaderResourceView* const* Views) { Context->CSSetShaderResources(Start, Count, Views); }, Outputs);
+		UnbindConflictingSRVs<&ID3D11DeviceContext::VSGetShaderResources,
+			&ID3D11DeviceContext::VSSetShaderResources>(Context, Outputs);
+		UnbindConflictingSRVs<&ID3D11DeviceContext::PSGetShaderResources,
+			&ID3D11DeviceContext::PSSetShaderResources>(Context, Outputs);
+		UnbindConflictingSRVs<&ID3D11DeviceContext::GSGetShaderResources,
+			&ID3D11DeviceContext::GSSetShaderResources>(Context, Outputs);
+		UnbindConflictingSRVs<&ID3D11DeviceContext::HSGetShaderResources,
+			&ID3D11DeviceContext::HSSetShaderResources>(Context, Outputs);
+		UnbindConflictingSRVs<&ID3D11DeviceContext::DSGetShaderResources,
+			&ID3D11DeviceContext::DSSetShaderResources>(Context, Outputs);
+		UnbindConflictingSRVs<&ID3D11DeviceContext::CSGetShaderResources,
+			&ID3D11DeviceContext::CSSetShaderResources>(Context, Outputs);
 
 		// 컴퓨트 셰이더가 쓰기용 UAV로 묶어 둔 리소스도 이번 출력과 겹치면 해제한다.
 		ID3D11UnorderedAccessView* UAVs[D3D11_PS_CS_UAV_REGISTER_COUNT]{};
@@ -214,7 +208,7 @@ bool FRenderGraphBuilder::AddComputePass(FRenderGraphComputePassDesc Desc, std::
 	return true;
 }
 
-bool FRenderGraphBuilder::Execute() // 등록되어 있던 
+bool FRenderGraphBuilder::Execute() 
 {
 	if (bExecuted || !RenderCommand::GetContext()) return false;
 	bExecuted = true;

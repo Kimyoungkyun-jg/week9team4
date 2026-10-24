@@ -1,5 +1,5 @@
 #include "EnginePCH.h"
-#include "Editor/Rendering/FireBallRenderer.h"
+#include "Render/Effects/FireBallRenderer.h"
 #include "Render/RenderCommand.h"
 #include "Render/RenderResourceManager.h"
 #include "Render/Texture2D.h"

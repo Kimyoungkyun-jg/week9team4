@@ -3,6 +3,7 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/GameMode.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/MovementComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -22,12 +23,18 @@ class ULevel;
 class UBillboardComponent;
 class APawn;
 class APlayerController;
+class UGameInstance;
 
 struct FViewContext;
 
 class UWorld : public UObject
 {
 	DECLARE_CLASS(UWorld, UObject)
+	REFLECT_START(ClassName)
+		CLASS_PROPERTY(GameModeClass, AGameMode)
+		CLASS_PROPERTY(DefaultPawnClass, APawn)
+		CLASS_PROPERTY(PlayerControllerClass, APlayerController)
+	REFLECT_END()
 
 public:
 	UWorld() = default;
@@ -81,6 +88,13 @@ public:
 	bool HasBegunPlay() const { return bBegunPlay; }
 	APawn* GetPlayerPawn() const { return PlayerPawn; }
 	APlayerController* GetPlayerController() const { return PlayerController; }
+	AGameMode* GetGameMode() const { return GameMode; }
+	UClass* GetGameModeClass() const { return GameModeClass; }
+	bool SetGameModeClass(UClass* Class);
+	UClass* GetDefaultPawnClass() const;
+	UClass* GetPlayerControllerClass() const;
+	bool SetDefaultPawnClass(UClass* Class);
+	bool SetPlayerControllerClass(UClass* Class);
 	bool IsPaused() const { return bIsPaused; }
 	void SetPaused(bool bPaused) { bIsPaused = bPaused; }
 
@@ -100,6 +114,8 @@ public:
 
 	virtual void PostDuplicate(bool bDuplicateForPIE) override;
 
+	// GameInstance
+	UGameInstance* GetGameInstance() const;
 
 	using Super::Serialize;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
@@ -108,16 +124,15 @@ private:
 
 	struct alignas(64) FGatherChunk
 	{
-		TArray<FRenderPacket> Packets;              // 스태틱 묶음에 못 들어가는 것 (반투명 섹션, Renderer 없는 호출)
+		TArray<FRenderPacket> Packets;
 		TArray<uint32> SlowPathIndices;
-		std::vector<FStaticDrawGroup> Groups;       // 불투명 스태틱 메시: (머티리얼, 메시, LOD)별 묶음. 항목만 매 프레임 비운다
-		uint32 LastGroup = 0;                       // 바로 전 물체가 들어간 묶음 (연속한 물체는 대개 같은 묶음)
-		uint32 StaticDrawCount = 0;
 		uint32 LODCounts[4] = {};
 		uint64 LODTriangles[4] = {};
 	};
 
 	TArray<FGatherChunk> GatherChunks;
+	void GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
+		const FViewContext* LODView, const uint8* OccludedMask, uint8* SlotDest);
 
 	// 등록된 Tick 함수만 실행한다. Actor보다 먼저 사라져도 남은 함수와의 연결을 스스로 끊는다.
 	FTickTaskManager TickTaskManager;
@@ -128,6 +143,10 @@ private:
 	ACameraActor* MainCamera = nullptr;
 	APawn* PlayerPawn = nullptr;
 	APlayerController* PlayerController = nullptr;
+	AGameMode* GameMode = nullptr;
+	UClass* GameModeClass = AGameMode::StaticClass();
+	UClass* DefaultPawnClass = nullptr;
+	UClass* PlayerControllerClass = nullptr;
 	bool bIsPaused = false;
 	bool bBegunPlay = false;
 

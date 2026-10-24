@@ -17,17 +17,29 @@
 #include "Components/RotatingMovementComponent.h"
 #include "Components/ProjectileMovementComponent.h"
 #include "Components/FireBallComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Asset/AssetManager.h"
 #include "Render/Material.h"
 #include "Render/Texture2D.h"
 #include "Text/Font.h"
 #include "UObject/UObjectIterator.h"
 #include "GameFramework/Actor.h"
+#include "UObject/Class.h"
 #include "Core/EngineLog.h"
+#include <cstring>
+#include <iterator>
 
 
 namespace
 {
+	int ResizeScriptText(ImGuiInputTextCallbackData* Data)
+	{
+		auto* Text = static_cast<std::string*>(Data->UserData);
+		Text->resize(Data->BufTextLen);
+		Data->Buf = Text->data();
+		return 0;
+	}
+
 	bool DrawAxisControl(const FString& _label, float& _value, float _speed, float _minValue, float _maxValue, float _resetValue, FVector4 _color)
 	{
 		bool isValueChanged = false;
@@ -306,6 +318,92 @@ namespace
 			}
 			ImGui::EndCombo();
 		}
+	}
+
+	bool IsLuaScriptExtension(const fs::path& Path)
+	{
+		FString Extension = Path.extension().string();
+		for (char& Ch : Extension)
+		{
+			Ch = static_cast<char>(std::tolower(static_cast<unsigned char>(Ch)));
+		}
+		return Extension == ".lua";
+	}
+
+	bool DrawLuaScriptSlot(FString& ScriptPath)
+	{
+		bool bChanged = false;
+
+		const FString CurrentFileName = !ScriptPath.empty() ? GetAssetDisplayName(ScriptPath) : "None";
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool bOpen = ImGui::BeginCombo("##LuaScript", CurrentFileName.c_str());
+		if (ImGui::IsItemHovered() && !ScriptPath.empty())
+		{
+			ImGui::SetTooltip("%s", ScriptPath.c_str());
+		}
+
+		if (bOpen)
+		{
+			if (ImGui::Selectable("None", ScriptPath.empty()))
+			{
+				if (!ScriptPath.empty())
+				{
+					ScriptPath.clear();
+					bChanged = true;
+				}
+			}
+
+			std::error_code Error;
+			if (fs::exists("Assets", Error))
+			{
+				for (const fs::directory_entry& Entry : fs::recursive_directory_iterator("Assets", Error))
+				{
+					if (!Entry.is_regular_file() || !IsLuaScriptExtension(Entry.path()))
+					{
+						continue;
+					}
+
+					const FString ItemPath = Entry.path().generic_string();
+					const FString ItemFileName = GetAssetDisplayName(ItemPath);
+					const bool bSelected = (ItemPath == ScriptPath);
+
+					ImGui::PushID(ItemPath.c_str());
+					if (ImGui::Selectable(ItemFileName.c_str(), bSelected))
+					{
+						if (ScriptPath != ItemPath)
+						{
+							ScriptPath = ItemPath;
+							bChanged = true;
+						}
+					}
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetTooltip("%s", ItemPath.c_str());
+					}
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndCombo();
+		}
+		else if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::LuaScript))
+			{
+				const char* DroppedPath = static_cast<const char*>(Payload->Data);
+				if (DroppedPath && ScriptPath != DroppedPath)
+				{
+					ScriptPath = DroppedPath;
+					bChanged = true;
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		return bChanged;
 	}
 
 	UMaterial* EnsureMaterialOverride(UMeshComponent* MeshComponent, int32 Slot, UMaterial* Effective, UMaterial* Override)
@@ -680,6 +778,11 @@ namespace
 		case EPropertyType::String:
 		{
 			FString* Value = static_cast<FString*>(ValuePtr);
+			if (Object && Object->IsA<ULuaScriptComponent>() && Property.Name == "LuaScriptPath")
+			{
+				bChanged = DrawLuaScriptSlot(*Value);
+				break;
+			}
 
 			char Buffer[256] = {};
 			strncpy_s(Buffer, Value->c_str(), sizeof(Buffer) - 1);
@@ -687,6 +790,7 @@ namespace
 			if (ImGui::InputText(Label.c_str(), Buffer, sizeof(Buffer)))
 			{
 				*Value = Buffer;
+				bChanged = true;
 			}
 			if (CustomFont) ImGui::PopFont();
 			break;
@@ -733,6 +837,31 @@ namespace
 			else if (Property.Class == UStaticMesh::StaticClass())
 			{
 				DrawMeshSlot(Object, reinterpret_cast<UStaticMesh**>(ObjPtr));
+			}
+			break;
+		}
+		case EPropertyType::Class:
+		{
+			UClass** Selected = static_cast<UClass**>(ValuePtr);
+			const char* CurrentName = *Selected ? (*Selected)->Name.c_str() : "None";
+			if (ImGui::BeginCombo(Label.c_str(), CurrentName))
+			{
+				TArray<UClass*> Classes;
+				if (Property.Class)
+				{
+					Classes.Add(Property.Class);
+					GetDerivedClasses(Property.Class, Classes);
+				}
+				for (UClass* Candidate : Classes)
+				{
+					if (!Candidate || !Candidate->Constructor) continue;
+					if (ImGui::Selectable(Candidate->Name.c_str(), *Selected == Candidate))
+					{
+						*Selected = Candidate;
+						bChanged = true;
+					}
+				}
+				ImGui::EndCombo();
 			}
 			break;
 		}
@@ -909,6 +1038,114 @@ void FDetailsPanel::DrawShadowPreview()
 	}
 }
 
+void FDetailsPanel::OpenScriptEditor(const FString& Path)
+{
+	std::error_code Error;
+	const auto AbsolutePath = std::filesystem::absolute(Path, Error);
+	if (Error || AbsolutePath.extension() != ".lua" || !std::filesystem::is_regular_file(AbsolutePath, Error))
+	{
+		HTR_LOG(Error, "Cannot open Lua script: {}", Path);
+		return;
+	}
+	const FString FullPath = AbsolutePath.string();
+	if (bScriptEditorOpen && EditingScriptPath == FullPath)
+	{
+		ImGui::SetWindowFocus("Lua Script Editor");
+		return;
+	}
+	if (bScriptEditorOpen && bScriptEditorDirty)
+	{
+		ScriptEditorStatus = "Save or discard the current script before opening another file.";
+		return;
+	}
+
+	std::ifstream File(AbsolutePath, std::ios::binary);
+	if (!File)
+	{
+		HTR_LOG(Error, "Cannot open Lua script: {}", Path);
+		return;
+	}
+
+	std::string Text(std::istreambuf_iterator<char>{File}, std::istreambuf_iterator<char>{});
+	if (File.bad())
+	{
+		HTR_LOG(Error, "Cannot read Lua script: {}", Path);
+		return;
+	}
+	EditingScriptText = std::move(Text);
+	EditingScriptPath = FullPath;
+	ScriptEditorStatus.clear();
+	bScriptEditorDirty = false;
+	bScriptEditorOpen = true;
+}
+
+void FDetailsPanel::DrawScriptEditor()
+{
+	if (!bScriptEditorOpen) return;
+
+	const bool bPlaying = World && World->IsPlayInEditor();
+	bool bWindowOpen = true;
+	ImGui::SetNextWindowSize(ImVec2(700, 500), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Lua Script Editor", &bWindowOpen))
+	{
+		ImGui::TextUnformatted(EditingScriptPath.c_str());
+		if (bPlaying) ImGui::TextDisabled("Stop PIE to edit or save this script.");
+		if (!ScriptEditorStatus.empty()) ImGui::TextWrapped("%s", ScriptEditorStatus.c_str());
+
+		ImGui::BeginDisabled(bPlaying);
+		const float EditorHeight = std::max(200.0f, ImGui::GetContentRegionAvail().y - 45.0f);
+		if (ImGui::InputTextMultiline("##LuaSource", EditingScriptText.data(), EditingScriptText.capacity() + 1,
+			ImVec2(-1, EditorHeight), ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput,
+			ResizeScriptText, &EditingScriptText))
+		{
+			EditingScriptText.resize(std::strlen(EditingScriptText.c_str()));
+			bScriptEditorDirty = true;
+			ScriptEditorStatus.clear();
+		}
+		if (ImGui::Button("Save") && bScriptEditorDirty)
+		{
+			std::ofstream File(EditingScriptPath, std::ios::binary | std::ios::trunc);
+			File.write(EditingScriptText.data(), static_cast<std::streamsize>(EditingScriptText.size()));
+			File.close();
+			if (File)
+			{
+				bScriptEditorDirty = false;
+				ScriptEditorStatus = "Saved. Changes take effect on the next PIE start.";
+			}
+			else
+			{
+				ScriptEditorStatus = "Failed to save script.";
+				HTR_LOG(Error, "Cannot save Lua script: {}", EditingScriptPath);
+			}
+		}
+		ImGui::EndDisabled();
+		if (bScriptEditorDirty)
+		{
+			ImGui::SameLine();
+			ImGui::TextUnformatted("Unsaved changes");
+		}
+	}
+	ImGui::End();
+
+	if (!bWindowOpen)
+	{
+		if (bScriptEditorDirty) ImGui::OpenPopup("Discard Lua changes?");
+		else bScriptEditorOpen = false;
+	}
+	if (ImGui::BeginPopupModal("Discard Lua changes?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextUnformatted("Discard unsaved script changes?");
+		if (ImGui::Button("Discard"))
+		{
+			bScriptEditorOpen = false;
+			bScriptEditorDirty = false;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+	}
+}
 
 void FDetailsPanel::OnRender()
 {
@@ -943,6 +1180,20 @@ void FDetailsPanel::OnRender()
 			ImGui::SeparatorText("Component Properties");
 			DrawProperties(TargetComponent, CustomFont);
 			DrawShadowPreview();
+			if (ULuaScriptComponent* ScriptComponent = Cast<ULuaScriptComponent>(TargetComponent))
+			{
+				const FString& ScriptPath = ScriptComponent->GetScriptPath();
+				std::error_code Error;
+				const bool bValidScript = !ScriptPath.empty() && std::filesystem::path(ScriptPath).extension() == ".lua"
+					&& std::filesystem::is_regular_file(ScriptPath, Error);
+				if (bValidScript)
+				{
+					ImGui::BeginDisabled(World && World->IsPlayInEditor());
+					if (ImGui::Button("Edit Lua Script"))
+						OpenScriptEditor(ScriptPath);
+					ImGui::EndDisabled();
+				}
+			}
 
 			if(SelectCandidateComponent != TargetComponent)
 			{
@@ -966,6 +1217,7 @@ void FDetailsPanel::OnRender()
 		}		
 	}	
 	ImGui::End();
+	DrawScriptEditor();
 }
 
 

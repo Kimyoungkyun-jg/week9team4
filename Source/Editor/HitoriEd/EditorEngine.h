@@ -14,9 +14,8 @@
 #include "Render/LineBatcher.h"
 #include "Editor/Rendering/SceneDepthRenderer.h"
 #include "Editor/Rendering/CascadeFloorRenderer.h"
-#include "Editor/Rendering/HeightFogRenderer.h"
-#include "Editor/Rendering/FXAARenderer.h"
-#include "Editor/Rendering/FireBallRenderer.h"
+#include "Editor/Rendering/EditorViewPasses.h"
+#include "Render/SceneViewPipeline.h"
 #include "Render/SceneRenderOptions.h"
 #include "Render/SceneViewTargets.h"
 #include "Render/RenderGraph/RenderGraph.h"
@@ -35,8 +34,6 @@
 #include "Editor/Rendering/Outline.h"
 #include "Editor/Rendering/OutLineRenderer.h"
 #include "Editor/Outliner/OutlinerPanel.h"
-
-#include "Render/SkyboxRenderer.h"
 
 #include "PlayInEditorDataTypes.h"
 #include "Core/Misc/Optional.h"
@@ -124,11 +121,7 @@ private:
 
 	bool RenderScene(FSceneViewTargets& Targets, const FSceneView& SceneView,
 		FSceneRenderer& SceneRenderer, UWorld* TargetWorld, const FSceneRenderOptions& Options,
-		const std::function<void(FSceneOverlayCallbacks&)>& BuildOverlays);
-	void RenderSceneText(UWorld* TargetWorld, const FSceneView& SceneView);
-	bool RenderHeightFog(UWorld* TargetWorld, const FSceneView& SceneView, FTexture2D* DepthTarget, FTexture2D* ColorTarget);
-	bool RenderFireBall(UWorld* TargetWorld, const FSceneView& SceneView, FTexture2D* DepthTarget, FTexture2D* ColorTarget);
-	void RenderActorUUIDs(const FSceneView& View);
+		FEditorViewportClient* ViewClient, bool bIsPIE, bool bIsSIE);
 
 	FWorldContext& GetEditorWorldContext();
 	FWorldContext* GetPIEWorldContext(int32 WorldPIEInstance = 0);
@@ -154,10 +147,7 @@ private:
 	TUniquePtr<FOutlineRenderer> OutlineRenderer;
 	TUniquePtr<FSceneDepthRenderer> SceneDepthRenderer;
 	TUniquePtr<FCascadeFloorRenderer> CascadeFloorRenderer;
-	TUniquePtr<FSkyboxRenderer> SkyboxRenderer;
-	TUniquePtr<FHeightFogRenderer> HeightFogRenderer;
-	TUniquePtr<FFXAARenderer> FXAARenderer;
-	TUniquePtr<FFireBallRenderer> FireBallRenderer;
+	FSceneViewPipeline ViewPipeline;
 	TUniquePtr<FGizmo> Gizmo;
 
 	UFont* SystemFont;
@@ -180,6 +170,10 @@ private:
 	// PIE 시작 시점의 편집 View. PIE가 아니면 InvalidViewIndex다.
 	int32 PIEViewIndex = -1;
 	int32 PIEStartEditorViewIndex = -1;
+
+	// PIE 시작 시점의 에디터 카메라 백업 (종료 시 복원용)
+	FVector SavedEditorCameraLocation{};
+	FRotator SavedEditorCameraRotation{};
 
 	// Play 버튼이 다음 세션을 띄울 위치
 	EPlayModeType PlayMode = EPlayModeType::InViewport;

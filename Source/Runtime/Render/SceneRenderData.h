@@ -64,6 +64,31 @@ struct FSceneRenderData
 		uint32 StaticDrawCount = 0;
 		uint32 LODCounts[4] = {};
 		uint64 LODTriangles[4] = {};
+
+		FStaticDrawGroup& FindGroup(UMaterial* Material, UStaticMesh* Mesh, uint8 LOD)
+		{
+			if (LastGroup < Groups.size())
+			{
+				FStaticDrawGroup& Last = Groups[LastGroup];
+				if (Last.Material == Material && Last.Mesh == Mesh && Last.LODIndex == LOD)
+					return Last;
+			}
+			for (uint32 Index = 0; Index < Groups.size(); ++Index)
+			{
+				FStaticDrawGroup& Group = Groups[Index];
+				if (Group.Material == Material && Group.Mesh == Mesh && Group.LODIndex == LOD)
+				{
+					LastGroup = Index;
+					return Group;
+				}
+			}
+			LastGroup = static_cast<uint32>(Groups.size());
+			FStaticDrawGroup& Group = Groups.emplace_back();
+			Group.Material = Material;
+			Group.Mesh = Mesh;
+			Group.LODIndex = LOD;
+			return Group;
+		}
 	};
 
 	FRenderQueue RenderQueue;

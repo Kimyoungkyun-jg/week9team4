@@ -11,6 +11,8 @@
   </Project>
   <Project Path="Source\Runtime\HitoriEngine.vcxproj" Id="4A9CC297-36FF-513C-DF84-8AF2CBC61DBF">
   </Project>
+  <Project Path="Source\Game\HitoriGame.vcxproj" Id="2E96869F-1A4E-C8EC-8355-A1486F2C63DD">
+  </Project>
   <Project Path="Source\ThirdParty\ImGui\ImGui.vcxproj" Id="C0FF640D-2C14-8DBE-F595-301E616989EF">
   </Project>
   <Project Path="Intermediate\ProjectFiles\Shaders.vcxproj" Id="EFAC8DF2-5B8C-0C8E-64A4-9764D00273EF">

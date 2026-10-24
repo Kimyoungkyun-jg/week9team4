@@ -147,6 +147,7 @@ bool FEngineLoop::Tick()
 	{
 		SCOPE_CYCLE_COUNTER(STAT_EngineTick);
 		GEngine->Tick(EngineTimer::GetDeltaTime());
+		GEngine->Render();
 	}
 	{
 		SCOPE_CYCLE_COUNTER(STAT_Present);

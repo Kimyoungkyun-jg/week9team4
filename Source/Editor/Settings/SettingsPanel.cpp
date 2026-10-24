@@ -7,21 +7,28 @@
 #include "Editor/Viewports/ViewportsPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "GameFramework/DefaultPawn.h"
+#include "GameFramework/GameMode.h"
+#include "GameFramework/TestGameMode.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "UObject/UObjectIterator.h"
-
-// 종료 시 렌더·에디터·뷰포트 설정을 함께 저장한다.
-FSettingsPanel::~FSettingsPanel()
-{
-	ViewportsPanel = nullptr;
-	SaveSettings();
-}
+#include "UObject/UObjectHash.h"
 
 // 설정 파일을 읽어 패널 상태를 초기화한다.
 bool FSettingsPanel::Init()
 {
 	LoadSettings();
 	return true;
+}
+
+void FSettingsPanel::SetWorld(UWorld* InWorld)
+{
+	World = InWorld;
+	if (InWorld && !InWorld->IsPlayInEditor() && !EditorWorld)
+	{
+		EditorWorld = InWorld;
+		ApplyWorldSettings();
+	}
 }
 
 
@@ -114,6 +121,76 @@ void FSettingsPanel::OnRender()
 	DrawShadowMapSettings();
 	//////////////////////////////////////////////////////////
 
+	ImGui::Dummy(ImVec2(0.0f, SectionGap));
+	ImGui::SeparatorText("World Settings");
+	if (World)
+	{
+		UClass* GameModeClass = World->GetGameModeClass();
+		ImGui::SetNextItemWidth(200.0f);
+		if (ImGui::BeginCombo("GameMode Class", GameModeClass ? GameModeClass->Name.c_str() : "None"))
+		{
+			ATestGameMode::StaticClass();
+			TArray<UClass*> Classes{ AGameMode::StaticClass() };
+			GetDerivedClasses(AGameMode::StaticClass(), Classes);
+			for (UClass* Class : Classes)
+			{
+				if (!Class->Constructor) continue;
+				if (ImGui::Selectable(Class->Name.c_str(), Class == GameModeClass)) World->SetGameModeClass(Class);
+				if (Class == GameModeClass) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		GameModeClass = World->GetGameModeClass();
+		if (ImGui::CollapsingHeader("Selected GameMode", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			AGameMode* GameMode = World->GetGameMode();
+			if (!GameMode && GameModeClass && GameModeClass->IsChildOf(AGameMode::StaticClass()) && GameModeClass->Constructor)
+				GameMode = static_cast<AGameMode*>(GameModeClass->GetDefaultObject());
+			if (GameMode)
+			{
+				bool bFoundScript = false;
+				for (UActorComponent* Component : GameMode->GetComponents())
+				{
+					ULuaScriptComponent* Script = Cast<ULuaScriptComponent>(Component);
+					if (!Script) continue;
+					bFoundScript = true;
+					const FString& Path = Script->GetScriptPath();
+					std::error_code Error;
+					const bool bValidScript = !Path.empty() && std::filesystem::path(Path).extension() == ".lua" &&
+						std::filesystem::is_regular_file(Path, Error);
+					ImGui::PushID(Script);
+					ImGui::TextWrapped("%s: %s", Script->GetName().c_str(), Path.c_str());
+					ImGui::BeginDisabled(World->IsPlayInEditor() || !bValidScript);
+					if (ImGui::Button("Edit Lua Script") && EditScriptCallback)
+						EditScriptCallback(Path);
+					ImGui::EndDisabled();
+					if (!bValidScript) ImGui::TextDisabled("Lua file not found.");
+					ImGui::PopID();
+				}
+				if (!bFoundScript) ImGui::TextDisabled("Selected GameMode has no LuaScriptComponent.");
+			}
+			const auto DrawClassPicker = [](const char* Label, UClass* BaseClass, UClass* CurrentClass, auto OnSelect)
+			{
+				ImGui::SetNextItemWidth(200.0f);
+				if (!ImGui::BeginCombo(Label, CurrentClass ? CurrentClass->Name.c_str() : "None")) return;
+				TArray<UClass*> Classes{ BaseClass };
+				GetDerivedClasses(BaseClass, Classes);
+				for (UClass* Class : Classes)
+				{
+					if (!Class->Constructor) continue;
+					if (ImGui::Selectable(Class->Name.c_str(), Class == CurrentClass)) OnSelect(Class);
+					if (Class == CurrentClass) ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			};
+			DrawClassPicker("Default Pawn Class", APawn::StaticClass(), World->GetDefaultPawnClass(),
+				[this](UClass* Class) { World->SetDefaultPawnClass(Class); });
+			DrawClassPicker("Player Controller Class", APlayerController::StaticClass(), World->GetPlayerControllerClass(),
+				[this](UClass* Class) { World->SetPlayerControllerClass(Class); });
+		}
+	}
+	//////////////////////////////////////////////////////////
+
 	//////////////////////////////////////////////////////////
 	DrawDefaultPawnSettings();
 
@@ -148,6 +225,7 @@ bool FSettingsPanel::SaveSettings() const
 {
 	FEditorSettings Snapshot = Settings;
 	ReadViewportSettings(Snapshot);
+	ReadWorldSettings(Snapshot);
 	std::ofstream File("editor.ini");
 
 	if (!File.is_open())
@@ -180,6 +258,10 @@ bool FSettingsPanel::SaveSettings() const
 	File << "CameraRotateSensitivity=" << Settings.MouseSensitivity << "\n";
 	File << "GridSpacing=" << Settings.GridSpacing << "\n";
 	File << "\n";
+	File << "[WorldSettings]\n";
+	File << "GameModeClass=" << Snapshot.GameModeClassName << "\n";
+	File << "DefaultPawnClass=" << Snapshot.DefaultPawnClassName << "\n";
+	File << "PlayerControllerClass=" << Snapshot.PlayerControllerClassName << "\n\n";
 
 	File << "[MultipleViewports]\n";
 	File << "Horizontal=" << Snapshot.MultipleViewportsHorizontal << "\n";
@@ -338,6 +420,9 @@ bool FSettingsPanel::LoadSettings()
 				else if (Key == "CameraMoveSpeed") Settings.CameraSpeed = std::stof(ValueStr);
 				else if (Key == "CameraRotateSensitivity") Settings.MouseSensitivity = std::stof(ValueStr);
 				else if (Key == "GridSpacing") Settings.GridSpacing = std::stoi(ValueStr);
+				else if (Key == "GameModeClass") Settings.GameModeClassName = ValueStr;
+				else if (Key == "DefaultPawnClass") Settings.DefaultPawnClassName = ValueStr;
+				else if (Key == "PlayerControllerClass") Settings.PlayerControllerClassName = ValueStr;
 				else if (Key == "Horizontal") Settings.MultipleViewportsHorizontal = std::stof(ValueStr);
 				else if (Key == "Vertical") Settings.MultipleViewportsVertical = std::stof(ValueStr);
 				else if (Key == "Layout") Settings.bMultipleViewportsSingle = ValueStr == "Single";
@@ -384,8 +469,31 @@ bool FSettingsPanel::LoadSettings()
 	Settings.DirectionalShadowMapSizeLevel = FMath::Clamp(Settings.DirectionalShadowMapSizeLevel, 0, 4);
 	Settings.PointShadowMapSizeLevel = FMath::Clamp(Settings.PointShadowMapSizeLevel, 0, 4);
 	Settings.SpotShadowMapSizeLevel = FMath::Clamp(Settings.SpotShadowMapSizeLevel, 0, 4);
+	ApplyWorldSettings();
 	ApplyViewportSettings();
 	return true;
+}
+
+void FSettingsPanel::ReadWorldSettings(FEditorSettings& Out) const
+{
+	if (!EditorWorld) return;
+	if (UClass* Class = EditorWorld->GetGameModeClass()) Out.GameModeClassName = Class->Name;
+	if (UClass* Class = EditorWorld->GetDefaultPawnClass()) Out.DefaultPawnClassName = Class->Name;
+	if (UClass* Class = EditorWorld->GetPlayerControllerClass()) Out.PlayerControllerClassName = Class->Name;
+}
+
+void FSettingsPanel::ApplyWorldSettings()
+{
+	if (!EditorWorld) return;
+	ATestGameMode::StaticClass();
+	ADefaultPawn::StaticClass();
+	APlayerController::StaticClass();
+	if (!Settings.GameModeClassName.empty())
+		EditorWorld->SetGameModeClass(FindClass(Settings.GameModeClassName));
+	if (!Settings.DefaultPawnClassName.empty())
+		EditorWorld->SetDefaultPawnClass(FindClass(Settings.DefaultPawnClassName));
+	if (!Settings.PlayerControllerClassName.empty())
+		EditorWorld->SetPlayerControllerClass(FindClass(Settings.PlayerControllerClassName));
 }
 
 // 뷰포트 설정 복사

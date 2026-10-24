@@ -2,6 +2,7 @@
 #include "GameFramework/DefaultPawn.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Asset/AssetManager.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor/ProjectileActor.h"
@@ -11,6 +12,8 @@ ADefaultPawn::ADefaultPawn()
 	SetActorEnableCollision(false);
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("CameraComponent");
 	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("StaticMeshComponent");
+	ULuaScriptComponent* ScriptComponent = CreateDefaultSubobject<ULuaScriptComponent>("LuaScriptComponent");
+	ScriptComponent->SetScriptPath("Assets/Scripts/player.lua");
 	SetRootComponent(StaticMeshComponent);
 	StaticMeshComponent->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Hitori/Hitori.obj"));
 	ProjectileMesh = UAssetManager::GetAssetByPath<UStaticMesh>("Sphere");
@@ -24,7 +27,7 @@ void ADefaultPawn::BeginPlay()
 {
 	Super::BeginPlay();
 	UWorld* PawnWorld = GetWorld();
-	if (!PawnWorld || PawnWorld->GetWorldType() != EWorldType::PIE) return;
+	if (!PawnWorld || (PawnWorld->GetWorldType() != EWorldType::PIE && PawnWorld->GetWorldType() != EWorldType::Game)) return;
 	for (AProjectileActor*& Projectile : Projectiles)
 		if (!Projectile) Projectile = PawnWorld->SpawnActor<AProjectileActor>();
 }
@@ -53,7 +56,7 @@ void ADefaultPawn::AddControllerPitchInput(float Value)
 
 void ADefaultPawn::FireProjectile()
 {
-	if (!GetWorld() || GetWorld()->GetWorldType() != EWorldType::PIE || !CameraComponent) return;
+	if (!GetWorld() || (GetWorld()->GetWorldType() != EWorldType::PIE && GetWorld()->GetWorldType() != EWorldType::Game) || !CameraComponent) return;
 	if (bUseStaticMeshProjectiles && !ProjectileMesh) return;
 	int32 SelectedIndex = -1;
 	for (int32 Offset = 0; Offset < ProjectilePoolSize; ++Offset)

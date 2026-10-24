@@ -74,6 +74,8 @@ void UEngine::DestroyWorldContext(UWorld* InWorld)
 		if (WorldContextlist[idx].World() == InWorld)
 		{
 			const EWorldType ContextType = WorldContextlist[idx].WorldType;
+			if (InWorld && (ContextType == EWorldType::PIE || ContextType == EWorldType::Game))
+				InWorld->EndPlay();
 			if (WorldContextlist[idx].GameViewport)
 			{
 				WorldContextlist[idx].GameViewport->LostFocus();
@@ -87,7 +89,7 @@ void UEngine::DestroyWorldContext(UWorld* InWorld)
 			}
 			WorldContextlist[idx].SetCurrentWorld(nullptr);
 			WorldContextlist.RemoveAt(idx);
-			if (InWorld && ContextType == EWorldType::PIE)
+			if (InWorld && (ContextType == EWorldType::PIE || ContextType == EWorldType::Game))
 			{
 				ACameraActor* Camera = InWorld->GetMainCamera();
 				const bool bOwnsCamera = Camera && !Camera->GetLevel();
