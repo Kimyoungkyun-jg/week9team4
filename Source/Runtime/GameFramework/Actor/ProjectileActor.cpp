@@ -5,6 +5,7 @@
 #include "Components/ProjectileMovementComponent.h"
 #include "Asset/AssetManager.h"
 #include "Engine/World.h"
+#include "GameFramework/TestGameMode.h"
 
 AProjectileActor::AProjectileActor()
 {
@@ -43,6 +44,27 @@ AProjectileActor::AProjectileActor()
     ProjectileMovementComponent->bInitialVelocityInLocalSpace = false;
     ProjectileMovementComponent->bSimulationEnabled = false;
     ProjectileMovementComponent->PrimaryComponentTick.bStartWithTickEnabled = false;
+}
+
+void AProjectileActor::BeginPlay()
+{
+	Super::BeginPlay();
+	if (ProjectileMovementComponent)
+		ProjectileMovementComponent->OnProjectileImpact.AddRaw(this, &AProjectileActor::HandleProjectileImpact);
+}
+
+void AProjectileActor::EndPlay()
+{
+	if (ProjectileMovementComponent)
+		ProjectileMovementComponent->OnProjectileImpact.RemoveAll(this);
+	Super::EndPlay();
+}
+
+void AProjectileActor::HandleProjectileImpact(const FHitResult& Hit)
+{
+	UWorld* World = GetWorld();
+	if (ATestGameMode* GameMode = World ? Cast<ATestGameMode>(World->GetGameMode()) : nullptr)
+		GameMode->NotifyProjectileHit(Hit);
 }
 
 void AProjectileActor::Launch(const FVector& Position, const FVector& Direction, bool bUseStaticMesh)
