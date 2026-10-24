@@ -11,5 +11,8 @@ namespace EditorDragDrop
 	// 페이로드 내용: UFont* 한 개
 	inline constexpr const char* Font = "ASSET_FONT";
 
+	// 페이로드 내용: 널 종료 문자열 경로 (const char*)
+	inline constexpr const char* LuaScript = "ASSET_LUASCRIPT";
+
 	inline constexpr const char* Component = "COMPONENT";
 }

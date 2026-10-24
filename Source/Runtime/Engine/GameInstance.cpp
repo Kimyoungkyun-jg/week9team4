@@ -40,9 +40,20 @@ void UGameInstance::RequestEndSession()
 	EndSessionHandler();
 }
 
+void UGameInstance::Init()
+{
+	LuaManager = MakeUnique<FLuaManager>();
+	LuaManager->Init();
+}
+
 void UGameInstance::Shutdown()
 {
-	LuaState.reset();
+	if (LuaManager)
+	{
+		LuaManager->Shutdown();
+		LuaManager.reset();
+	}
+
 	if (!WorldContext) return;
 	if (WorldContext->GameViewport)
 	{

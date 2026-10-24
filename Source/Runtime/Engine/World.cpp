@@ -2,6 +2,9 @@
 #include "World.h"
 #include "Level.h"
 
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
+
 #include "Core/EngineStatics.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
 
@@ -892,6 +895,13 @@ void UWorld::PostDuplicate(bool bDuplicateForPIE)
 	}
 
 	Scene.BuildBVH();
+}
+
+UGameInstance* UWorld::GetGameInstance() const
+{
+	FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(this) : nullptr;
+	UGameInstance* GameInstance = Context ? Context->OwningGameInstance : nullptr;
+	return GameInstance;
 }
 
 void UWorld::Serialize(FStructuredArchive::FRecord Record)

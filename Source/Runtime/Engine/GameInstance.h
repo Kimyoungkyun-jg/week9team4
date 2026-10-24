@@ -4,6 +4,7 @@
 #include <utility>
 #include "UObject/Object.h"
 #include "UObject/Class.h"
+#include "Lua/LuaManager.h"
 
 class UWorld;
 class UEngine;
@@ -14,8 +15,7 @@ class UGameInstance : public UObject
 {
 	DECLARE_CLASS(UGameInstance, UObject)
 public:
-	UGameInstance();
-	virtual ~UGameInstance() override;
+	virtual ~UGameInstance() override = default;
 	virtual void Init();
 	virtual void Shutdown();
 	void RequestEndSession();
@@ -29,9 +29,8 @@ public:
 	virtual bool StartPlayInEditorGameInstance();
 	
 	UEngine* GetEngine() const;
+	FLuaManager* GetLuaManager() { return LuaManager.get(); }
 private:
 	FWorldContext* WorldContext = nullptr;
-	TUniquePtr<sol::state> LuaState;
-	std::function<void()> EndSessionHandler;
-	bool bEndSessionRequested = false;
+	TUniquePtr<FLuaManager> LuaManager;
 };

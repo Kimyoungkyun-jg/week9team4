@@ -23,6 +23,7 @@ class ULevel;
 class UBillboardComponent;
 class APawn;
 class APlayerController;
+class UGameInstance;
 
 struct FViewContext;
 
@@ -113,6 +114,8 @@ public:
 
 	virtual void PostDuplicate(bool bDuplicateForPIE) override;
 
+	// GameInstance
+	UGameInstance* GetGameInstance() const;
 
 	using Super::Serialize;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;

@@ -4,6 +4,7 @@
 #include "ActorComponent.h"
 #include "Math/Box.h"
 #include "Collision/HitResult.h"
+#include "Lua/LuaMacros.h"
 
 enum class EAttachmentRule
 {
@@ -19,6 +20,11 @@ class USceneComponent : public UActorComponent
 	REFLECT_START(ClassName)
 		PROPERTY(Transform)
 		REFLECT_END()
+
+	LUA_BIND_START(USceneComponent)
+		LUA_FUNC(GetRelativeLocation)
+		LUA_FUNC(SetRelativeLocation)
+		LUA_BIND_END()
 
 public:
 	enum class EVisibilityPropagation : uint8 { NoPropagation, DirtyOnly, Propagate };
