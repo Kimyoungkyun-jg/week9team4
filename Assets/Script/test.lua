@@ -24,7 +24,7 @@ function MyScript:Tick(dt)
 
     -- 2. Y-Z축: 용수철 모양(나선형)으로 회전 (반경 3.0, 회전 속도 4.0배)
     local springRadius = 10.0
-    local springSpeed = self.Time * 10.0
+    local springSpeed = self.Time * 1.0
     local offsetY = math.cos(springSpeed) * springRadius
     local offsetZ = math.sin(springSpeed) * springRadius
 
