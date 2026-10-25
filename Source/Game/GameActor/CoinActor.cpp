@@ -9,6 +9,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/GameHUD.h"
 #include "GameFramework/GameMode.h"
+#include "PacmanGameMode.h"
 #include "Engine/World.h"
 #include <cmath>
 #include <string>
@@ -28,13 +29,13 @@ ACoinActor::ACoinActor()
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("MeshComponent");
 	MeshComponent->SetupAttachment(SphereComponent);
 	MeshComponent->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Coin/Coin.obj"));
+	MeshComponent->SetRelativeScale3D(FVector(5.0f, 5.0f, 5.0f));
 	MeshComponent->SetCollisionEnabled(false);
 
 	RotatingMovementComponent = CreateDefaultSubobject<URotatingMovementComponent>("RotatingMovementComponent");
 	RotatingMovementComponent->RotationRate = FRotator(0.0f, 90.0f, 0.0f);
 	RotatingMovementComponent->bRotationInLocalSpace = true;
 
-	SetActorScale3D(FVector(5.0f, 5.0f, 5.0f));
 }
 
 void ACoinActor::BeginPlay()
@@ -65,7 +66,7 @@ void ACoinActor::Tick(float DeltaTime)
 
 void ACoinActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimitiveComponent* OtherComponent)
 {
-	if (!OtherComponent) return;
+	if (bCollected || !OtherComponent) return;
 
 	AActor* OtherActor = OtherComponent->GetOwner();
 	if (!OtherActor) return;
@@ -75,6 +76,7 @@ void ACoinActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimi
 
 	APlayerController* Controller = PlayerPawn->GetController();
 	if (!Controller) return;
+	bCollected = true;
 
 	AGameHUD* HUD = Controller->GetHUD();
 	UWorld* World = GetWorld();
@@ -88,7 +90,10 @@ void ACoinActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimi
 
 	if (HUD)
 	{
-		HUD->SetText("Coins", std::to_string(TotalCoins));
+		if (APacmanGameMode* PacmanMode = Cast<APacmanGameMode>(GameMode))
+			HUD->SetText("Coins", std::to_string(TotalCoins) + " / " + std::to_string(PacmanMode->GetMaxCoinCount()));
+		else
+			HUD->SetText("Coins", std::to_string(TotalCoins));
 	}
 
 	Destroy();

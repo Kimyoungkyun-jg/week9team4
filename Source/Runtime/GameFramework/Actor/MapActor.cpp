@@ -76,6 +76,7 @@ bool AMapActor::ResetGridToInitial()
 	GridOrigin = FVector(-14.f, -12.f, Mesh->AABB.Min.Z + 0.231775f);
 	Tiles.Init(DefaultTerrain, Columns * Rows);
 	InitializeDefaultTerrainFromMesh();
+	++GridRevision;
 	return true;
 }
 
@@ -189,6 +190,7 @@ bool AMapActor::ConfigureGrid(int32 C, int32 R, float Size, const FVector& Origi
 	Rows = R;
 	TileSize = Size;
 	GridOrigin = Origin;
+	++GridRevision;
 	return true;
 }
 
@@ -208,6 +210,7 @@ bool AMapActor::SetTile(int32 Column, int32 Row, EMapTileTerrain Terrain)
 {
 	if (!IsValidTile(Column, Row) || !IsValidTerrain(Terrain)) return false;
 	Tiles[Row * Columns + Column] = Terrain;
+	++GridRevision;
 	return true;
 }
 
@@ -215,6 +218,7 @@ bool AMapActor::FillTiles(EMapTileTerrain Terrain)
 {
 	if (!IsValidTerrain(Terrain)) return false;
 	for (auto& Tile : Tiles) Tile = Terrain;
+	++GridRevision;
 	return true;
 }
 
@@ -275,6 +279,18 @@ bool AMapActor::TryWorldToTileXYProjected(const FVector& World, int32& OutColumn
 	return true;
 }
 
+bool AMapActor::TryWorldToGridUVProjected(const FVector& World, FVector2& OutUV) const
+{
+	FMatrix Matrix;
+	if (!IsFinite(World) || !TryGetGridToWorld(Matrix)) return false;
+	const FVector Local = InverseGridMatrix(Matrix, GetRootComponent()->GetWorldScale3D()).TransformPosition(World);
+	const double U = (static_cast<double>(Local.X) - GridOrigin.X) / (TileSize * Columns);
+	const double V = (static_cast<double>(Local.Y) - GridOrigin.Y) / (TileSize * Rows);
+	if (!std::isfinite(U) || !std::isfinite(V) || U < 0.0 || V < 0.0 || U >= 1.0 || V >= 1.0) return false;
+	OutUV = FVector2(static_cast<float>(U), static_cast<float>(V));
+	return true;
+}
+
 bool AMapActor::TryTileToWorldCenter(int32 Column, int32 Row, FVector& OutWorld) const
 {
 	FMatrix Matrix;
@@ -324,5 +340,6 @@ void AMapActor::Serialize(FStructuredArchive::FRecord Record)
 	{
 		Columns = C; Rows = R; TileSize = Size; GridOrigin = Origin;
 		Tiles = std::move(Loaded); // Owning value array, independent in PIE.
+		++GridRevision;
 	}
 }

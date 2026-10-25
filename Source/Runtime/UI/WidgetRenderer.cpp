@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "UI/WidgetRenderer.h"
 #include "UI/Widget.h"
+#include "GameFramework/Actor/MapActor.h"
 #include "Text/Font.h"
 #include "Text/Utf8.h"
 #include "Asset/AssetManager.h"
@@ -13,7 +14,7 @@
 namespace
 {
 	struct FWidgetVertex { float X, Y, U, V; };
-	struct FWidgetParams { float ViewportAndMode[4]; float Tint[4]; };
+	struct FWidgetParams { float ViewportAndMode[4]; float Tint[4]; float ClipCircle[4]; };
 }
 
 bool FWidgetRenderer::Init()
@@ -34,6 +35,8 @@ void FWidgetRenderer::Render(UCanvasWidget* Root, FTexture2D* Target)
 		!Target->GetWidth() || !Target->GetHeight()) return;
 	TargetWidth = Target->GetWidth();
 	TargetHeight = Target->GetHeight();
+	ClipRadius = 0.0f;
+	bMinimapTerrain = false;
 	Root->Layout({0.0f, 0.0f, static_cast<float>(TargetWidth), static_cast<float>(TargetHeight)});
 	RenderCommand::BindRenderPassNoClear(Target, nullptr, TargetWidth, TargetHeight);
 	RenderCommand::BindPipelineState(PipelineState);
@@ -48,7 +51,9 @@ void FWidgetRenderer::Render(UCanvasWidget* Root, FTexture2D* Target)
 void FWidgetRenderer::DrawWidget(UWidget* Widget)
 {
 	if (!Widget || !Widget->IsVisible()) return;
-	if (UImageWidget* Image = Cast<UImageWidget>(Widget))
+	if (UMinimapWidget* Minimap = Cast<UMinimapWidget>(Widget))
+		DrawMinimap(Minimap);
+	else if (UImageWidget* Image = Cast<UImageWidget>(Widget))
 	{
 		if (UTexture2D* Texture = UAssetManager::GetAssetByPath<UTexture2D>(Image->GetTexturePath()))
 			DrawQuad(Image->GetLayoutRect(), 0.0f, 0.0f, 1.0f, 1.0f, Texture, Image->GetTint());
@@ -67,6 +72,63 @@ void FWidgetRenderer::DrawWidget(UWidget* Widget)
 	if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
 		for (UWidget* Child : Canvas->GetChildrenInPaintOrder())
 			DrawWidget(Child);
+}
+
+void FWidgetRenderer::DrawMinimap(UMinimapWidget* Widget)
+{
+	FTexture2D* Terrain = Widget->GetTerrainTexture();
+	if (!Terrain || !Widget->HasPlayer() || !Widget->GetMap()) return;
+	const FRect Rect = Widget->GetMapRect();
+	if (Rect.Width <= 0.0f) return;
+	const AMapActor* Map = Widget->GetMap();
+	const FVector2 PlayerUV = Widget->GetPlayerUV();
+	const float RadiusTiles = Widget->GetRadiusTiles();
+	const float RadiusPixels = Rect.Width * 0.5f;
+	ClipCenter = {Rect.X + RadiusPixels, Rect.Y + RadiusPixels};
+	ClipRadius = RadiusPixels;
+	bMinimapTerrain = true;
+	const float UExtent = RadiusTiles / Map->GetColumns();
+	const float VExtent = RadiusTiles / Map->GetRows();
+	const float TextureV = 1.0f - PlayerUV.Y;
+	RenderCommand::BindSamplerState(0, ESamplerState::PointClamp, EShaderBindFlagBits::Pixel);
+	DrawQuad(Rect, PlayerUV.X - UExtent, TextureV - VExtent,
+		PlayerUV.X + UExtent, TextureV + VExtent, Terrain, {1, 1, 1, 1});
+	bMinimapTerrain = false;
+	RenderCommand::BindSamplerState(0, ESamplerState::LinearClamp, EShaderBindFlagBits::Pixel);
+	UTexture2D* White = UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
+	if (!White) { ClipRadius = 0.0f; return; }
+	for (const FVector2& UV : Widget->GetCoins())
+	{
+		const float DX = (UV.X - PlayerUV.X) * Map->GetColumns();
+		const float DY = (UV.Y - PlayerUV.Y) * Map->GetRows();
+		if (DX * DX + DY * DY > RadiusTiles * RadiusTiles) continue;
+		const float X = ClipCenter.X + DX / RadiusTiles * RadiusPixels;
+		const float Y = ClipCenter.Y - DY / RadiusTiles * RadiusPixels;
+		DrawQuad({X - 1.5f, Y - 1.5f, 3.0f, 3.0f}, 0, 0, 1, 1, White, {1.0f, 0.85f, 0.04f, 1.0f});
+	}
+	{
+		const FVector2 Direction = Widget->GetPlayerDirection();
+		const float X = ClipCenter.X, Y = ClipCenter.Y;
+		const FVector2 Forward{Direction.X, -Direction.Y}, Side{-Forward.Y, Forward.X};
+		DrawTriangle({X + Forward.X * 7.0f, Y + Forward.Y * 7.0f},
+			{X - Forward.X * 4.0f + Side.X * 4.0f, Y - Forward.Y * 4.0f + Side.Y * 4.0f},
+			{X - Forward.X * 4.0f - Side.X * 4.0f, Y - Forward.Y * 4.0f - Side.Y * 4.0f},
+			{0.25f, 0.9f, 1.0f, 1.0f});
+	}
+	ClipRadius = 0.0f;
+}
+
+void FWidgetRenderer::DrawTriangle(const FVector2& A, const FVector2& B, const FVector2& C, const FLinearColor& Tint)
+{
+	UTexture2D* White = UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
+	if (!White || !White->GetResource()) return;
+	const FWidgetVertex Vertices[3] = {{A.X, A.Y, 0, 0}, {B.X, B.Y, 0, 0}, {C.X, C.Y, 0, 0}};
+	const FWidgetParams Params = {{static_cast<float>(TargetWidth), static_cast<float>(TargetHeight), 0, 0},
+		{Tint.R, Tint.G, Tint.B, Tint.A}, {ClipCenter.X, ClipCenter.Y, ClipRadius, 0}};
+	RenderCommand::UpdateBufferData(VertexBuffer.get(), Vertices, sizeof(Vertices));
+	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Params, sizeof(Params));
+	RenderCommand::BindShaderResource(0, White, EShaderBindFlagBits::Pixel);
+	RenderCommand::Draw(3);
 }
 
 void FWidgetRenderer::DrawTextWidget(const UTextWidget* Widget)
@@ -109,15 +171,21 @@ void FWidgetRenderer::DrawText(const FString& Text, const FString& FontPath, flo
 void FWidgetRenderer::DrawQuad(const FRect& Rect, float U0, float V0, float U1, float V1,
 	UTexture2D* Texture, const FLinearColor& Tint, float DistanceRange)
 {
-	if (!Texture || !Texture->GetResource() || Rect.Width <= 0.0f || Rect.Height <= 0.0f) return;
+	DrawQuad(Rect, U0, V0, U1, V1, Texture ? Texture->GetResource() : nullptr, Tint, DistanceRange);
+}
+
+void FWidgetRenderer::DrawQuad(const FRect& Rect, float U0, float V0, float U1, float V1,
+	FTexture2D* Texture, const FLinearColor& Tint, float DistanceRange)
+{
+	if (!Texture || !Texture->GetSRV() || Rect.Width <= 0.0f || Rect.Height <= 0.0f) return;
 	const float X1 = Rect.X + Rect.Width;
 	const float Y1 = Rect.Y + Rect.Height;
 	const FWidgetVertex Vertices[6] = {
 		{Rect.X, Rect.Y, U0, V0}, {X1, Rect.Y, U1, V0}, {Rect.X, Y1, U0, V1},
 		{Rect.X, Y1, U0, V1}, {X1, Rect.Y, U1, V0}, {X1, Y1, U1, V1}
 	};
-	const FWidgetParams Params = {{static_cast<float>(TargetWidth), static_cast<float>(TargetHeight), DistanceRange, 0.0f},
-		{Tint.R, Tint.G, Tint.B, Tint.A}};
+	const FWidgetParams Params = {{static_cast<float>(TargetWidth), static_cast<float>(TargetHeight), DistanceRange, bMinimapTerrain ? 1.0f : 0.0f},
+		{Tint.R, Tint.G, Tint.B, Tint.A}, {ClipCenter.X, ClipCenter.Y, ClipRadius, 0}};
 	RenderCommand::UpdateBufferData(VertexBuffer.get(), Vertices, sizeof(Vertices));
 	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Params, sizeof(Params));
 	RenderCommand::BindShaderResource(0, Texture, EShaderBindFlagBits::Pixel);

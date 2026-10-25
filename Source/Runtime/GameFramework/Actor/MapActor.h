@@ -1,6 +1,8 @@
 #pragma once
 
 #include "GameFramework/Actor/StaticMeshActor.h"
+#include "Math/Vector2.h"
+#include "Serialization/StructuredArchive.h"
 
 // Authored terrain only: this is NOT an occupancy or agent-clearance test.
 enum class EMapTileTerrain : uint8 { Floor, Wall, Unused };
@@ -21,6 +23,7 @@ public:
 	int32 GetRows() const { return Rows; }
 	float GetTileSize() const { return TileSize; }
 	const FVector& GetGridOrigin() const { return GridOrigin; }
+	uint64 GetGridRevision() const { return GridRevision; }
 	bool IsValidTile(int32 Column, int32 Row) const;
 	bool TryGetTile(int32 Column, int32 Row, EMapTileTerrain& OutTerrain) const;
 	bool SetTile(int32 Column, int32 Row, EMapTileTerrain Terrain);
@@ -36,6 +39,7 @@ public:
 	// Half-open bounds: [origin, origin + dimensions * size). Never clamps outside points.
 	// All Try APIs leave output arguments unchanged on failure.
 	bool TryWorldToTileXYProjected(const FVector& WorldPosition, int32& OutColumn, int32& OutRow) const;
+	bool TryWorldToGridUVProjected(const FVector& WorldPosition, FVector2& OutUV) const;
 	bool TryTileToWorldCenter(int32 Column, int32 Row, FVector& OutWorldCenter) const;
 	bool TryGetGridToWorld(FMatrix& OutMatrix) const;
 	// nullptr = supported. Also rejects a separately moved/rotated/scaled mesh or missing mesh component.
@@ -55,4 +59,5 @@ private:
 	float TileSize = InitialTileSize;
 	FVector GridOrigin = FVector(-14.0f, -12.0f, -0.978149f);
 	TArray<EMapTileTerrain> Tiles;
+	uint64 GridRevision = 0;
 };

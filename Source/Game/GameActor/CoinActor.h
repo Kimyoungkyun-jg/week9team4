@@ -36,4 +36,5 @@ private:
 	float RunningTime = 0.0f;
 	float BobbingSpeed = 2.0f;
 	float BobbingHeight = 0.25f;
+	bool bCollected = false;
 };

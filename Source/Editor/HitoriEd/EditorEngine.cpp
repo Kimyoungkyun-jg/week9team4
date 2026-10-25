@@ -4,6 +4,8 @@
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/CoinActor.h"
+#include "GameActor/PacmanGameMode.h"
+#include "GameActor/PacmanHUD.h"
 
 #include "Core/EngineStatics.h"
 #include "Core/EngineTimer.h"
@@ -75,6 +77,8 @@ bool UEditorEngine::Init()
 	APlayerPawn::StaticClass();
 	AFlashlightActor::StaticClass();
 	ACoinActor::StaticClass();
+	APacmanGameMode::StaticClass();
+	APacmanHUD::StaticClass();
 
 	FWorldContext& InitialWorldContext = CreateNewWorldContext(EWorldType::Editor);
 	InitialWorldContext.SetCurrentWorld(UWorld::CreateWorld(EWorldType::Editor, true));

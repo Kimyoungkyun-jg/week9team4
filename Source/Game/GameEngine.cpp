@@ -2,6 +2,8 @@
 #include "GameEngine.h"
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
+#include "GameActor/PacmanGameMode.h"
+#include "GameActor/PacmanHUD.h"
 
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -36,6 +38,8 @@ namespace
 		(void)ATestGameMode::StaticClass();
 		(void)APlayerPawn::StaticClass();
 		(void)AFlashlightActor::StaticClass();
+		(void)APacmanGameMode::StaticClass();
+		(void)APacmanHUD::StaticClass();
 		(void)ASampleHUD::StaticClass();
 		(void)ADirectionalLightActor::StaticClass();
 		(void)AParticleActor::StaticClass();
