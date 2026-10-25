@@ -64,9 +64,10 @@ bool FJsonArchive::LoadWorldFromBytes(UWorld* World, const TArray<uint8>& Bytes)
 
 	int32 Version = 0;
 	Root << SA_VALUE("Version", Version);
-	if (Version != SceneVersion)
+	// v4에는 Collision 레코드가 없으며, 로더는 누락된 필드에 기본값을 사용한다.
+	if (Version != 4 && Version != SceneVersion)
 	{
-		HTR_LOG(Error, "Load: scene version {} is not supported (expected {})", Version, SceneVersion);
+		HTR_LOG(Error, "Load: scene version {} is not supported (supported: 4-{})", Version, SceneVersion);
 		return false;                               
 	}
 

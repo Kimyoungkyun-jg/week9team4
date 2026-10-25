@@ -6,6 +6,7 @@
 
 #include "Engine/World.h"
 #include "Editor/Viewports/ViewportsPanel.h"
+#include "Editor/Settings/SettingsPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
 #include "Input/InputSystem.h"
@@ -88,6 +89,18 @@ void FEditorControlsPanel::OnRender()
 
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", CountText);
+
+	ImGui::Dummy(ImVec2(0.0f, SubsectionGap));
+	ImGui::SeparatorText("Collision Debug Lines");
+	if (ImGui::Button("Show All Collisions"))
+	{
+		if (SettingsPanel) SettingsPanel->GetMutableSettings().bDrawAllCollision = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Hide All Collisions"))
+	{
+		if (SettingsPanel) SettingsPanel->GetMutableSettings().bDrawAllCollision = false;
+	}
 
 	ImGui::Dummy(ImVec2(0.0f, SubsectionGap));
 	ImGui::SeparatorText("Light Spawn");

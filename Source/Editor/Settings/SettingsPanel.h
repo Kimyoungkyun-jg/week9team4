@@ -22,6 +22,7 @@ struct FEditorSettings
 	bool bCacheShadows = true; // r.Shadow.CacheWholeSceneShadows
 	EPcfMode PcfMode = EPcfMode::Sample8;
 	bool bDrawBoundingBox = false;
+	bool bDrawAllCollision = false;
 	bool bShowUUID = false;
 	bool bDrawBatchLine = true;
 	bool bDrawCascadeBounds = false;
@@ -105,7 +106,7 @@ private:
 	void ReadWorldSettings(FEditorSettings& Out) const;
 	void ApplyWorldSettings();
 	void ApplySceneDepthRange();
-	void DrawDefaultPawnSettings();
+	void DrawTestPawnSettings();
 	void DrawShadowMapSettings();
 
 	UWorld* World = nullptr;

@@ -7,6 +7,7 @@
 #include "Editor/Viewports/ViewportsPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "GameFramework/DefaultPawn.h"
+#include "GameFramework/TestPawn.h"
 #include "GameFramework/GameMode.h"
 #include "GameFramework/GameHUD.h"
 #include "GameFramework/TestGameMode.h"
@@ -214,15 +215,44 @@ void FSettingsPanel::OnRender()
 		if (Effective && Effective->IsChildOf(AGameHUD::StaticClass()) && Effective->Constructor)
 		{
 			const AGameHUD* DefaultHUD = static_cast<AGameHUD*>(Effective->GetDefaultObject());
-			ImGui::TextWrapped("Initial UI: %s", DefaultHUD->GetWidgetAssetPath().empty()
-				? "None" : DefaultHUD->GetWidgetAssetPath().c_str());
+			FString CurrentUI = HUDWorld->GetInitialUIOverride();
+			if (CurrentUI.empty()) CurrentUI = DefaultHUD->GetWidgetAssetPath();
+			ImGui::BeginDisabled(World->IsPlayInEditor());
+			ImGui::SetNextItemWidth(200.0f);
+			FString DisplayUIName = CurrentUI.empty() ? "None" : CurrentUI;
+			size_t LastSlash = DisplayUIName.find_last_of("/\\");
+			if (LastSlash != FString::npos) DisplayUIName = DisplayUIName.substr(LastSlash + 1);
+			if (ImGui::BeginCombo("Initial UI", DisplayUIName.c_str()))
+			{
+				if (ImGui::Selectable("Default (HUD Specified)", HUDWorld->GetInitialUIOverride().empty()))
+				{
+					HUDWorld->SetInitialUIOverride("");
+					bHUDClassDirty = true;
+				}
+				for (const auto& Entry : std::filesystem::directory_iterator("Assets/UI"))
+				{
+					if (Entry.is_regular_file() && Entry.path().extension() == ".json")
+					{
+						FString FilePath = Entry.path().generic_string();
+						FString FileName = Entry.path().filename().generic_string();
+						bool bSelected = (CurrentUI == FilePath);
+						if (ImGui::Selectable(FileName.c_str(), bSelected))
+						{
+							HUDWorld->SetInitialUIOverride(FilePath);
+							bHUDClassDirty = true;
+						}
+					}
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::EndDisabled();
 		}
 		if (bHUDClassDirty) ImGui::TextDisabled("HUD selection changed. Save the scene to keep it.");
 	}
 	//////////////////////////////////////////////////////////
 
 	//////////////////////////////////////////////////////////
-	DrawDefaultPawnSettings();
+	DrawTestPawnSettings();
 
 	//////////////////////////////////////////////////////////
 	ImGui::Dummy(ImVec2(0.0f, SectionGap));
@@ -517,6 +547,7 @@ void FSettingsPanel::ApplyWorldSettings()
 	if (!EditorWorld) return;
 	ATestGameMode::StaticClass();
 	ADefaultPawn::StaticClass();
+	ATestPawn::StaticClass();
 	APlayerController::StaticClass();
 	if (!Settings.GameModeClassName.empty())
 		EditorWorld->SetGameModeClass(FindClass(Settings.GameModeClassName));
@@ -584,14 +615,14 @@ void FSettingsPanel::ApplySceneDepthRange()
 	}
 }
 
-void FSettingsPanel::DrawDefaultPawnSettings()
+void FSettingsPanel::DrawTestPawnSettings()
 {
     ImGui::Dummy(ImVec2(0.0f, SectionGap));
-    ImGui::SeparatorText("DefaultPawn Settings");
-    ADefaultPawn* Pawn = World ? Cast<ADefaultPawn>(World->GetPlayerPawn()) : nullptr;
+    ImGui::SeparatorText("TestPawn Settings");
+    ATestPawn* Pawn = World ? Cast<ATestPawn>(World->GetPlayerPawn()) : nullptr;
     if (!Pawn)
     {
-        ImGui::TextDisabled("Start PIE with a DefaultPawn to edit these settings.");
+        ImGui::TextDisabled("Start PIE with a TestPawn to edit these settings.");
         return;
     }
 

@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "GameFramework/TestGameMode.h"
+#include "GameFramework/TestPawn.h"
 #include "Collision/HitResult.h"
 #include "Components/LuaScriptComponent.h"
 #include "Engine/World.h"
@@ -8,6 +9,7 @@
 
 ATestGameMode::ATestGameMode()
 {
+	SetDefaultPawnClass(ATestPawn::StaticClass());
 	SetHUDClass(ASampleHUD::StaticClass());
 	ScriptComponent = CreateDefaultSubobject<ULuaScriptComponent>("GameModeScript");
 	ScriptComponent->SetScriptPath("Assets/Scripts/Gamemode.lua");

@@ -11,7 +11,9 @@
 #include "GameFramework/Actor/ParticleActor.h"
 #include "GameFramework/Actor/FireBallActor.h"
 #include "GameFramework/Actor/ProjectileActor.h"
+#include "GameFramework/Actor/PlayerStart.h"
 #include "GameFramework/DefaultPawn.h"
+#include "GameFramework/TestPawn.h"
 #include "GameFramework/TestGameMode.h"
 #include "Camera/CameraActor.h"
 #include "Components/BoxComponent.h"
@@ -34,7 +36,9 @@ void RegisterEngineClasses()
     (void)AParticleActor::StaticClass();
     (void)AFireBallActor::StaticClass();
     (void)AProjectileActor::StaticClass();
+    (void)APlayerStart::StaticClass();
     (void)ADefaultPawn::StaticClass();
+    (void)ATestPawn::StaticClass();
     (void)ATestGameMode::StaticClass();
     (void)ACameraActor::StaticClass();
     (void)UBoxComponent::StaticClass();

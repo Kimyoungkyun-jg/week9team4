@@ -1,7 +1,7 @@
 #include "EnginePCH.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
-#include "GameFramework/DefaultPawn.h"
+#include "GameFramework/TestPawn.h"
 #include <cstring>
 
 APlayerController::APlayerController()
@@ -60,7 +60,7 @@ void APlayerController::InputKey(int32 Key, bool bDown)
 	const bool bPressed = bDown && !bKeyDown[Key];
 	bKeyDown[Key] = bDown;
 	if (bPressed && Key == static_cast<int32>(EKeyCode::LButton))
-		if (ADefaultPawn* Pawn = Cast<ADefaultPawn>(PossessedPawn)) Pawn->FireProjectile();
+		if (ATestPawn* Pawn = Cast<ATestPawn>(PossessedPawn)) Pawn->FireProjectile();
 }
 
 void APlayerController::InputAxis(EGameInputAxis Axis, float Delta)
