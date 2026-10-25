@@ -200,7 +200,7 @@ UObject* StaticFindObjectFast(UClass* Class, UObject* InOuter, FName InName, EFi
 	for (UObject* Obj : GUObjectArray)            
 	{
 		// Outer와 이름이 같은지: 이 두 개가 같은 객체인가 조건
-		if (!Obj || Obj->GetOuter() != InOuter || Obj->GetFName() != InName)
+		if (!IsValid(Obj) || Obj->GetOuter() != InOuter || Obj->GetFName() != InName)
 			continue;
 
 		// 제외 플래그: 이 플래그를 가진 객체는 못 찾은 것으로 친다

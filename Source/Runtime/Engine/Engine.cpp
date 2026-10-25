@@ -17,6 +17,12 @@ bool UEngine::Init()
  	return true;
 }
 
+void UEngine::FlushPendingDestruction()
+{
+	for (FWorldContext& Context : WorldContextlist)
+		if (UWorld* World = Context.World()) World->FlushPendingDestruction();
+}
+
 FWorldContext& UEngine::CreateNewWorldContext(EWorldType WorldType)
 {
 	FWorldContext* NewWorldContext = new FWorldContext();
@@ -95,6 +101,7 @@ void UEngine::DestroyWorldContext(UWorld* InWorld)
 				const bool bOwnsCamera = Camera && !Camera->GetLevel();
 				InWorld->SetMainCamera(nullptr);
 				InWorld->ClearWorld();
+				InWorld->FlushPendingDestruction();
 				for (ULevel* Level : InWorld->GetLevels()) delete Level;
 				if (bOwnsCamera) delete Camera;
 				delete InWorld;

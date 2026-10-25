@@ -24,19 +24,23 @@ void UMovementComponent::BeginPlay()
   
 void UMovementComponent::TickComponent(float DeltaTime)
 {
+	if (!IsValid(this) || IsBeingDestroyed()) return;
 	Super::TickComponent(DeltaTime);
+	if (!HasValidUpdatedComponent()) SetUpdatedComponent(nullptr);
 }
 
 void UMovementComponent::SetUpdatedComponent(USceneComponent* NewComponent)
 {
-    if (NewComponent && NewComponent->GetOwner() != GetOwner()) return;
+    if (NewComponent && (!IsValid(NewComponent) || NewComponent->IsBeingDestroyed() || NewComponent->GetOwner() != GetOwner())) return;
     UpdatedComponent = NewComponent;
     UpdatedComponentName = NewComponent ? NewComponent->GetName() : "";
 }
 
 bool UMovementComponent::HasValidUpdatedComponent() const
 {
-    return UpdatedComponent && GetOwner() && GetOwner()->GetComponents().Find(UpdatedComponent) != INDEX_NONE;
+    return IsValid(this) && !IsBeingDestroyed() && IsValid(GetOwner()) && !GetOwner()->IsActorBeingDestroyed() &&
+        UpdatedComponent && GetOwner()->GetComponents().Find(UpdatedComponent) != INDEX_NONE &&
+        IsValid(UpdatedComponent) && !UpdatedComponent->IsBeingDestroyed();
 }
 
 void UMovementComponent::UpdateComponentVelocity()

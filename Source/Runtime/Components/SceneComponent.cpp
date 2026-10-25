@@ -27,15 +27,41 @@ namespace
 
 USceneComponent::~USceneComponent()
 {
+	DetachOnDestruction();
+}
+
+void USceneComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+	if (!bDestroyingHierarchy)
+	{
+		const auto Children = AttachChildren;
+		for (USceneComponent* Child : Children)
+		{
+			if (!IsValid(Child) || Child->IsBeingDestroyed()) continue;
+			Child->DetachFromParent(EAttachmentRule::KeepWorld);
+			if (IsValid(Child) && !Child->IsBeingDestroyed())
+				Child->SetupAttachment(AttachParent, EAttachmentRule::KeepWorld);
+		}
+	}
+	DetachOnDestruction();
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
+
+void USceneComponent::DetachOnDestruction()
+{
 	TArray<USceneComponent*> Children = AttachChildren;
 	DetachFromParent();
 	for (USceneComponent* Child : Children)
 	{
+		if (!Child || Child->AttachParent != this) continue;
 		Child->AttachParent = nullptr;
+		if (IsValid(Child) && !Child->IsBeingDestroyed())
+		{
+			Child->MarkTransformDirty();
+			Child->MarkRenderStateDirty();
+		}
 	}
 	AttachChildren.Reset();
-
-	DetachFromParent();
 }
 
 void USceneComponent::SetRelativeLocationAndRotation(const FVector& NewLocation, const FRotator& NewRotation)
@@ -79,6 +105,9 @@ void USceneComponent::SetHiddenInGame(bool bNewHidden, EVisibilityPropagation Pr
 
 void USceneComponent::SetupAttachment(USceneComponent* InParent, EAttachmentRule Rule)
 {
+	if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending())) return;
+	if (InParent && (!IsValid(InParent) || InParent->IsBeingDestroyed() ||
+		(InParent->GetOwner() && InParent->GetOwner()->IsPendingKillPending()))) return;
 	if (InParent == this || AttachParent == InParent) return;
 
 	// 순환 체크
@@ -266,20 +295,47 @@ void USceneComponent::SetWorldScale3D(FVector NewScale)
 
 bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
 {
+	if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending()))
+	{
+		if (Hit) *Hit = FHitResult(1.f);
+		return false;
+	}
     const FVector Start = GetWorldLocation();
     if (Hit) { *Hit = FHitResult(1.f); Hit->Init(Start, Start + Delta); Hit->Location = Start + Delta; }
     for (int Axis = 0; Axis < 3; ++Axis)
         if (!std::isfinite(Delta[Axis]) || !std::isfinite(NewRotation[Axis])) return false;
+    const FRotator PreviousRotation = GetWorldRotation();
+    if (Delta.SizeSquared() == 0.f && PreviousRotation.Pitch == NewRotation.Pitch && PreviousRotation.Yaw == NewRotation.Yaw && PreviousRotation.Roll == NewRotation.Roll) return true;
+    UWorld::FScopedObjectExecution ObjectScope(GetWorld() ? GetWorld() : (GetOwner() ? GetOwner()->GetWorld() : nullptr));
     ApplyWorldLocationAndRotation(Start + Delta, NewRotation);
+    UpdateOverlaps();
     return true;
+}
+
+void USceneComponent::UpdateOverlaps(const TArray<UPrimitiveComponent*>* PendingOverlaps)
+{
+	if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending())) return;
+	UWorld::FScopedObjectExecution ObjectScope(GetWorld() ? GetWorld() : (GetOwner() ? GetOwner()->GetWorld() : nullptr));
+	const auto Children = AttachChildren;
+	for (USceneComponent* Child : Children)
+	{
+		if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending())) return;
+		if (AttachChildren.Find(Child) != INDEX_NONE && IsValid(Child) && !Child->IsBeingDestroyed()) Child->UpdateOverlaps();
+	}
 }
 
 void USceneComponent::MarkTransformDirty()
 {
+	const auto Children = AttachChildren;
 	OnTransformDirty();         
+	if (!IsValid(this) || IsBeingDestroyed()) return;
 
-	for (USceneComponent* Child : AttachChildren)
-		Child->MarkTransformDirty();      // 부모가 움직이면 자식의 월드 행렬도 바뀐다
+	for (USceneComponent* Child : Children)
+	{
+		if (AttachChildren.Find(Child) != INDEX_NONE && IsValid(Child) && !Child->IsBeingDestroyed())
+			Child->MarkTransformDirty();
+		if (!IsValid(this) || IsBeingDestroyed()) return;
+	}
 }
 
 void USceneComponent::Serialize(FStructuredArchive::FRecord Record)
@@ -305,6 +361,3 @@ void USceneComponent::Serialize(FStructuredArchive::FRecord Record)
 		}
 	}
 }
-
-
-

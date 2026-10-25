@@ -8,7 +8,6 @@
 #include "Core/StatOverlay.h"
 #include "Input/InputSystem.h"
 
-
 #include "Render/GeometryGenerator.h"
 
 #include "Engine/World.h"
@@ -128,7 +127,6 @@ bool UEditorEngine::Init()
 		return Client->GetRenderData().GetShadowPreview(Light, Atlas, Shadows);
 	});
 
-
 	EditorControlsPanel = EditorUI->AddEditorPanel<FEditorControlsPanel>();
 	ViewportsPanel = EditorUI->AddEditorPanel<FViewportsPanel>();
 	ContentDrawerPanel = EditorUI->AddEditorPanel<FContentDrawerPanel>();
@@ -150,8 +148,6 @@ bool UEditorEngine::Init()
 	});
 	OutputLogPanel->SetEditorSettings(&SettingsPanel->GetMutableSettings());
 
-
-
 	Outline = MakeUnique<FOutline>();
 
 	SystemFont = UAssetManager::GetAssetByPath<UFont>("Assets/Fonts/Pretendard.json");
@@ -171,8 +167,6 @@ bool UEditorEngine::Init()
 		? ELayoutMode::Single
 		: ELayoutMode::QuadSplit;
 	EditorWorld->GetMainCamera()->GetCameraComponent()->SetExternalInputManaged(true);
-
-
 
 	OutlinerPanel = EditorUI->AddEditorPanel<FOutlinerPanel>();
 	OutlinerPanel->SetWorld(GetActiveWorld());
@@ -267,7 +261,6 @@ bool UEditorEngine::Init()
 	Pause.CanExecute = [this]()->bool {return !bIsPaused && PlayWorld; };
 	Pause.Execute = [this]() { bIsPaused = true; if (PlayWorld) PlayWorld->SetPaused(true); };
 
-
 	Resume = { "Resume", "Resume",          UAssetManager::GetAssetByPath<UTexture2D>("Assets/Icons/Toolbar/Play.png"),  White, { EKeyCode::Pause } };
 
 	Resume.CanExecute = [this]()->bool {return bIsPaused && PlayWorld; };
@@ -277,7 +270,6 @@ bool UEditorEngine::Init()
 
 	StepFrame.CanExecute = [this]()->bool {return bIsPaused && PlayWorld; };
 	StepFrame.Execute = [this]() { bStepRequested= true; };
-
 
 	Stop = { "Stop",   "Stop",				UAssetManager::GetAssetByPath<UTexture2D>("Assets/Icons/Toolbar/Stop.png"),  White, { EKeyCode::Escape } };
 
@@ -473,6 +465,10 @@ void UEditorEngine::TickWorldAndEditor(const float DeltaTime)
 		SCOPE_CYCLE_COUNTER(STAT_EditorTick);
 		EditorUI->Tick(DeltaTime);
 	}
+	const auto InvalidComponent = [](const UActorComponent* Component)
+	{ return Component && (!IsValid(Component) || Component->IsBeingDestroyed()); };
+	if (InvalidComponent(Gizmo->GetTarget())) Gizmo->SetTarget(nullptr, false);
+	if (InvalidComponent(Outline->GetTarget())) Outline->SetTarget(nullptr);
 	UpdateGizmoAndPicking();
 	EditorWorld->GetScene().UpdateAllTransforms();
 	if (PlayWorld && bIsPaused)
@@ -761,8 +757,6 @@ FWorldContext* UEditorEngine::GetPIEWorldContext(int32 WorldPIEInstance)
 	return nullptr;
 }
 
-
-
 void UEditorEngine::UpdateGizmoAndPicking()
 {
 	const int32 ViewIndex = ViewportsPanel ? ViewportsPanel->GetActiveViewIndex() : -1;
@@ -1005,6 +999,8 @@ void UEditorEngine::OnActiveWorldChanged()
 {
 	ResetSceneSelection();
 	UWorld* UIWorld = PlayWorld ? PlayWorld : EditorWorld;
+	for (FEditorViewportClient* Client : AllViewportClients)
+		if (Client) Client->SetWorld(UIWorld);
 	if (OutlinerPanel) OutlinerPanel->SetWorld(UIWorld);
 	if (DetailsPanel) DetailsPanel->SetWorld(UIWorld);
 	if (EditorControlsPanel) EditorControlsPanel->SetWorld(UIWorld);
@@ -1139,6 +1135,7 @@ void UEditorEngine::ResetSceneSelection()
 	Gizmo->SetTarget(nullptr, false);
 	Outline->SetTarget(nullptr);
 	DetailsPanel->SetTarget(nullptr);
+	DetailsPanel->SelectComponent(nullptr);
 	OutlinerPanel->SelectActor(nullptr);
 }
 

@@ -57,6 +57,8 @@ public:
 	bool TryGetActorBounds(FBox& OutBounds) const;
 
 	bool Destroy();
+	bool IsActorBeingDestroyed() const { return bActorIsBeingDestroyed; }
+	bool IsPendingKillPending() const { return bActorIsBeingDestroyed || !IsValid(this); }
 	
 	//xx삭제 예정
 	friend class UWorld;
@@ -91,5 +93,6 @@ private:
 	bool bHasBegunPlay = false;
 	bool bHasEndedPlay = false;
 	bool bIsEndingPlay = false;
+	bool bActorIsBeingDestroyed = false;
 
 };

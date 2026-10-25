@@ -2,6 +2,7 @@
 
 #include "Containers/Array.h"
 #include "UObjectHash.h"
+#include "UObject/Object.h"
 
 #undef GetObject
 
@@ -54,7 +55,7 @@ protected:
 	{
 		while (++Index < ObjectArray.Num())
 		{
-			if (GetObject())
+			if (IsValid(GetObject()))
 			{
 				return true;
 			}

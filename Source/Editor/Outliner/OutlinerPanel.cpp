@@ -14,6 +14,10 @@ bool FOutlinerPanel::Init()
 
 void FOutlinerPanel::Tick(float DeltaTime)
 {
+    if (SelectedObject && (!IsValid(SelectedObject) ||
+        (Cast<AActor>(SelectedObject) && Cast<AActor>(SelectedObject)->IsActorBeingDestroyed())))
+        SelectActor(nullptr);
+    if (PendingDeleteActor && PendingDeleteActor->IsPendingKillPending()) PendingDeleteActor = nullptr;
 }
 
 void FOutlinerPanel::OnRender()

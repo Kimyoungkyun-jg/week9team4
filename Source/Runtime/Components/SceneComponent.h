@@ -6,6 +6,8 @@
 #include "Collision/HitResult.h"
 #include "Lua/LuaMacros.h"
 
+class UPrimitiveComponent;
+
 enum class EAttachmentRule
 {
 	KeepRelative,
@@ -41,7 +43,6 @@ public:
 		Transform.Location = InLocation;
 		MarkTransformDirty();
 	}
-
 
 	const FRotator& GetRelativeRotation() const { return Transform.Rotation; }
 	void SetRelativeRotation(const FRotator& InRotation) 
@@ -88,6 +89,7 @@ public:
 	void SetWorldTransform(const FMatrix& InWorldMatrix, bool bSweep);
 
 	virtual bool MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit = nullptr);
+	virtual void UpdateOverlaps(const TArray<UPrimitiveComponent*>* PendingOverlaps = nullptr);
 
 	void MarkTransformDirty();
 	virtual void OnTransformDirty() {};
@@ -111,8 +113,9 @@ public:
 	FVector ComponentVelocity;
 
 protected:
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
+	void DetachOnDestruction();
 
-	// Direct transform write used by MoveComponent; never calls MoveComponent again.
 	void ApplyWorldLocationAndRotation(const FVector& Location, const FRotator& Rotation);
 	bool bTransformDirty = false;
 	FTransform Transform;

@@ -17,14 +17,14 @@ void ULevel::AddActor(AActor* Actor)
 
 void ULevel::ClearActors()
 {
-	for (AActor* Actor : Actors)
+	const auto ClearingActors = Actors;
+	for (AActor* Actor : ClearingActors)
 	{
 		if (!Actor)
 			continue;
 
-		delete Actor;
+		if (OwningWorld) OwningWorld->DestroyActor(Actor);
 	}
-	Actors.Reset();
 }
 
 void ULevel::Serialize(FStructuredArchive::FRecord Record)
@@ -58,7 +58,7 @@ void ULevel::Serialize(FStructuredArchive::FRecord Record)
 		TArray<AActor*> SavedActors;
 		for (AActor* Actor : Actors)
 		{
-			if (Actor && !Actor->HasAnyFlags(EObjectFlags::RF_Transient))
+			if (IsValid(Actor) && !Actor->HasAnyFlags(EObjectFlags::RF_Transient))
 				SavedActors.Add(Actor);
 		}
 

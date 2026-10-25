@@ -147,7 +147,8 @@ void FEditorViewPasses::RenderEditorLines(FEditorViewportClient* ViewClient,
 	if (USceneComponent* Target = OverlayResources.Gizmo->GetTarget())
     {
         for (UActorComponent* Component : Target->GetOwner()->GetComponents())
-            if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
+            if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component); Primitive && Primitive->IsCollisionEnabled())
+                Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
     }
     Lines->OnRender(View.ViewProjectionMatrix);
 }

@@ -1006,10 +1006,26 @@ bool FDetailsPanel::Init()
 
 void FDetailsPanel::Tick(float DeltaTime)
 {
+	if (TargetActor && TargetActor->IsPendingKillPending())
+	{
+		TargetActor = nullptr;
+		SelectComponent(nullptr);
+	}
+	else if (TargetComponent && (!IsValid(TargetComponent) || TargetComponent->IsBeingDestroyed())) SelectComponent(nullptr);
+	if (EditingNameComponent && (!IsValid(EditingNameComponent) || EditingNameComponent->IsBeingDestroyed()))
+	{
+		EditingNameComponent = nullptr;
+		bIsEditingName = bFocusNameEdit = false;
+	}
+	if (PendingDeleteComponent && (!IsValid(PendingDeleteComponent) || PendingDeleteComponent->IsBeingDestroyed())) PendingDeleteComponent = nullptr;
+	if ((PendingDragComponent && (!IsValid(PendingDragComponent) || PendingDragComponent->IsBeingDestroyed())) ||
+		(PendingDroppedComponent && (!IsValid(PendingDroppedComponent) || PendingDroppedComponent->IsBeingDestroyed())))
+		PendingDragComponent = PendingDroppedComponent = nullptr;
 }
 
 const ULightComponent* FDetailsPanel::GetSelectedLight() const
 {
+	if (!IsValid(TargetComponent) || TargetComponent->IsBeingDestroyed()) return nullptr;
 	UActorComponent* Component = TargetComponent;
 	while (Component && Component->IsHiddenInDetails())
 	{
@@ -1250,6 +1266,9 @@ void FDetailsPanel::SelectComponent(UActorComponent* Component)
 		TargetComponent = nullptr;
 		EditingNameComponent = nullptr;
 		bFocusNameEdit = false;
+		bIsEditingName = false;
+		PendingDeleteComponent = nullptr;
+		PendingDragComponent = PendingDroppedComponent = nullptr;
 
 		if (Callback)
 			Callback(nullptr);

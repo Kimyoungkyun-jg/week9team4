@@ -84,6 +84,7 @@ public:
 	virtual UWorld* CreatePIEWorldByDuplication(FWorldContext& Context, UWorld* SourceWorld);
 	// PIE 컨텍스트는 게임 인스턴스와 복제 월드까지 함께 정리한다.
 	void DestroyWorldContext(UWorld* InWorld);
+	void FlushPendingDestruction();
 
 protected:
 	UAssetManager* AssetManager;
