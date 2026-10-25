@@ -17,6 +17,7 @@ public:
 	virtual void TickComponent(float DeltaTime);
 
 	virtual const FStaticMeshData* GetMeshData() const override { return StaticMesh ? &StaticMesh->GetMeshData() : nullptr; }
+	bool BuildCollisionShape(FCollisionShape& OutShape) const override;
 
 	// 메시가 바뀌면 슬롯 구성이 달라지므로 덮어쓰기를 비운다
 	void SetStaticMesh(UStaticMesh* InStaticMesh);
@@ -31,7 +32,7 @@ public:
 	void SubmitToRenderQueue(FRenderQueue& Queue, uint32 LODIndex);
 
 	bool IsEditorIcon() const { return bEditorIcon; }
-	void SetEditorIcon(bool IsEditorIcon) { bEditorIcon = IsEditorIcon; }
+	void SetEditorIcon(bool IsEditorIcon) { bEditorIcon = IsEditorIcon; if (IsEditorIcon) SetCollisionEnabled(false); }
 
 private:
 	UStaticMesh* StaticMesh = nullptr;

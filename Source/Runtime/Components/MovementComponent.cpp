@@ -8,7 +8,7 @@ void UMovementComponent::InitializeComponent()
 
 	if (AActor* MyActor = GetOwner())
 	{
-		if (USceneComponent* NewUpdatedCompoent = MyActor->GetRootComponent())
+		if (USceneComponent* NewUpdatedCompoent = UpdatedComponentName.empty() ? MyActor->GetRootComponent() : Cast<USceneComponent>(MyActor->FindComponentByName(FName(UpdatedComponentName))))
 		{
 			SetUpdatedComponent(NewUpdatedCompoent);
 		}
@@ -29,17 +29,19 @@ void UMovementComponent::TickComponent(float DeltaTime)
 
 void UMovementComponent::SetUpdatedComponent(USceneComponent* NewComponent)
 {
-	if (NewComponent == nullptr)
-	{
-		return;
-	}
+    if (NewComponent && NewComponent->GetOwner() != GetOwner()) return;
+    UpdatedComponent = NewComponent;
+    UpdatedComponentName = NewComponent ? NewComponent->GetName() : "";
+}
 
-	UpdatedComponent = NewComponent;
+bool UMovementComponent::HasValidUpdatedComponent() const
+{
+    return UpdatedComponent && GetOwner() && GetOwner()->GetComponents().Find(UpdatedComponent) != INDEX_NONE;
 }
 
 void UMovementComponent::UpdateComponentVelocity()
 {
-	if (UpdatedComponent)
+	if (HasValidUpdatedComponent())
 	{
 		UpdatedComponent->ComponentVelocity = Velocity;
 	}
@@ -65,11 +67,12 @@ FVector UMovementComponent::ComputeSlideVector(const FVector& Delta, const float
 
 bool UMovementComponent::MoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
 {
-	if (UpdatedComponent)
+	if (HasValidUpdatedComponent())
 	{
-		return UpdatedComponent->MoveComponent(Delta, NewRotation, bSweep, Hit);		
+		return UpdatedComponent->MoveComponent(ConstrainDirectionToPlane(Delta), NewRotation, bSweep, Hit);
 	}
 
+	if (Hit) *Hit = FHitResult(1.f);
 	return false;
 }
 

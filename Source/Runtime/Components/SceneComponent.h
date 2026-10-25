@@ -88,8 +88,6 @@ public:
 	void SetWorldTransform(const FMatrix& InWorldMatrix, bool bSweep);
 
 	virtual bool MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit = nullptr);
-	virtual float GetCollisionRadius() const;
-	void SetCollisionRadiusOverride(float Radius) { CollisionRadiusOverride = Radius; }
 
 	void MarkTransformDirty();
 	virtual void OnTransformDirty() {};
@@ -114,7 +112,9 @@ public:
 
 protected:
 
-	bool bTransformDirty;
+	// Direct transform write used by MoveComponent; never calls MoveComponent again.
+	void ApplyWorldLocationAndRotation(const FVector& Location, const FRotator& Rotation);
+	bool bTransformDirty = false;
 	FTransform Transform;
 
 	USceneComponent* AttachParent = nullptr; // Attach 부모 정보
@@ -123,5 +123,4 @@ protected:
 	bool bAbsoluteLocation = false;
 	bool bAbsoluteRotation = false;
 	bool bAbsoluteScale = false;
-	float CollisionRadiusOverride = -1.0f;
 };

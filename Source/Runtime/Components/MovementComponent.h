@@ -6,13 +6,15 @@ class UMovementComponent : public UActorComponent
 {
 	DECLARE_CLASS(UMovementComponent, UActorComponent)
 	REFLECT_START(ClassName)
+		PROPERTY(UpdatedComponentName)
 		REFLECT_END()
 
 protected:
-	USceneComponent* UpdatedComponent;
+	USceneComponent* UpdatedComponent = nullptr;
+	FString UpdatedComponentName;
 
 public:
-	FVector Velocity;
+	FVector Velocity = FVector::ZeroVector;
 	
 	float Gravity = 9.81f;
 
@@ -22,6 +24,7 @@ public:
 	virtual void TickComponent(float DeltaTime) override;
 
 	virtual void SetUpdatedComponent(USceneComponent* NewComponent);
+	bool HasValidUpdatedComponent() const;
 	virtual void UpdateComponentVelocity();
 
 	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice = 0.0f, const FVector& MoveDelta = FVector::ZeroVector);

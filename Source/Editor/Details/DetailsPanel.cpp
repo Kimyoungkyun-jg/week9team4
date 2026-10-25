@@ -4,6 +4,9 @@
 #include "imgui_internal.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/ParticleSubUVComponent.h"
@@ -936,6 +939,24 @@ namespace
 		}
 	}
 
+    void DrawCollisionSettings(UPrimitiveComponent* Component)
+    {
+        if (!Component || !ImGui::CollapsingHeader("Collision", ImGuiTreeNodeFlags_DefaultOpen)) return;
+        const auto Settings = Component->GetCollisionSettings();
+        bool Enabled = Settings.bEnabled, Events = Settings.bGenerateOverlapEvents;
+        if (ImGui::Checkbox("Collision Enabled", &Enabled)) Component->SetCollisionEnabled(Enabled);
+        if (ImGui::Checkbox("Generate Overlap Events", &Events)) Component->SetGenerateOverlapEvents(Events);
+        const char* Channels[] = { "WorldStatic", "WorldDynamic", "Pawn", "Projectile", "Visibility", "Camera" };
+        const char* Responses[] = { "Ignore", "Overlap", "Block" };
+        int Channel = static_cast<int>(Settings.ObjectChannel);
+        if (ImGui::Combo("Object Channel", &Channel, Channels, CollisionChannelCount)) Component->SetCollisionObjectType(static_cast<ECollisionChannel>(Channel));
+        for (int Index = 0; Index < CollisionChannelCount; ++Index)
+        {
+            int Response = static_cast<int>(Settings.Responses[Index]);
+            if (ImGui::Combo(Channels[Index], &Response, Responses, 3)) Component->SetCollisionResponseToChannel(static_cast<ECollisionChannel>(Index), static_cast<ECollisionResponse>(Response));
+        }
+    }
+
 	void DrawActorHeader(AActor* Actor, UActorComponent*& OutSelectedComponent)
 	{
 		if (!Actor) { return; }
@@ -960,7 +981,7 @@ namespace
 			// 이름순 정렬하면 메뉴가 안정적
 			for (UClass* Class : Classes)
 			{
-				//if (!IsSpawnableComponent(Class)) continue;
+				if (!Class->Constructor) continue;
 				if (ImGui::MenuItem(Class->Name.c_str()))
 				{
 					OutSelectedComponent = Actor->AddComponent(Class, FString(ComponentNameInputBuf));
@@ -1185,6 +1206,7 @@ void FDetailsPanel::OnRender()
 			ImGui::PushID(TargetComponent);
 			ImGui::SeparatorText("Component Properties");
 			DrawProperties(TargetComponent, CustomFont);
+            DrawCollisionSettings(Cast<UPrimitiveComponent>(TargetComponent));
 			DrawShadowPreview();
 			if (ULuaScriptComponent* ScriptComponent = Cast<ULuaScriptComponent>(TargetComponent))
 			{

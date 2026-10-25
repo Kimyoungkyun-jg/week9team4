@@ -6,23 +6,23 @@ class UPrimitiveComponent;
 
 struct FHitResult
 {
-	int32 FaceIndex; // Hitted face index
+	int32 FaceIndex = -1; // Hitted face index
 
-	float Time; // For swept
+	float Time = 1.0f; // Fraction of requested translation
 	float Distance = FLT_MAX;
 
 	FVector Location = FVector(); // For swept
 	FVector ImpactPoint = FVector();
-	FVector Normal; //For swept
-	FVector ImpactNormal;
+	FVector Normal = FVector::ZeroVector;
+	FVector ImpactNormal = FVector::ZeroVector;
 
 	FVector TraceStart;
 	FVector TraceEnd;
 
-	float PenetrationDepth;
+	float PenetrationDepth = 0.0f;
 
 	bool bBlockingHit = false;
-	bool bStartPentrating = false;
+	bool bStartPenetrating = false;
 
 	UPrimitiveComponent* HitComponent = nullptr;
 
@@ -40,12 +40,19 @@ struct FHitResult
 	// Initailize empty hit result
 	inline void Init()
 	{
-		Time = 1.0f;		
+		FaceIndex = -1;
+		Time = 1.0f;
+		Distance = 0.0f;
+		Location = ImpactPoint = Normal = ImpactNormal = FVector::ZeroVector;
+		TraceStart = TraceEnd = FVector::ZeroVector;
+		PenetrationDepth = 0.0f;
+		bBlockingHit = bStartPenetrating = false;
+		HitComponent = nullptr;
 	}
 
 	inline void Init(FVector Start, FVector End)
 	{
-		Time = 1.0f;
+		Init();
 		TraceStart = Start;
 		TraceEnd = End;
 	}

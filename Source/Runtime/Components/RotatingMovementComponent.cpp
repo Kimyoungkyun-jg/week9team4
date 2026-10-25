@@ -5,14 +5,14 @@ void URotatingMovementComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
 
-	if (UpdatedComponent == nullptr)
+	if (!HasValidUpdatedComponent())
 	{
 		return;
 	}
 
-	const FQuat OldRotation = UpdatedComponent->GetRelativeRotationQuat();
+	const FQuat OldRotation = UpdatedComponent->GetWorldRotation().Quaternion();
 	const FQuat DeltaRotation = (RotationRate * DeltaTime).Quaternion();
-	const FQuat NewRotation = bRotaionInLocalSpace ? (OldRotation * DeltaRotation) : (DeltaRotation * OldRotation);
+	const FQuat NewRotation = bRotationInLocalSpace ? (OldRotation * DeltaRotation) : (DeltaRotation * OldRotation);
 
 	// Compute New Location	
 	FVector DeltaLocation = FVector::ZeroVector;

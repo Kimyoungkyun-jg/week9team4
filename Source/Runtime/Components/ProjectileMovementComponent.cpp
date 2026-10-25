@@ -32,9 +32,9 @@ void UProjectileMovementComponent::InitializeComponent()
 
 	if (Velocity.SizeSquared() > 0.0f)
 	{
-		if (InintialSpeed > 0.0f)
+		if (InitialSpeed > 0.0f)
 		{
-			Velocity = Velocity.Normalized() * InintialSpeed;
+			Velocity = Velocity.Normalized() * InitialSpeed;
 		}
 
 		if (bInitialVelocityInLocalSpace)
@@ -59,7 +59,7 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 
 	Super::TickComponent(DeltaTime);
 
-	if (!bSimulationEnabled || DeltaTime <= 0.0f || UpdatedComponent == nullptr)
+	if (!bSimulationEnabled || DeltaTime <= 0.0f || !HasValidUpdatedComponent())
 	{
 		return;
 	}
@@ -133,7 +133,7 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 
 void UProjectileMovementComponent::SetVelocityInLocalSpace(FVector NewVelocity)
 {
-	if (UpdatedComponent)
+	if (HasValidUpdatedComponent())
 	{
 		Velocity = UpdatedComponent->GetWorldMatrix().TransformVectorNoScale(NewVelocity);
 	}
@@ -275,7 +275,7 @@ bool UProjectileMovementComponent::HandleSliding(FHitResult& Hit, float& SubTick
 	FHitResult InitailHit;
 	const FVector OldHitNormal = ConstrainDirectionToPlane(Hit.Normal);
 
-	MoveUpdatedComponent(Velocity * SubTickTimeRemaining, UpdatedComponent->GetRelativeRotation(), bSweepCollision, &Hit);
+	MoveUpdatedComponent(Velocity * SubTickTimeRemaining, UpdatedComponent->GetWorldRotation(), bSweepCollision, &Hit);
 
 	if (Hit.bBlockingHit)
 	{

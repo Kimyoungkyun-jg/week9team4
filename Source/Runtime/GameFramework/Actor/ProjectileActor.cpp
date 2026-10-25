@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "GameFramework/Actor/ProjectileActor.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SphereComponent.h"
 #include "Components/FireBallComponent.h"
 #include "Components/ProjectileMovementComponent.h"
 #include "Asset/AssetManager.h"
@@ -11,7 +12,11 @@ AProjectileActor::AProjectileActor()
 {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = false;
-    GetRootComponent()->SetCollisionRadiusOverride(0.5f);
+    USphereComponent* Collision = CreateDefaultSubobject<USphereComponent>("Collision");
+    Collision->SetSphereRadius(0.5f);
+    Collision->SetCollisionObjectType(ECollisionChannel::Projectile);
+    Collision->SetCollisionEnabled(true);
+    SetRootComponent(Collision);
     StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("ProjectileMeshComponent");
     // 이동용 루트는 표시 상태와 분리한다. 숨겨진 메쉬를 부모로 두면 FireBall 자식도 함께 숨겨진다.
     StaticMeshComponent->SetupAttachment(GetRootComponent());
@@ -20,6 +25,7 @@ AProjectileActor::AProjectileActor()
     StaticMeshComponent->SetVisible(false);
     StaticMeshComponent->SetHiddenInGame(true);
     StaticMeshComponent->SetAutoActivate(false);
+    StaticMeshComponent->SetCollisionEnabled(false);
     FireBallComponent = CreateDefaultSubobject<UFireBallComponent>("FireBallComponent");
     FireBallComponent->SetupAttachment(GetRootComponent());
     FireBallComponent->SetVisibility(false);
@@ -33,10 +39,11 @@ AProjectileActor::AProjectileActor()
     FireBallMeshComponent->SetVisible(false);
     FireBallMeshComponent->SetHiddenInGame(true);
     FireBallMeshComponent->SetAutoActivate(false);
+    FireBallMeshComponent->SetCollisionEnabled(false);
     ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("ProjectileMovementComponent");
     ProjectileMovementComponent->SetAutoActivate(false);
     ProjectileMovementComponent->SetUpdatedComponent(GetRootComponent());
-    ProjectileMovementComponent->InintialSpeed = 20.0f;
+    ProjectileMovementComponent->InitialSpeed = 20.0f;
     ProjectileMovementComponent->MaxSpeed = 100.0f;
     ProjectileMovementComponent->ProjectileGravityScale = 1.0f;
     ProjectileMovementComponent->bShouldBounce = true;
@@ -90,8 +97,22 @@ void AProjectileActor::Launch(const FVector& Position, const FVector& Direction,
         FireBallComponent->Activate();
         FireBallComponent->SetHiddenInGame(false);
     }
+    // The default fireball proxy is much larger than the plain mesh ball.
+    // Match the root sphere to the active visual, including pooled mode changes.
+    const UStaticMeshComponent* Visual = bUseStaticMesh ? StaticMeshComponent : FireBallMeshComponent;
+    float CollisionRadius = bUseStaticMesh ? 0.5f : FireBallComponent->GetRadius() * 0.5f;
+    if (const FStaticMeshData* Mesh = Visual->GetMeshData(); Mesh && !Mesh->Vertices.IsEmpty())
+    {
+        const FMatrix VisualToRoot = Visual->GetWorldMatrix() * GetRootComponent()->GetWorldMatrix().Inverse();
+        CollisionRadius = 0.f;
+        for (const FVertex& Vertex : Mesh->Vertices)
+            CollisionRadius = std::max(CollisionRadius, VisualToRoot.TransformPosition(Vertex.Position).Size());
+    }
+    USphereComponent* Collision = CastChecked<USphereComponent>(GetRootComponent());
+    Collision->SetSphereRadius(CollisionRadius);
+    Collision->SetCollisionEnabled(true);
     ProjectileMovementComponent->SetUpdatedComponent(GetRootComponent());
-    ProjectileMovementComponent->Velocity = Forward * ProjectileMovementComponent->InintialSpeed;
+    ProjectileMovementComponent->Velocity = Forward * ProjectileMovementComponent->InitialSpeed;
     ProjectileMovementComponent->bSimulationEnabled = true;
     ProjectileMovementComponent->Activate(true);
     RemainingLife = LifeTime;
@@ -102,6 +123,7 @@ void AProjectileActor::Launch(const FVector& Position, const FVector& Direction,
 void AProjectileActor::ReturnToPool()
 {
     bInFlight = false;
+    CastChecked<UPrimitiveComponent>(GetRootComponent())->SetCollisionEnabled(false);
     RemainingLife = 0.0f;
     if (ProjectileMovementComponent)
     {

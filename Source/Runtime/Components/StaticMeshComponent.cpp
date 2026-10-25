@@ -11,6 +11,16 @@
 UStaticMeshComponent::UStaticMeshComponent()
 {
 	StaticMesh = UAssetManager::GetAssetByPath<UStaticMesh>("Cube");
+	CollisionSettings.bEnabled = true;
+	CollisionSettings.ObjectChannel = ECollisionChannel::WorldStatic;
+}
+
+bool UStaticMeshComponent::BuildCollisionShape(FCollisionShape& OutShape) const
+{
+    const FStaticMeshData* Data = GetMeshData();
+    if (!Data) return false;
+    OutShape = FCollisionShape::MakeBox((Data->AABB.Max - Data->AABB.Min) * 0.5f, (Data->AABB.Max + Data->AABB.Min) * 0.5f);
+    return true;
 }
 
 // StaticMesh 컴포넌트의 소멸을 처리한다.
