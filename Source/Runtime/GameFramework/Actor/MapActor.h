@@ -5,7 +5,7 @@
 #include "Serialization/StructuredArchive.h"
 
 // Authored terrain only: this is NOT an occupancy or agent-clearance test.
-enum class EMapTileTerrain : uint8 { Floor, Wall, Unused };
+enum class EMapTileTerrain : uint8 { Floor = 0, Wall = 1, Unused = 2 };
 
 class AMapActor : public AStaticMeshActor
 {
@@ -26,9 +26,12 @@ public:
 	uint64 GetGridRevision() const { return GridRevision; }
 	bool IsValidTile(int32 Column, int32 Row) const;
 	bool TryGetTile(int32 Column, int32 Row, EMapTileTerrain& OutTerrain) const;
+	// Owning copy of current terrain, including edits/loaded data. Index = Row * Columns + Column.
+	// Capture GetColumns()/GetRows() with the copy; later edits/resizes do not update it.
+	TArray<EMapTileTerrain> GetTilesCopy() const;
 	bool SetTile(int32 Column, int32 Row, EMapTileTerrain Terrain);
 	bool FillTiles(EMapTileTerrain Terrain);
-	// Restore the creation grid and mesh-seeded terrain. Keeps mesh and Actor transform.
+	// Restore the creation grid: mesh analysis, then authored Wall overrides. Keeps mesh and Actor transform.
 	// Uses the current map mesh's floor height; missing mesh data fails without changing the grid.
 	bool ResetGridToInitial();
 	// Atomic configuration change. Preserve overlapping (column,row), new cells = Floor.
@@ -50,8 +53,10 @@ public:
 	void Serialize(FStructuredArchive::FRecord Record) override;
 
 private:
-	// Seed at creation or explicit reset. Resize/load/edit never regenerates it automatically.
+	// Mesh analysis followed by Wall-only overrides at creation/reset. Resize/load/edit keep their data.
+	void InitializeDefaultTerrain();
 	void InitializeDefaultTerrainFromMesh();
+	void ApplyInitialWallOverrides();
 	static bool IsValidConfiguration(int32 InColumns, int32 InRows, float InSize, const FVector& InOrigin);
 	static bool IsValidTerrain(EMapTileTerrain Terrain);
 	int32 Columns = InitialColumns;

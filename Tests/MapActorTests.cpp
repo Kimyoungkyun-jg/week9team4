@@ -55,6 +55,12 @@ int main()
 	// Use the actual OBJ/MTL importer and register the actual asset path, without scanning unrelated assets.
 	UAssetManager::Get().CreateDefaultTextures();
 	UAssetManager::Get().CreateDefaultMaterial();
+	UWorld* EarlyWorld = UWorld::CreateWorld(EWorldType::Editor, false);
+	AMapActor* EarlyMap = EarlyWorld->SpawnActor<AMapActor>();
+	Check(EarlyMap && !EarlyMap->GetStaticMeshComponent()->GetStaticMesh() &&
+		HasTerrain(*EarlyMap,0,0,EMapTileTerrain::Wall) && HasTerrain(*EarlyMap,28,24,EMapTileTerrain::Floor),
+		"authored terrain initializes even before map asset registration");
+	EarlyWorld->ClearWorld();
 	UStaticMesh* Mesh = UAssetManager::LoadObjStaticMesh("Assets/Models/Map/Map.obj");
 	Check(Mesh != nullptr, "OBJ/MTL asset loads");
 	if (!Mesh) return 1;
@@ -67,6 +73,7 @@ int main()
 	Check(!Map->GetGridTransformWarning(), "default transform supported");
 	Check(std::abs(Map->GetGridOrigin().Z - (-0.978149f)) < .00001f, "Map.obj grid follows the lower floor surface");
 	int32 WallCount = 0, FloorCount = 0;
+	uint64 SeedHash = 14695981039346656037ull;
 	json SeedPreview = json::array();
 	for (int32 Row = 0; Row < Map->GetRows(); ++Row)
 	{
@@ -77,20 +84,49 @@ int main()
 			Map->TryGetTile(Column, Row, Terrain);
 			WallCount += Terrain == EMapTileTerrain::Wall;
 			FloorCount += Terrain == EMapTileTerrain::Floor;
+			SeedHash = (SeedHash ^ static_cast<uint8>(Terrain)) * 1099511628211ull;
 			PreviewRow.push_back(static_cast<int32>(Terrain));
 		}
 		SeedPreview.push_back(PreviewRow);
 	}
 	std::ofstream("Build/MapActorTests/default-terrain.json") << SeedPreview.dump();
 	std::cout << "Default map seed: Wall " << WallCount << ", Floor " << FloorCount << '\n';
-	// Counts independently checked against the raw OBJ section, not a constructor-derived fixture.
-	Check(WallCount == 1481 && FloorCount == 1207, "current asset section raster covers all 2688 cells with Wall/Floor");
-	Check(HasTerrain(*Map,0,0,EMapTileTerrain::Floor) && HasTerrain(*Map,55,47,EMapTileTerrain::Floor), "outer floor slab remains Floor");
-	Check(HasTerrain(*Map,2,24,EMapTileTerrain::Wall) && HasTerrain(*Map,28,24,EMapTileTerrain::Floor), "actual side wall and room interior classified");
-	Check(HasTerrain(*Map,27,0,EMapTileTerrain::Wall) && HasTerrain(*Map,26,0,EMapTileTerrain::Floor), "thin wall missing the tile center is retained without marking its neighbor");
+	// Golden counts/hash sampled independently from the user-approved 56x48 image.
+	Check(WallCount == 2037 && FloorCount == 651, "approved initial terrain counts");
+	Check(SeedHash == 3552546181708364762ull, "all 2688 creation tiles match the approved image in logical coordinate order");
+	for (int32 Row = 0; Row < 48; ++Row)
+		for (int32 Column = 0; Column < 56; ++Column)
+			if (Row == 0 || Row == 47 || Column == 0 || Column == 55 || Column == 1)
+				Check(HasTerrain(*Map,Column,Row,EMapTileTerrain::Wall), "outer border and marked right interior strip are Wall");
+	Check(HasTerrain(*Map,54,46,EMapTileTerrain::Wall) && HasTerrain(*Map,48,40,EMapTileTerrain::Wall) &&
+		HasTerrain(*Map,35,43,EMapTileTerrain::Wall) && HasTerrain(*Map,35,5,EMapTileTerrain::Wall) &&
+		HasTerrain(*Map,21,23,EMapTileTerrain::Wall), "marked islands, large rooms and thin corridors become Wall");
+	Check(HasTerrain(*Map,2,24,EMapTileTerrain::Wall) && HasTerrain(*Map,28,24,EMapTileTerrain::Floor) &&
+		HasTerrain(*Map,29,1,EMapTileTerrain::Floor) && HasTerrain(*Map,40,36,EMapTileTerrain::Floor), "unmarked central room and corridors remain Floor");
+
+	const AMapActor& ReadOnlyMap = *Map;
+	auto TerrainCopy = ReadOnlyMap.GetTilesCopy();
+	Check(TerrainCopy.Num() == 56 * 48 && sizeof(EMapTileTerrain) == 1, "terrain copy has 2688 one-byte elements");
+	bool CopyMatches = TerrainCopy.Num() == 56 * 48;
+	if (CopyMatches)
+		for (int32 Row = 0; Row < 48; ++Row)
+			for (int32 Column = 0; Column < 56; ++Column)
+				CopyMatches &= HasTerrain(*Map,Column,Row,TerrainCopy[Row * 56 + Column]);
+	Check(CopyMatches, "terrain copy includes the entire final terrain in row-major order");
+	if (TerrainCopy.Num() == 56 * 48)
+	{
+		TerrainCopy[0] = EMapTileTerrain::Floor;
+		Check(HasTerrain(*Map,0,0,EMapTileTerrain::Wall), "editing a returned copy leaves MapActor terrain unchanged");
+		Map->SetTile(0,0,EMapTileTerrain::Unused);
+		Check(TerrainCopy[0] == EMapTileTerrain::Floor, "later MapActor edits leave an earlier copy unchanged");
+		const auto EditedCopy = ReadOnlyMap.GetTilesCopy();
+		Check(EditedCopy.Num() == 56 * 48 && EditedCopy[0] == EMapTileTerrain::Unused,
+			"a new copy reflects current edits including Unused rather than the initial template");
+		Map->SetTile(0,0,EMapTileTerrain::Wall);
+	}
 	TArray<uint8> SeedBytes;
 	UWorld* SeedWorld = UWorld::CreateWorld(EWorldType::Editor, false);
-	Check(FJsonArchive::SaveWorldToBytes(World,SeedBytes) && FJsonArchive::LoadWorldFromBytes(SeedWorld,SeedBytes), "save/load initial geometry seed");
+	Check(FJsonArchive::SaveWorldToBytes(World,SeedBytes) && FJsonArchive::LoadWorldFromBytes(SeedWorld,SeedBytes), "save/load approved initial terrain");
 	AMapActor* SeedCopy = FindMap(SeedWorld);
 	for (int32 Row = 0; Row < 48; ++Row)
 		for (int32 Column = 0; Column < 56; ++Column)
@@ -100,6 +136,19 @@ int main()
 			Check(SeedCopy && HasTerrain(*SeedCopy,Column,Row,Expected), "entire initial seed preserved on load");
 		}
 	SeedWorld->ClearWorld();
+	UWorld* InitialPIE = UWorld::GetDuplicatedWorldForPIE(World);
+	AMapActor* InitialPlayMap = FindMap(InitialPIE);
+	bool InitialPIEMatches = InitialPlayMap && InitialPlayMap != Map &&
+		InitialPlayMap->GetColumns() == 56 && InitialPlayMap->GetRows() == 48;
+	for (int32 Row = 0; Row < 48; ++Row)
+		for (int32 Column = 0; Column < 56; ++Column)
+			InitialPIEMatches &= InitialPlayMap && HasTerrain(*InitialPlayMap,Column,Row,
+				static_cast<EMapTileTerrain>(SeedPreview[Row][Column].get<int32>()));
+	Check(InitialPIEMatches, "PIE preserves all tiles of the approved creation layout");
+	if (InitialPlayMap) InitialPlayMap->SetTile(0,0,EMapTileTerrain::Floor);
+	Check(InitialPlayMap && HasTerrain(*InitialPlayMap,0,0,EMapTileTerrain::Floor) &&
+		HasTerrain(*Map,0,0,EMapTileTerrain::Wall), "PIE edits leave the editor creation layout independent");
+	InitialPIE->ClearWorld();
 	Map->FillTiles(EMapTileTerrain::Unused);
 	Map->ConfigureGrid(2,3,2.f,FVector(7,8,9));
 	Map->GetRootComponent()->SetTransform(FTransform(FRotator(0,25,0),FVector(2,3,4),FVector(2,2,2)));
@@ -117,6 +166,34 @@ int main()
 	Check(!Map->ResetGridToInitial() && Map->GetColumns() == 2 && Map->GetTileSize() == 2.f && HasTerrain(*Map,0,0,EMapTileTerrain::Unused), "reset without mesh fails without changing grid");
 	Map->GetStaticMeshComponent()->SetStaticMesh(Mesh);
 	Check(Map->ResetGridToInitial(), "reset recovers when mesh is restored");
+	// A closed vertical box inside approved Floor (28,24) must still be found by mesh analysis.
+	// No renderer buffers are needed: this fixture exercises CPU initialization only.
+	UStaticMesh* ProbeMesh = NewObject<UStaticMesh>();
+	ProbeMesh->MeshData.AABB = Mesh->GetMeshData().AABB;
+	for (float Z : { Mesh->GetMeshData().AABB.Min.Z, 0.f })
+		for (const FVector2& XY : { FVector2(.05f,.05f), FVector2(.45f,.05f), FVector2(.45f,.45f), FVector2(.05f,.45f) })
+		{
+			FVertex Vertex;
+			Vertex.Position = FVector(XY.X,XY.Y,Z);
+			ProbeMesh->MeshData.Vertices.Add(Vertex);
+		}
+	for (uint32 Side = 0; Side < 4; ++Side)
+	{
+		const uint32 Next = (Side + 1) % 4;
+		for (uint32 Index : { Side,Next,Next+4, Side,Next+4,Side+4 })
+			ProbeMesh->MeshData.Indices.Add(Index);
+	}
+	ProbeMesh->RebuildRenderData();
+	Map->GetStaticMeshComponent()->SetStaticMesh(ProbeMesh);
+	Check(Map->ResetGridToInitial() && HasTerrain(*Map,28,24,EMapTileTerrain::Wall),
+		"mesh analysis detects a wall even where the numeric target is Floor");
+	Check(HasTerrain(*Map,29,24,EMapTileTerrain::Floor),
+		"numeric Floor leaves wall-free mesh cells as Floor");
+	Check(HasTerrain(*Map,0,0,EMapTileTerrain::Wall) && HasTerrain(*Map,35,43,EMapTileTerrain::Wall),
+		"numeric Wall overrides apply where the probe mesh has no walls");
+	Map->GetStaticMeshComponent()->SetStaticMesh(Mesh);
+	Check(Map->ResetGridToInitial() && HasTerrain(*Map,28,24,EMapTileTerrain::Floor),
+		"restoring Map.obj reproduces the approved central Floor");
 	Map->GetRootComponent()->SetTransform(FTransform::Identity);
 	Map->SetTile(0, 0, EMapTileTerrain::Wall);
 	Map->SetTile(3, 2, EMapTileTerrain::Unused);
@@ -137,7 +214,13 @@ int main()
 	Check(!Map->IsValidTile(-1, 0) && !Map->IsValidTile(56, 0) && !Map->SetTile(0, 48, EMapTileTerrain::Wall), "invalid tile access rejected");
 	Check(!Map->SetTile(0, 0, static_cast<EMapTileTerrain>(99)), "invalid terrain rejected");
 	const FVector Origin = Map->GetGridOrigin();
+	const auto BeforeResizeCopy = Map->GetTilesCopy();
 	Check(Map->ConfigureGrid(58, 50, .5f, Origin), "grow grid");
+	const auto GrownCopy = Map->GetTilesCopy();
+	Check(GrownCopy.Num() == 58 * 50 && GrownCopy[2 * 58 + 3] == EMapTileTerrain::Unused &&
+		GrownCopy[49 * 58 + 57] == EMapTileTerrain::Floor, "terrain copy uses current dimensions and resized row stride");
+	Check(BeforeResizeCopy.Num() == 56 * 48 && BeforeResizeCopy[2 * 56 + 3] == EMapTileTerrain::Unused,
+		"resizing MapActor preserves the earlier copy and its original row stride");
 	Check(HasTerrain(*Map, 0, 0, EMapTileTerrain::Wall) && HasTerrain(*Map, 3, 2, EMapTileTerrain::Unused) && HasTerrain(*Map, 55, 47, EMapTileTerrain::Wall), "width change preserves coordinates");
 	Check(HasTerrain(*Map, 57, 49, EMapTileTerrain::Floor), "new tiles initialized Floor");
 	Check(Map->ConfigureGrid(4, 3, .75f, FVector(-2, -1, .3f)) && HasTerrain(*Map, 3, 2, EMapTileTerrain::Unused), "shrink preserves overlap");
@@ -174,6 +257,9 @@ int main()
 	Map->GetStaticMeshComponent()->SetRelativeLocation(FVector(1,0,0));
 	Check(Map->GetGridTransformWarning() != nullptr, "separate mesh transform rejected");
 	Map->GetStaticMeshComponent()->SetTransform(FTransform::Identity);
+	// Give the renderer explicit terrain; its fixture must not depend on the creation layout.
+	Map->SetTile(1,0,EMapTileTerrain::Floor);
+	Map->SetTile(2,0,EMapTileTerrain::Floor);
 	// Exercise the actual ImGui tile button, then read back the real D3D overlay.
 	Map->GetRootComponent()->SetTransform(FTransform::Identity);
 	ImGui::CreateContext();
