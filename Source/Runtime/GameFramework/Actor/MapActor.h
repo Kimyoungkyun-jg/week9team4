@@ -3,15 +3,18 @@
 #include "GameFramework/Actor/StaticMeshActor.h"
 #include "Math/Vector2.h"
 #include "Serialization/StructuredArchive.h"
+#include "Serialization/StructuredArchiveSlots.h"
 
 // Authored terrain only: this is NOT an occupancy or agent-clearance test.
 enum class EMapTileTerrain : uint8 { Floor = 0, Wall = 1, Unused = 2 };
+class UBoxComponent;
 
 class AMapActor : public AStaticMeshActor
 {
 	DECLARE_CLASS(AMapActor, AStaticMeshActor)
 public:
 	AMapActor();
+	void BeginPlay() override;
 	static constexpr int32 MaxGridDimension = 256;
 	static constexpr int32 MaxTileCount = 65536;
 	static constexpr EMapTileTerrain DefaultTerrain = EMapTileTerrain::Floor;
@@ -24,6 +27,11 @@ public:
 	float GetTileSize() const { return TileSize; }
 	const FVector& GetGridOrigin() const { return GridOrigin; }
 	uint64 GetGridRevision() const { return GridRevision; }
+	// Same local boxes used for runtime wall collision and editor debug preview.
+	TArray<FBox> GetWallCollisionLocalBoxes() const;
+	bool HasExistingWallCollision() const;
+	void GenerateWallCollisionComponents();
+	void ClearWallCollisionComponents();
 	bool IsValidTile(int32 Column, int32 Row) const;
 	bool TryGetTile(int32 Column, int32 Row, EMapTileTerrain& OutTerrain) const;
 	// Owning copy of current terrain, including edits/loaded data. Index = Row * Columns + Column.
@@ -59,10 +67,12 @@ private:
 	void ApplyInitialWallOverrides();
 	static bool IsValidConfiguration(int32 InColumns, int32 InRows, float InSize, const FVector& InOrigin);
 	static bool IsValidTerrain(EMapTileTerrain Terrain);
+	void RebuildWallCollision();
 	int32 Columns = InitialColumns;
 	int32 Rows = InitialRows;
 	float TileSize = InitialTileSize;
 	FVector GridOrigin = FVector(-14.0f, -12.0f, -0.978149f);
 	TArray<EMapTileTerrain> Tiles;
 	uint64 GridRevision = 0;
+	TArray<UBoxComponent*> WallCollisionComponents;
 };

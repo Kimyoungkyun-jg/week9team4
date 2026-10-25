@@ -89,10 +89,11 @@ void FWidgetRenderer::DrawMinimap(UMinimapWidget* Widget)
 	bMinimapTerrain = true;
 	const float UExtent = RadiusTiles / Map->GetColumns();
 	const float VExtent = RadiusTiles / Map->GetRows();
+	const float TextureU = 1.0f - PlayerUV.X;
 	const float TextureV = 1.0f - PlayerUV.Y;
 	RenderCommand::BindSamplerState(0, ESamplerState::PointClamp, EShaderBindFlagBits::Pixel);
-	DrawQuad(Rect, PlayerUV.X - UExtent, TextureV - VExtent,
-		PlayerUV.X + UExtent, TextureV + VExtent, Terrain, {1, 1, 1, 1});
+	DrawQuad(Rect, TextureU - UExtent, TextureV - VExtent,
+		TextureU + UExtent, TextureV + VExtent, Terrain, {1, 1, 1, 1});
 	bMinimapTerrain = false;
 	RenderCommand::BindSamplerState(0, ESamplerState::LinearClamp, EShaderBindFlagBits::Pixel);
 	UTexture2D* White = UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
@@ -102,14 +103,14 @@ void FWidgetRenderer::DrawMinimap(UMinimapWidget* Widget)
 		const float DX = (UV.X - PlayerUV.X) * Map->GetColumns();
 		const float DY = (UV.Y - PlayerUV.Y) * Map->GetRows();
 		if (DX * DX + DY * DY > RadiusTiles * RadiusTiles) continue;
-		const float X = ClipCenter.X + DX / RadiusTiles * RadiusPixels;
+		const float X = ClipCenter.X - DX / RadiusTiles * RadiusPixels;
 		const float Y = ClipCenter.Y - DY / RadiusTiles * RadiusPixels;
 		DrawQuad({X - 1.5f, Y - 1.5f, 3.0f, 3.0f}, 0, 0, 1, 1, White, {1.0f, 0.85f, 0.04f, 1.0f});
 	}
 	{
 		const FVector2 Direction = Widget->GetPlayerDirection();
 		const float X = ClipCenter.X, Y = ClipCenter.Y;
-		const FVector2 Forward{Direction.X, -Direction.Y}, Side{-Forward.Y, Forward.X};
+		const FVector2 Forward{-Direction.X, -Direction.Y}, Side{-Forward.Y, Forward.X};
 		DrawTriangle({X + Forward.X * 7.0f, Y + Forward.Y * 7.0f},
 			{X - Forward.X * 4.0f + Side.X * 4.0f, Y - Forward.Y * 4.0f + Side.Y * 4.0f},
 			{X - Forward.X * 4.0f - Side.X * 4.0f, Y - Forward.Y * 4.0f - Side.Y * 4.0f},

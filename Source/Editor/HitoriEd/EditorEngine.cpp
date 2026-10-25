@@ -889,7 +889,8 @@ bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& Sc
 	const FEditorOverlayResources OverlayResources{ GridRenderer.get(), GizmoRenderer.get(), LineBatcher.get(),
 		Outline.get(), OutlineRenderer.get(), Gizmo.get(), TextRenderer.get(), SystemFont,
 		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr,
-		MapTileRenderer.get(), DetailsPanel ? &DetailsPanel->GetMapTileEditor() : nullptr };
+		MapTileRenderer.get(), DetailsPanel ? &DetailsPanel->GetMapTileEditor() : nullptr,
+		!PlayWorld || IsSimulatingInEditor() };
 	if (ViewClient)
 		EditorPasses.ConfigureViewportOverlays(OverlayResources, ViewClient, bIsPIE,
 			ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex());

@@ -172,7 +172,7 @@ FTexture2D* UMinimapWidget::GetTerrainTexture()
 		for (int32 X = 0; X < Columns; ++X)
 		{
 			EMapTileTerrain Terrain;
-			if (Map->TryGetTile(X, Rows - 1 - Y, Terrain))
+			if (Map->TryGetTile(Columns - 1 - X, Rows - 1 - Y, Terrain))
 				Pixels[Y * Columns + X] = Terrain == EMapTileTerrain::Floor ? 0xFF454B53u
 					: Terrain == EMapTileTerrain::Wall ? 0xFF10131Au : 0xFF242832u;
 		}

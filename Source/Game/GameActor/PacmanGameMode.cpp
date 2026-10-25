@@ -8,7 +8,6 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor/MapActor.h"
 #include "GameFramework/GameHUD.h"
-#include "Components/SphereComponent.h"
 #include <limits>
 #include <string>
 
@@ -53,9 +52,6 @@ void APacmanGameMode::BeginPlay()
 
 	SetCoinCount(0);
 	MaxCoinCount = 0;
-	if (APlayerPawn* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
-		if (USphereComponent* Collision = Player->GetCollisionComponent())
-			Collision->SetSphereRadius(0.2f);
 	int32 StartColumn = -1, StartRow = -1;
 	if (APawn* Player = World->GetPlayerPawn())
 		Map->TryWorldToTileXYProjected(Player->GetActorLocation(), StartColumn, StartRow);

@@ -70,6 +70,15 @@ void FMapTileEditor::DrawDetails(AMapActor& Map)
 	{
 		if (Map.ResetGridToInitial()) SelectedColumn = SelectedRow = -1;
 	}
+	if (ImGui::Button("Generate Wall Collision Boxes"))
+	{
+		Map.GenerateWallCollisionComponents();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Clear Wall Collision Boxes"))
+	{
+		Map.ClearWallCollisionComponents();
+	}
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Restore 56 x 48 tiles, size 0.5, the current mesh's floor height and mesh-derived terrain with initial Wall overrides.\nMesh and Actor transform are preserved. Tile edits will be replaced.");
 	for (int I = 0; I < 3; ++I)
