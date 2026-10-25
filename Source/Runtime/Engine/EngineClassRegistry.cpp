@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "EngineClassRegistry.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
+#include "GameFramework/Actor/MapActor.h"
 #include "GameFramework/Actor/DirectionalLightActor.h"
 #include "GameFramework/Actor/PointLightActor.h"
 #include "GameFramework/Actor/SpotLightActor.h"
@@ -23,6 +24,7 @@
 void RegisterEngineClasses()
 {
     (void)AStaticMeshActor::StaticClass();
+    (void)AMapActor::StaticClass();
     (void)ADirectionalLightActor::StaticClass();
     (void)APointLightActor::StaticClass();
     (void)ASpotLightActor::StaticClass();

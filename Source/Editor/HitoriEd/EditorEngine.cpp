@@ -105,6 +105,8 @@ bool UEditorEngine::Init()
 
 	GridRenderer = MakeUnique<FGridRenderer>();
 	GridRenderer->Init(Renderer);
+	MapTileRenderer = MakeUnique<FMapTileRenderer>();
+	MapTileRenderer->Init();
 
 	GizmoRenderer = MakeUnique<FGizmoRenderer>();
 	GizmoRenderer->Init(Renderer);
@@ -872,7 +874,8 @@ bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& Sc
 	FEditorViewPasses EditorPasses(Options, SceneView, Targets.SceneColor.get(), Targets.Depth.get(), SceneDepthRenderer.get(), CascadeFloorRenderer.get());
 	const FEditorOverlayResources OverlayResources{ GridRenderer.get(), GizmoRenderer.get(), LineBatcher.get(),
 		Outline.get(), OutlineRenderer.get(), Gizmo.get(), TextRenderer.get(), SystemFont,
-		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr };
+		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr,
+		MapTileRenderer.get(), DetailsPanel ? &DetailsPanel->GetMapTileEditor() : nullptr };
 	if (ViewClient)
 		EditorPasses.ConfigureViewportOverlays(OverlayResources, ViewClient, bIsPIE,
 			ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex());
