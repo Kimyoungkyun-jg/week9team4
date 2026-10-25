@@ -4,12 +4,38 @@
 #include "Engine/World.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/SphereComponent.h"
 
-APlayerPawn::APlayerPawn() = default;
+APlayerPawn::APlayerPawn()
+{
+	SetActorEnableCollision(true);
+	CollisionComponent = CreateDefaultSubobject<USphereComponent>("CollisionComponent");
+	SetRootComponent(CollisionComponent);
+	CollisionComponent->SetSphereRadius(1.5f);
+	CollisionComponent->SetCollisionEnabled(true);
+	CollisionComponent->SetCollisionObjectType(ECollisionChannel::Pawn);
+	CollisionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::Overlap);
+	CollisionComponent->SetGenerateOverlapEvents(true);
+
+	if (UCameraComponent* Camera = GetCameraComponent())
+	{
+		Camera->SetupAttachment(CollisionComponent);
+	}
+}
 
 void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
+	SetActorEnableCollision(true);
+	if (CollisionComponent)
+	{
+		CollisionComponent->SetCollisionEnabled(true);
+		CollisionComponent->SetCollisionObjectType(ECollisionChannel::Pawn);
+		CollisionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::Overlap);
+		CollisionComponent->SetGenerateOverlapEvents(true);
+		CollisionComponent->UpdateOverlaps();
+	}
+
 	UWorld* PawnWorld = GetWorld();
 	if (!PawnWorld || (PawnWorld->GetWorldType() != EWorldType::PIE && PawnWorld->GetWorldType() != EWorldType::Game)) return;
 

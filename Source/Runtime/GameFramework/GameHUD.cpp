@@ -14,7 +14,12 @@ bool AGameHUD::Initialize(APlayerController* PlayerController, FGameViewportClie
 	if (!PlayerController || !Viewport) return false;
 	OwningPlayerController = PlayerController;
 	GameViewport = Viewport;
-	return WidgetAssetPath.empty() || ShowWidget(WidgetAssetPath);
+	bool bLoaded = WidgetAssetPath.empty() || ShowWidget(WidgetAssetPath);
+	if (bLoaded)
+	{
+		SetText("Coins", "0");
+	}
+	return bLoaded;
 }
 
 bool AGameHUD::ShowWidget(const FString& Path)

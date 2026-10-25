@@ -5,6 +5,7 @@
 class USphereComponent;
 class URotatingMovementComponent;
 class UStaticMeshComponent;
+class UPrimitiveComponent;
 
 class ACoinActor : public AActor
 {
@@ -19,6 +20,8 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimitiveComponent* OtherComponent);
 
 	USphereComponent* GetSphereComponent() const { return SphereComponent; }
 	URotatingMovementComponent* GetRotatingMovementComponent() const { return RotatingMovementComponent; }
