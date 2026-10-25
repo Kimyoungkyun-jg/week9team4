@@ -3,6 +3,7 @@
 #include "UI/WidgetAsset.h"
 #include "Asset/AssetManager.h"
 #include "Render/Texture2D.h"
+#include "UObject/UObjectIterator.h"
 #include "Core/EngineLog.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
 
@@ -54,6 +55,7 @@ void FWidgetEditorPanel::NewAsset()
 	bDirty = false;
 	Select(Root.get());
 	ResetHistory();
+	ActionStatus = "New UI asset created";
 }
 
 bool FWidgetEditorPanel::RequestOpenAsset(const FString& Path)
@@ -83,7 +85,7 @@ void FWidgetEditorPanel::ApplyPendingAction()
 bool FWidgetEditorPanel::OpenAsset(const FString& Path)
 {
 	TUniquePtr<UCanvasWidget> Loaded = FWidgetAsset::Load(Path);
-	if (!Loaded) return false;
+	if (!Loaded) { ActionStatus = "Failed to open: " + Path; return false; }
 	Root = std::move(Loaded);
 	AssetPath = Path;
 	std::snprintf(PathBuffer, sizeof(PathBuffer), "%s", AssetPath.c_str());
@@ -91,21 +93,24 @@ bool FWidgetEditorPanel::OpenAsset(const FString& Path)
 	Select(Root.get());
 	ResetHistory();
 	SetOpen(true);
+	ActionStatus = "Opened: " + Path;
 	return true;
 }
 
 void FWidgetEditorPanel::SaveAsset()
 {
-	if (!Root || PathBuffer[0] == '\0') return;
+	if (!Root || PathBuffer[0] == '\0') { ActionStatus = "Enter a UI asset path before saving"; return; }
 	const FString Path = PathBuffer;
 	if (!Path.ends_with(".ui.json") || !FWidgetAsset::Save(*Root, Path))
 	{
 		HTR_LOG(Error, "Failed to save UI asset: {}", Path);
+		ActionStatus = "Failed to save: " + Path;
 		return;
 	}
 	AssetPath = Path;
 	bDirty = false;
 	SavedSnapshot = FWidgetAsset::Serialize(*Root);
+	ActionStatus = "Saved: " + Path;
 }
 
 void FWidgetEditorPanel::ResetHistory()
@@ -121,6 +126,7 @@ void FWidgetEditorPanel::ResetHistory()
 void FWidgetEditorPanel::MarkDirty()
 {
 	if (!Root) return;
+	ActionStatus.clear();
 	FString Snapshot = FWidgetAsset::Serialize(*Root);
 	if (Snapshot.empty()) return;
 	const ImGuiID ActiveID = ImGui::GetActiveID();
@@ -152,12 +158,12 @@ void FWidgetEditorPanel::RestoreHistory()
 
 void FWidgetEditorPanel::Undo()
 {
-	if (HistoryIndex > 0) { --HistoryIndex; RestoreHistory(); }
+	if (HistoryIndex > 0) { --HistoryIndex; RestoreHistory(); ActionStatus = "Undo applied"; }
 }
 
 void FWidgetEditorPanel::Redo()
 {
-	if (HistoryIndex + 1 < History.size()) { ++HistoryIndex; RestoreHistory(); }
+	if (HistoryIndex + 1 < History.size()) { ++HistoryIndex; RestoreHistory(); ActionStatus = "Redo applied"; }
 }
 
 void FWidgetEditorPanel::DuplicateSelected()
@@ -428,7 +434,45 @@ void FWidgetEditorPanel::DrawDetails()
 	}
 	if (UImageWidget* Image = Cast<UImageWidget>(Selected))
 	{
-		if (ImGui::InputText("Texture", ValueBuffer, sizeof(ValueBuffer))) { Image->SetTexturePath(ValueBuffer); MarkDirty(); }
+		const FString CurrentPath = Image->GetTexturePath();
+		UTexture2D* CurrentTexture = UAssetManager::GetAssetByPath<UTexture2D>(CurrentPath);
+		if (CurrentTexture && CurrentTexture->GetResource() && CurrentTexture->GetResource()->GetSRV())
+		{
+			ImGui::Image((ImTextureID)CurrentTexture->GetResource()->GetSRV(), {64.0f, 64.0f});
+			ImGui::SameLine();
+		}
+		const FString Preview = CurrentPath.empty() ? "None" : std::filesystem::path(CurrentPath).filename().string();
+		if (ImGui::BeginCombo("Texture", Preview.c_str()))
+		{
+			if (ImGui::Selectable("None", CurrentPath.empty()))
+			{
+				Image->SetTexturePath("");
+				Select(Image);
+				MarkDirty();
+			}
+			for (TObjectIterator<UTexture2D> It{}; It; ++It)
+			{
+				UTexture2D* Texture = *It;
+				if (!Texture || !Texture->GetPath().starts_with("Assets/Icons/") || !Texture->GetResource() ||
+					!Texture->GetResource()->GetSRV() ||
+					UAssetManager::GetAssetByPath<UTexture2D>(Texture->GetPath()) != Texture) continue;
+				const FString Path = Texture->GetPath();
+				ImGui::PushID(Texture);
+				const bool ChosenByThumbnail = ImGui::ImageButton("##Thumbnail", (ImTextureID)Texture->GetResource()->GetSRV(), {28.0f, 28.0f});
+				ImGui::SameLine();
+				const bool ChosenByName = ImGui::Selectable(Path.c_str(), Path == CurrentPath, ImGuiSelectableFlags_None, {0.0f, 28.0f});
+				if (ChosenByThumbnail || ChosenByName)
+				{
+					Image->SetTexturePath(Path);
+					Select(Image);
+					MarkDirty();
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::PopID();
+			}
+			ImGui::EndCombo();
+		}
+		if (ImGui::IsItemHovered() && !CurrentPath.empty()) ImGui::SetTooltip("%s", CurrentPath.c_str());
 		if (ImGui::BeginDragDropTarget())
 		{
 			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::Texture))
@@ -496,17 +540,22 @@ void FWidgetEditorPanel::OnRender()
 	}
 	if (ImGui::Button("New")) RequestNewAsset();
 	ImGui::SameLine();
-	if (ImGui::Button("Open") && !RequestOpenAsset(PathBuffer)) HTR_LOG(Error, "Failed to open UI asset: {}", PathBuffer);
+	if (ImGui::Button("Open")) ImGui::OpenPopup("Open UI asset");
 	ImGui::SameLine();
 	if (ImGui::Button("Save")) SaveAsset();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(HistoryIndex == 0);
 	if (ImGui::Button("Undo")) Undo();
+	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(HistoryIndex + 1 >= History.size());
 	if (ImGui::Button("Redo")) Redo();
+	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::TextUnformatted(bDirty ? "Unsaved changes" : std::filesystem::exists(AssetPath) ? "Saved" : "New asset");
 	ImGui::SetNextItemWidth(-1);
 	ImGui::InputText("##AssetPath", PathBuffer, sizeof(PathBuffer));
+	if (!ActionStatus.empty()) ImGui::TextWrapped("%s", ActionStatus.c_str());
 	if (ImGui::BeginTable("##WidgetEditor", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV,
 		{0, 0}))
 	{
@@ -514,6 +563,7 @@ void FWidgetEditorPanel::OnRender()
 		ImGui::TableSetupColumn("Canvas", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, 300.0f);
 		ImGui::TableNextColumn();
+		ImGui::PushID("HierarchyControls");
 		ImGui::TextUnformatted("Add Widget");
 		if (ImGui::Button("Canvas")) AddWidget(0);
 		ImGui::SameLine();
@@ -528,7 +578,9 @@ void FWidgetEditorPanel::OnRender()
 		ImGui::SeparatorText("Hierarchy");
 		if (Root) DrawHierarchy(Root.get());
 		ApplyReparent();
+		ImGui::PopID();
 		ImGui::TableNextColumn();
+		ImGui::PushID("PreviewControls");
 		ImGui::TextUnformatted("Preview Size (W / H)");
 		ImGui::SetNextItemWidth(std::min(300.0f, ImGui::GetContentRegionAvail().x));
 		float Dimensions[2] = {PreviewWidth, PreviewHeight};
@@ -536,10 +588,33 @@ void FWidgetEditorPanel::OnRender()
 		{ PreviewWidth = std::clamp(Dimensions[0], 320.0f, 3840.0f);
 		  PreviewHeight = std::clamp(Dimensions[1], 240.0f, 2160.0f); }
 		DrawCanvas();
+		ImGui::PopID();
 		ImGui::TableNextColumn();
+		ImGui::PushID("WidgetDetails");
 		ImGui::SeparatorText("Details");
 		DrawDetails();
+		ImGui::PopID();
 		ImGui::EndTable();
+	}
+	if (ImGui::BeginPopupModal("Open UI asset", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		std::vector<FString> Paths;
+		std::error_code Error;
+		std::filesystem::directory_iterator It("Assets/UI", Error);
+		const std::filesystem::directory_iterator End;
+		for (; !Error && It != End; It.increment(Error))
+			if (It->is_regular_file(Error) && It->path().generic_string().ends_with(".ui.json"))
+				Paths.push_back(It->path().generic_string());
+		std::sort(Paths.begin(), Paths.end());
+		if (Paths.empty()) ImGui::TextUnformatted("No .ui.json files in Assets/UI");
+		for (const FString& Path : Paths)
+			if (ImGui::Selectable(std::filesystem::path(Path).filename().string().c_str()))
+			{
+				if (!RequestOpenAsset(Path)) HTR_LOG(Error, "Failed to open UI asset: {}", Path);
+				ImGui::CloseCurrentPopup();
+			}
+		if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
 	}
 	if (PendingAction != EPendingAction::None) ImGui::OpenPopup("Unsaved UI changes");
 	if (ImGui::BeginPopupModal("Unsaved UI changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

@@ -1,2 +1,3 @@
-call Setup\premake5.exe vs2026
-PAUSE
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Setup\SetupTeam.ps1" %*
+exit /b %ERRORLEVEL%

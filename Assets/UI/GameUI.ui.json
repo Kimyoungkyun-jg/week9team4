@@ -1,0 +1,125 @@
+{
+    "Root": {
+        "Children": [
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        26.7796630859375,
+                        20.0
+                    ],
+                    "Size": [
+                        54.23723602294922,
+                        54.779640197753906
+                    ],
+                    "TexturePath": "Assets/Icons/heart.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        75.03399658203125,
+                        20.0
+                    ],
+                    "Size": [
+                        54.23723602294922,
+                        54.779640197753906
+                    ],
+                    "TexturePath": "Assets/Icons/heart.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1Copy",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        127.06800079345703,
+                        20.0
+                    ],
+                    "Size": [
+                        54.23723602294922,
+                        54.779640197753906
+                    ],
+                    "TexturePath": "Assets/Icons/heart.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1CopyCopy",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            }
+        ],
+        "Class": "UCanvasWidget",
+        "Properties": {
+            "Anchor": [
+                0.0,
+                0.0
+            ],
+            "Pivot": [
+                0.0,
+                0.0
+            ],
+            "Position": [
+                0.0,
+                0.0
+            ],
+            "Size": [
+                100.0,
+                100.0
+            ],
+            "WidgetName": "Root",
+            "ZOrder": 0,
+            "bVisible": true
+        }
+    },
+    "Version": 1
+}

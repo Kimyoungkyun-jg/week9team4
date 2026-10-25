@@ -49,6 +49,7 @@ private:
 	bool bResizing = false;
 	EPendingAction PendingAction = EPendingAction::None;
 	FString PendingPath;
+	FString ActionStatus;
 	int32 NewWidgetIndex = 1;
 	float PreviewWidth = 1280.0f;
 	float PreviewHeight = 720.0f;
