@@ -1,7 +1,6 @@
 #include "EnginePCH.h"
 #include "ProjectileMovementComponent.h"
 #include "Engine/World.h"
-#include "GameFramework/TestGameMode.h"
 #include <cmath>
 
 const float UProjectileMovementComponent::MIN_TICK_TIME = 1e-6f;
@@ -33,9 +32,9 @@ void UProjectileMovementComponent::InitializeComponent()
 
 	if (Velocity.SizeSquared() > 0.0f)
 	{
-		if (InintialSpeed > 0.0f)
+		if (InitialSpeed > 0.0f)
 		{
-			Velocity = Velocity.Normalized() * InintialSpeed;
+			Velocity = Velocity.Normalized() * InitialSpeed;
 		}
 
 		if (bInitialVelocityInLocalSpace)
@@ -60,7 +59,7 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 
 	Super::TickComponent(DeltaTime);
 
-	if (!bSimulationEnabled || DeltaTime <= 0.0f || UpdatedComponent == nullptr)
+	if (!bSimulationEnabled || DeltaTime <= 0.0f || !HasValidUpdatedComponent())
 	{
 		return;
 	}
@@ -134,7 +133,7 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 
 void UProjectileMovementComponent::SetVelocityInLocalSpace(FVector NewVelocity)
 {
-	if (UpdatedComponent)
+	if (HasValidUpdatedComponent())
 	{
 		Velocity = UpdatedComponent->GetWorldMatrix().TransformVectorNoScale(NewVelocity);
 	}
@@ -220,10 +219,6 @@ FVector UProjectileMovementComponent::ComputeBounceResult(const FHitResult& Hit,
 
 void UProjectileMovementComponent::HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta)
 {	
-	if (UWorld* World = GetWorld())
-		if (ATestGameMode* GameMode = Cast<ATestGameMode>(World->GetGameMode()))
-			GameMode->NotifyProjectileHit(Hit);
-
 	if (bShouldBounce)
 	{
 		const FVector OldVelocity = Velocity;
@@ -241,6 +236,7 @@ void UProjectileMovementComponent::HandleImpact(const FHitResult& Hit, float Tim
 		bSimulationEnabled = false;
 		Velocity = FVector::ZeroVector;
 	}
+	OnProjectileImpact.Broadcast(Hit);
 }
 
 bool UProjectileMovementComponent::HandleDeflection(FHitResult& Hit, const FVector& OldVelocity, float& SubTickTimeRemaining)
@@ -279,7 +275,7 @@ bool UProjectileMovementComponent::HandleSliding(FHitResult& Hit, float& SubTick
 	FHitResult InitailHit;
 	const FVector OldHitNormal = ConstrainDirectionToPlane(Hit.Normal);
 
-	MoveUpdatedComponent(Velocity * SubTickTimeRemaining, UpdatedComponent->GetRelativeRotation(), bSweepCollision, &Hit);
+	MoveUpdatedComponent(Velocity * SubTickTimeRemaining, UpdatedComponent->GetWorldRotation(), bSweepCollision, &Hit);
 
 	if (Hit.bBlockingHit)
 	{

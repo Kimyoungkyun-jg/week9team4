@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "World.h"
 #include "Level.h"
+#include "EngineClassRegistry.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -61,6 +62,7 @@ UWorld::~UWorld()
 
 bool UWorld::Init()
 {
+    RegisterEngineClasses();
 	// Spawn Actor로 카메라 생성하고 세팅하기
 	PersistentLevel = NewObject<ULevel>(this);
 
@@ -164,6 +166,11 @@ void UWorld::Tick(float DeltaTime)
 	}
 
 
+    const auto Pending = PendingOverlapUpdates; PendingOverlapUpdates.Reset();
+    for (UPrimitiveComponent* Component : Pending)
+        if (CollisionComponents.Find(Component) != INDEX_NONE) UpdateComponentOverlaps(Component);
+    DispatchCollisionEvents();
+
 }
 
 void UWorld::ClearWorld()
@@ -193,7 +200,15 @@ void UWorld::ClearWorld()
 	Scene.RemoveAllPrimitives();
 	for (ULevel* Level : Levels)
 		Level->ClearActors();
+    CollisionEvents.Reset();
+    PendingOverlapUpdates.Reset();
+    CollisionEntries.Reset();
+    CollisionBVH.Clear();
+    DirtyCollisionComponents.Reset();
+    bCollisionTopologyDirty = true;
 	GameMode = nullptr;
+	HUD = nullptr;
+	HUDClassOverride = nullptr;
 	HTR_LOG(Info, "{} : ", PersistentLevel->GetActorNum());
 }
 
@@ -482,6 +497,11 @@ bool UWorld::DestroyActor(AActor* Actor)
 	if (!Actor)
 		return false;
 	if (Actor->bIsEndingPlay) return false;
+    if (bDispatchingCollisionEvents)
+    {
+        if (DeferredActorDestruction.Find(Actor) == INDEX_NONE) DeferredActorDestruction.Add(Actor);
+        return true;
+    }
 
 	ULevel* Level = Actor->GetLevel();
 
@@ -491,6 +511,7 @@ bool UWorld::DestroyActor(AActor* Actor)
 	for (AActor* Current : Level->Actors)
 		if (Current == Actor) { bOwnedByLevel = true; break; }
 	if (!bOwnedByLevel) return false;
+    RemoveCollisionListeners(Actor);
 
 	// 1. BeginPlay 대기열에서 제거
 	TQueue<AActor*> NewBeginPlayList;
@@ -558,79 +579,6 @@ bool UWorld::DestroyActor(AActor* Actor)
 	HTR_LOG(Info, "Destroy Actor : {} UUID {}", ActorName, ActorUUID);
 
 	return true;
-}
-
-// 다른 World의 객체를 제외하고 Component 교차 중 최근접 결과를 선택한다.
-bool UWorld::SweepSingle(const FRay& WorldRay, float MaxDistance, float Radius, FHitResult& OutHit, AActor* IgnoreActor)
-{
-	OutHit = FHitResult(1.0f);
-	if (MaxDistance <= 0.0f || !std::isfinite(MaxDistance) || Radius < 0.0f || !std::isfinite(Radius)) return false;
-	Scene.UpdateAllTransforms();
-	float NearestT = MaxDistance;
-	const FVector Extent(Radius, Radius, Radius);
-	const FPreparedRay PreparedRay(WorldRay);
-	Scene.BVH.TraceClosest(
-		[&](const FBox& Bounds, float& OutEnterT)
-		{
-			return RayIntersectsAABB(PreparedRay, Bounds.Min - Extent, Bounds.Max + Extent, OutEnterT);
-		},
-		[&](FPrimitiveSceneProxy* Proxy, float& InOutNearestT)
-		{
-			UPrimitiveComponent* Component = Proxy ? Proxy->GetComponent() : nullptr;
-			if (!Component || !Component->IsShown(true) ||
-				!Component->GetOwner() || !Component->GetOwner()->GetActorEnableCollision() ||
-				Component->GetOwner() == IgnoreActor || Component->GetOwner()->GetWorld() != this)
-				return false;
-			if (!Proxy->GetMesh())
-			{
-				const FMatrix& WorldToLocal = Proxy->GetWorldToLocal();
-				const FRay LocalRay{
-					.Origin = WorldToLocal.TransformPosition(WorldRay.Origin),
-					.Direction = WorldToLocal.TransformVector(WorldRay.Direction)
-				};
-				float T = InOutNearestT;
-				if (!Component->LineTraceComponentLocal(LocalRay, T) || T > InOutNearestT) return false;
-				OutHit.bBlockingHit = true;
-				OutHit.HitComponent = Component;
-				OutHit.Distance = T;
-				OutHit.Time = T / MaxDistance;
-				OutHit.ImpactPoint = WorldRay.Origin + WorldRay.Direction * T;
-				OutHit.Location = OutHit.ImpactPoint;
-				OutHit.ImpactNormal = -WorldRay.Direction;
-				OutHit.Normal = OutHit.ImpactNormal;
-				InOutNearestT = T;
-				return true;
-			}
-
-			FAABB Bounds = Proxy->GetBounds();
-			Bounds.Extent += Extent;
-			float T = InOutNearestT;
-			if (!RayIntersectsAABB(WorldRay, Bounds.Center - Bounds.Extent, Bounds.Center + Bounds.Extent, T) ||
-				T > InOutNearestT) return false;
-
-			const FVector Point = WorldRay.Origin + WorldRay.Direction * T;
-			const FVector Offset = Point - Bounds.Center;
-			const float X = Bounds.Extent.X > 0.0f ? Offset.X / Bounds.Extent.X : 0.0f;
-			const float Y = Bounds.Extent.Y > 0.0f ? Offset.Y / Bounds.Extent.Y : 0.0f;
-			const float Z = Bounds.Extent.Z > 0.0f ? Offset.Z / Bounds.Extent.Z : 0.0f;
-			const float AX = std::abs(X), AY = std::abs(Y), AZ = std::abs(Z);
-			FVector Normal = AX >= AY && AX >= AZ ? FVector(X >= 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f)
-				: AY >= AZ ? FVector(0.0f, Y >= 0.0f ? 1.0f : -1.0f, 0.0f)
-				: FVector(0.0f, 0.0f, Z >= 0.0f ? 1.0f : -1.0f);
-			if (Normal.Dot(WorldRay.Direction) > 0.0f) return false;
-
-			OutHit.bBlockingHit = true;
-			OutHit.HitComponent = Component;
-			OutHit.Distance = T;
-			OutHit.Time = T / MaxDistance;
-			OutHit.ImpactPoint = Point;
-			OutHit.Location = Point;
-			OutHit.ImpactNormal = Normal;
-			OutHit.Normal = Normal;
-			InOutNearestT = T;
-			return true;
-		}, NearestT);
-	return OutHit.bBlockingHit;
 }
 
 bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
@@ -745,6 +693,22 @@ void UWorld::BeginPlay()
 	if (DefaultPawnClass) GameMode->SetDefaultPawnClass(DefaultPawnClass);
 	if (PlayerControllerClass) GameMode->SetPlayerControllerClass(PlayerControllerClass);
 	GameMode->SpawnPlayer(PlayerPawn, PlayerController);
+	if (PlayerController)
+	{
+		UClass* Class = GetHUDClass();
+		if (Class && Class->IsChildOf(AGameHUD::StaticClass()) && Class->Constructor)
+		{
+			HUD = Cast<AGameHUD>(SpawnActor(Class));
+			FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(this) : nullptr;
+			if (HUD)
+			{
+				PlayerController->SetHUD(HUD);
+				if (!HUD->Initialize(PlayerController, Context ? Context->GameViewport.get() : nullptr))
+					HTR_LOG(Warning, "Failed to initialize HUD {}", Class->Name);
+			}
+		}
+		else HTR_LOG(Warning, "Invalid HUD class for world");
+	}
 
 	// 기존 액터 목록을 고정한 후 시작한다. BeginPlay 중 생성된 액터는 대기열로 간다.
 	TArray<AActor*> InitialActors;
@@ -771,6 +735,24 @@ bool UWorld::SetGameModeClass(UClass* Class)
 	GameModeClass = Class;
 	DefaultPawnClass = nullptr;
 	PlayerControllerClass = nullptr;
+	return true;
+}
+
+UClass* UWorld::GetHUDClass() const
+{
+	if (HUDClassOverride) return HUDClassOverride;
+	if (GameMode) return GameMode->GetHUDClass();
+	UClass* ModeClass = GameModeClass;
+	if (!ModeClass || !ModeClass->IsChildOf(AGameMode::StaticClass()) || !ModeClass->Constructor)
+		return AGameHUD::StaticClass();
+	AGameMode* DefaultMode = static_cast<AGameMode*>(ModeClass->GetDefaultObject());
+	return DefaultMode->GetHUDClass();
+}
+
+bool UWorld::SetHUDClassOverride(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(AGameHUD::StaticClass()) || !Class->Constructor)) return false;
+	HUDClassOverride = Class;
 	return true;
 }
 
@@ -825,12 +807,14 @@ void UWorld::EndPlay()
 	}
 	if (PlayerController)
 	{
+		PlayerController->SetHUD(nullptr);
 		PlayerController->ClearInputState();
 		PlayerController->UnPossess();
 	}
 	PlayerController = nullptr;
 	PlayerPawn = nullptr;
 	GameMode = nullptr;
+	HUD = nullptr;
 	bIsPaused = false;
 }
 

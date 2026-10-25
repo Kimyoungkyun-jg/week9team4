@@ -1,5 +1,5 @@
 {
-    "Version": 4,
+    "Version": 5,
     "World": {
         "PersistentLevel": {
             "Actors": [
@@ -13,19 +13,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
+                                        "X": 0.0,
+                                        "Y": 0.0,
                                         "Z": -0.5
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 50,
-                                        "Y": 30,
-                                        "Z": 1
+                                        "X": 50.0,
+                                        "Y": 30.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -35,6 +35,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -42,19 +55,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -68,7 +81,8 @@
                     "Name": "Floor_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "ADirectionalLightActor",
@@ -80,19 +94,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -106,27 +120,27 @@
                             "Parent": "",
                             "Properties": {
                                 "AngularRadiusDegrees": 0.5,
-                                "Intensity": 1,
+                                "Intensity": 1.0,
                                 "LightColor": 4294967295,
                                 "ShadowBias": 0.009999999776482582,
-                                "ShadowResolutionScale": 1,
-                                "ShadowSharpen": 0,
+                                "ShadowResolutionScale": 1.0,
+                                "ShadowSharpen": 0.0,
                                 "ShadowSlopeBias": 0.009999999776482582,
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 30
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 30.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 60,
-                                        "Roll": 0,
-                                        "Yaw": 20
+                                        "Pitch": 60.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 20.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -137,32 +151,45 @@
                         },
                         {
                             "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Material": {
                                 "Base": "BillboardMaterial",
                                 "Instance": {
                                     "BaseColor": {
-                                        "W": 1,
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     },
                                     "BlendState": "AlphaBlend",
                                     "FlipNormalY": false,
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
-                                    "Shininess": 32,
+                                    "Shininess": 32.0,
                                     "SpecularColor": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     },
                                     "Textures": [
                                         "Assets/Icons/Directional.png"
                                     ],
                                     "UVScrollSpeed": [
-                                        0,
-                                        0
+                                        0.0,
+                                        0.0
                                     ]
                                 }
                             },
@@ -171,19 +198,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -195,6 +222,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UArrowComponent",
                             "OverrideMaterials": [
                                 {
@@ -206,14 +246,14 @@
                                 "StaticMesh": "Arrow",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 90,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 90.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
                                         "X": 0.30000001192092896,
@@ -232,7 +272,8 @@
                     "Name": "DirectionalLight_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -244,19 +285,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": -14,
-                                        "Y": 0,
-                                        "Z": 4
+                                        "X": -14.0,
+                                        "Y": 0.0,
+                                        "Z": 4.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 2,
-                                        "Y": 2,
-                                        "Z": 2
+                                        "X": 2.0,
+                                        "Y": 2.0,
+                                        "Z": 2.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -266,6 +307,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -273,19 +327,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -299,7 +353,8 @@
                     "Name": "A_Caster_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -311,19 +366,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": -14,
-                                        "Y": 0,
+                                        "X": -14.0,
+                                        "Y": 0.0,
                                         "Z": 1.5
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 0.15,
-                                        "Y": 0.15,
-                                        "Z": 3
+                                        "X": 0.15000000596046448,
+                                        "Y": 0.15000000596046448,
+                                        "Z": 3.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -333,6 +388,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -340,19 +408,19 @@
                                 "StaticMesh": "Cylinder",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -366,7 +434,8 @@
                     "Name": "A_Post_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -378,19 +447,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": -4,
-                                        "Y": 0,
-                                        "Z": 4
+                                        "X": -4.0,
+                                        "Y": 0.0,
+                                        "Z": 4.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 2,
-                                        "Y": 2,
-                                        "Z": 2
+                                        "X": 2.0,
+                                        "Y": 2.0,
+                                        "Z": 2.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -400,6 +469,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -407,19 +489,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -433,7 +515,8 @@
                     "Name": "B_NoCast_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -445,19 +528,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": -4,
-                                        "Y": 0,
+                                        "X": -4.0,
+                                        "Y": 0.0,
                                         "Z": 1.5
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 0.15,
-                                        "Y": 0.15,
-                                        "Z": 3
+                                        "X": 0.15000000596046448,
+                                        "Y": 0.15000000596046448,
+                                        "Z": 3.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -467,6 +550,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -474,19 +570,19 @@
                                 "StaticMesh": "Cylinder",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -500,7 +596,8 @@
                     "Name": "B_Post_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -512,19 +609,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 9,
-                                        "Y": 0,
-                                        "Z": 0.1
+                                        "X": 9.0,
+                                        "Y": 0.0,
+                                        "Z": 0.10000000149011612
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 6,
-                                        "Y": 6,
-                                        "Z": 0.2
+                                        "X": 6.0,
+                                        "Y": 6.0,
+                                        "Z": 0.20000000298023224
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -534,6 +631,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -541,19 +651,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -567,7 +677,8 @@
                     "Name": "C_NoReceivePlate_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -579,19 +690,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 9,
-                                        "Y": 0,
-                                        "Z": 4
+                                        "X": 9.0,
+                                        "Y": 0.0,
+                                        "Z": 4.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 2,
-                                        "Y": 2,
-                                        "Z": 2
+                                        "X": 2.0,
+                                        "Y": 2.0,
+                                        "Z": 2.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -601,6 +712,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -608,19 +732,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -634,7 +758,8 @@
                     "Name": "C_Caster_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -646,19 +771,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 9,
-                                        "Y": 0,
-                                        "Z": 1.7
+                                        "X": 9.0,
+                                        "Y": 0.0,
+                                        "Z": 1.7000000476837158
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 0.15,
-                                        "Y": 0.15,
-                                        "Z": 3
+                                        "X": 0.15000000596046448,
+                                        "Y": 0.15000000596046448,
+                                        "Z": 3.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -668,6 +793,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -675,19 +813,19 @@
                                 "StaticMesh": "Cylinder",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -701,7 +839,8 @@
                     "Name": "C_Post_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -713,19 +852,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 19,
-                                        "Y": 0,
-                                        "Z": 0.1
+                                        "X": 19.0,
+                                        "Y": 0.0,
+                                        "Z": 0.10000000149011612
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 6,
-                                        "Y": 6,
-                                        "Z": 0.2
+                                        "X": 6.0,
+                                        "Y": 6.0,
+                                        "Z": 0.20000000298023224
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -735,6 +874,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -742,19 +894,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -768,7 +920,8 @@
                     "Name": "D_ReceivePlate_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -780,19 +933,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 19,
-                                        "Y": 0,
-                                        "Z": 4
+                                        "X": 19.0,
+                                        "Y": 0.0,
+                                        "Z": 4.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 2,
-                                        "Y": 2,
-                                        "Z": 2
+                                        "X": 2.0,
+                                        "Y": 2.0,
+                                        "Z": 2.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -802,6 +955,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -809,19 +975,19 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -835,7 +1001,8 @@
                     "Name": "D_Caster_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -847,19 +1014,19 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 19,
-                                        "Y": 0,
-                                        "Z": 1.7
+                                        "X": 19.0,
+                                        "Y": 0.0,
+                                        "Z": 1.7000000476837158
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 0.15,
-                                        "Y": 0.15,
-                                        "Z": 3
+                                        "X": 0.15000000596046448,
+                                        "Y": 0.15000000596046448,
+                                        "Z": 3.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -869,6 +1036,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -876,19 +1056,19 @@
                                 "StaticMesh": "Cylinder",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0,
-                                        "Y": 0,
-                                        "Z": 0
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
-                                        "Pitch": 0,
-                                        "Roll": 0,
-                                        "Yaw": 0
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1,
-                                        "Y": 1,
-                                        "Z": 1
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -902,11 +1082,16 @@
                     "Name": "D_Post_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}
         },
-        "Properties": {}
+        "Properties": {
+            "DefaultPawnClass": "",
+            "GameModeClass": "AGameMode",
+            "PlayerControllerClass": ""
+        }
     }
 }

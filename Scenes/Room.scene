@@ -1,5 +1,5 @@
 {
-    "Version": 4,
+    "Version": 5,
     "World": {
         "PersistentLevel": {
             "Actors": [
@@ -35,6 +35,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -68,7 +81,8 @@
                     "Name": "AStaticMeshActor_1",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "ADirectionalLightActor",
@@ -105,8 +119,13 @@
                             "Name": "UDirectionalLightComponent",
                             "Parent": "",
                             "Properties": {
+                                "AngularRadiusDegrees": 3.0,
                                 "Intensity": 1.0,
                                 "LightColor": 4294967295,
+                                "ShadowBias": 0.009999999776482582,
+                                "ShadowResolutionScale": 1.0,
+                                "ShadowSharpen": 0.0,
+                                "ShadowSlopeBias": 0.009999999776482582,
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -115,8 +134,8 @@
                                     },
                                     "Rotation": {
                                         "Pitch": 31.489599227905273,
-                                        "Roll": -0.0,
-                                        "Yaw": -0.0
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
                                     },
                                     "Scale": {
                                         "X": 1.0,
@@ -125,12 +144,26 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadows": true,
                                 "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
                         {
                             "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Material": {
                                 "Base": "BillboardMaterial",
                                 "Instance": {
@@ -189,6 +222,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UArrowComponent",
                             "OverrideMaterials": [
                                 {
@@ -226,7 +272,8 @@
                     "Name": "ADirectionalLightActor_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -260,6 +307,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -293,7 +353,8 @@
                     "Name": "AStaticMeshActor_7",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -327,6 +388,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -360,11 +434,16 @@
                     "Name": "AStaticMeshActor_8",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}
         },
-        "Properties": {}
+        "Properties": {
+            "DefaultPawnClass": "",
+            "GameModeClass": "AGameMode",
+            "PlayerControllerClass": ""
+        }
     }
 }

@@ -181,8 +181,11 @@ void UAssetManager::LoadAsset(const FString& Key, const FString& Path) {
 	}
 	if (Extension == ".json") {
 		const FString TexturePath{ fs::path{ Path }.replace_extension(".png").string() };
-		if (UFont* Font{ LoadFontAtlas(Path, TexturePath) }) {
-			AssetMap[Key] = Font;
+		// Font atlases have a same-name PNG. Other JSON assets (such as UI) are not fonts.
+		if (fs::exists(TexturePath)) {
+			if (UFont* Font{ LoadFontAtlas(Path, TexturePath) }) {
+				AssetMap[Key] = Font;
+			}
 		}
 	}
 	if (Extension == ".obj") {
@@ -400,12 +403,14 @@ UFont* UAssetManager::LoadFontAtlas(const FString& JsonPath, const FString& Atla
 
 	if (!Font->LoadFontAtlasJson(JsonPath))
 	{
+		delete Font;
 		return nullptr;
 	}
 
 	Font->AtlasTexture = LoadTexture(AtlasTexturePath, false);
 	if (!Font->AtlasTexture)
 	{
+		delete Font;
 		return nullptr;
 	}
 

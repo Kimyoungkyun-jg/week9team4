@@ -1,15 +1,17 @@
 #pragma once
 #include "MovementComponent.h"
+#include "Core/Delegates/Delegate.h"
 
 class UProjectileMovementComponent : public UMovementComponent
 {
 	DECLARE_CLASS(UProjectileMovementComponent, UMovementComponent)
 
 		REFLECT_START(ClassName)
-			PROPERTY(InintialSpeed)
+			PROPERTY(InitialSpeed)
 			PROPERTY(MaxSpeed)
 			PROPERTY(ProjectileGravityScale)
 			PROPERTY(bRotationFollowsVelocity)
+			PROPERTY(bInitialVelocityInLocalSpace)
 			PROPERTY(bShouldBounce)
 			PROPERTY(Bounciness)
 			PROPERTY(Friction)
@@ -25,8 +27,11 @@ class UProjectileMovementComponent : public UMovementComponent
 public:
 	UProjectileMovementComponent();
 
+	DECLARE_MULTICAST_DELEGATE(FOnProjectileImpact, const FHitResult&)
+	FOnProjectileImpact OnProjectileImpact;
+
 	// Projectile
-	float InintialSpeed = 0.0f;
+	float InitialSpeed = 0.0f;
 	float MaxSpeed = 0.0f;
 	float ProjectileGravityScale = 1.0f;
 
@@ -80,7 +85,7 @@ public:
 	void ClearPendingForce(bool bClearImmediateForce = false);
 
 	float GetSimulationTimeStep(float RemainingTime, int32 Iterations) const;
-	bool HasStoppedSimulation() const { return !bSimulationEnabled || UpdatedComponent == nullptr; }
+	bool HasStoppedSimulation() const { return !bSimulationEnabled || !HasValidUpdatedComponent(); }
 
 private:
 	FVector PendingForce;

@@ -1,5 +1,5 @@
 {
-    "Version": 4,
+    "Version": 5,
     "World": {
         "PersistentLevel": {
             "Actors": [
@@ -35,6 +35,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -58,7 +71,9 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadow": true,
                                 "bHiddenInGame": false,
+                                "bReceiveShadow": true,
                                 "bVisible": true
                             }
                         }
@@ -66,7 +81,8 @@
                     "Name": "AStaticMeshActor_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "ASpotLightActor",
@@ -109,6 +125,11 @@
                                 "LightColor": 4294967295,
                                 "LightFalloffExponent": 1.0,
                                 "OuterConeAngle": 30.0,
+                                "ShadowBias": 0.009999999776482582,
+                                "ShadowResolutionScale": 1.0,
+                                "ShadowSharpen": 0.0,
+                                "ShadowSlopeBias": 0.009999999776482582,
+                                "SourceRadius": 0.019999999552965164,
                                 "Transform": {
                                     "Location": {
                                         "X": -2.2240467071533203,
@@ -127,12 +148,26 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadows": true,
                                 "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
                         {
                             "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Material": {
                                 "Base": "BillboardMaterial",
                                 "Instance": {
@@ -183,12 +218,27 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadow": false,
                                 "bHiddenInGame": true,
+                                "bReceiveShadow": false,
                                 "bVisible": true
                             }
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UArrowComponent",
                             "OverrideMaterials": [
                                 {
@@ -216,7 +266,9 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadow": false,
                                 "bHiddenInGame": false,
+                                "bReceiveShadow": false,
                                 "bVisible": true
                             }
                         }
@@ -224,7 +276,8 @@
                     "Name": "ASpotLightActor_0",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -258,6 +311,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -281,7 +347,9 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadow": true,
                                 "bHiddenInGame": false,
+                                "bReceiveShadow": true,
                                 "bVisible": true
                             }
                         }
@@ -289,7 +357,8 @@
                     "Name": "AStaticMeshActor_1",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 },
                 {
                     "Class": "AStaticMeshActor",
@@ -323,6 +392,19 @@
                         },
                         {
                             "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
@@ -346,7 +428,9 @@
                                     }
                                 },
                                 "bAutoActivate": true,
+                                "bCastShadow": true,
                                 "bHiddenInGame": false,
+                                "bReceiveShadow": true,
                                 "bVisible": true
                             }
                         }
@@ -354,11 +438,16 @@
                     "Name": "AStaticMeshActor_2",
                     "Properties": {
                         "bActorEnableCollision": true
-                    }
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}
         },
-        "Properties": {}
+        "Properties": {
+            "DefaultPawnClass": "",
+            "GameModeClass": "AGameMode",
+            "PlayerControllerClass": ""
+        }
     }
 }

@@ -58,6 +58,7 @@ void UActorComponent::EndPlayComponent()
 	bIsEndingPlay = true;
 	RegisterComponentTickFunctions(false);
 	EndPlay();
+	if (WorldPrivate) WorldPrivate->RemoveCollisionListeners(this);
 	bIsEndingPlay = false;
 }
 
@@ -140,6 +141,7 @@ void UActorComponent::RegisterComponentWithWorld(UWorld* InWorld)
 void UActorComponent::UnregisterComponent()
 {
 	if (!IsRegistered()) return;
+    if (WorldPrivate) WorldPrivate->RemoveCollisionListeners(this);
 	RegisterComponentTickFunctions(false);
 	ExecuteUnregisterEvents();
 	WorldPrivate = nullptr;

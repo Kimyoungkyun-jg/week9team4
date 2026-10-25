@@ -47,6 +47,7 @@ void AActor::EndPlayActor()
 	bHasBegunPlay = false;
 	bIsEndingPlay = true;
 	EndPlay();
+    if (World) World->RemoveCollisionListeners(this);
 
 	TArray<UActorComponent*> EndingComponents = Components;
 	for (UActorComponent* Component : EndingComponents)
@@ -113,6 +114,9 @@ void AActor::Serialize(FStructuredArchive::FRecord Record)
 		RootComponent = static_cast<USceneComponent*>(RootObj);
 		return;
 	}
+
+    FString RootName = RootComponent ? RootComponent->GetName() : "";
+    Record << SA_VALUE("RootComponent", RootName);
 
 	TArray<UActorComponent*> SavedComponents;
 	if (Ar.IsSaving())
@@ -185,6 +189,7 @@ void AActor::Serialize(FStructuredArchive::FRecord Record)
 			{
 				PendingAttachments.Add({ SceneComponent, ParentName });
 			}
+            else SceneComponent->DetachFromParent(EAttachmentRule::KeepRelative);
 		}
 	}
 
@@ -196,6 +201,12 @@ void AActor::Serialize(FStructuredArchive::FRecord Record)
 			Attachment.Child->SetupAttachment(ParentComponent);
 		}
 	}
+    if (Ar.IsLoading())
+    {
+        RootComponent = Cast<USceneComponent>(FindComponentByName(FName(RootName)));
+        if (!RootComponent) { HTR_LOG(Error, "Invalid root component '{}'", RootName); Ar.SetError(); }
+    }
+
 }
 
 
@@ -308,6 +319,7 @@ void AActor::DestroyComponent(UActorComponent* Component)
 	if (!Component)
 		return;
 	if (Component->IsEndingPlay()) return;
+    if (World && World->DeferComponentDestruction(this, Component)) return;
 
 	if (Component == RootComponent)
 	{
@@ -397,4 +409,11 @@ bool AActor::TryGetActorBounds(FBox& OutBounds) const
 	}
 
 	return bHasBounds;
+}
+
+void AActor::SetActorEnableCollision(bool bEnabled)
+{
+    bActorEnableCollision = bEnabled;
+    if (World) for (UActorComponent* Component : Components)
+        if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) World->MarkCollisionDirty(Primitive);
 }

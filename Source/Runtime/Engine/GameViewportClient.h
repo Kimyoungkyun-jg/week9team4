@@ -7,11 +7,16 @@
 #include "Render/SceneView.h"
 #include "Render/SceneRenderData.h"
 #include "Render/SceneViewTargets.h"
+#include <functional>
 
 class UWorld;
 class UGameInstance;
 class UEngine;
 class UCameraComponent;
+class UCanvasWidget;
+class UWidget;
+class UButtonWidget;
+class FWidgetRenderer;
 
 struct FWorldContext;
 
@@ -20,7 +25,7 @@ class FGameViewportClient : public FViewportClient
 {
 public:
 	FGameViewportClient();
-	virtual ~FGameViewportClient() override = default;
+	virtual ~FGameViewportClient() override;
 
 	// 월드 및 게임 인스턴스 초기화
 	void Init(FWorldContext& InWorldContext, UEngine* InEngine);
@@ -56,6 +61,18 @@ public:
 	FSceneRenderData& GetRenderData() { return RenderData; }
 	FSceneViewTargets& GetViewTargets() { return ViewTargets; }
 	const FSceneViewTargets& GetViewTargets() const { return ViewTargets; }
+	// Loaded or programmatically created UI is owned by this viewport until replaced or reset.
+	bool LoadWidgetRoot(const FString& AssetPath);
+	void SetWidgetRoot(TUniquePtr<UCanvasWidget> InRoot);
+	UCanvasWidget* GetWidgetRoot() const { return WidgetRoot.get(); }
+	void ClearWidgetRoot();
+	uint64 AddWidgetOverlay(const FString& AssetPath, bool bModal = true);
+	bool RemoveWidgetOverlay(uint64 Handle);
+	void ClearWidgetOverlays();
+	UWidget* FindWidget(const FString& WidgetName) const;
+	void RenderUI();
+	bool ProcessUIKey(int32 Key, bool bDown);
+	bool BindButtonAction(const FString& WidgetName, std::function<void()> Callback);
 
 	void SetGameInstance(UGameInstance* InGameInstance) { GameInstance = InGameInstance; }
 	UGameInstance* GetGameInstance() const { return GameInstance; }
@@ -101,4 +118,13 @@ private:
 	uint32 Height = 0;
 	FSceneViewTargets ViewTargets;
 	FSceneRenderData RenderData;
+	TUniquePtr<UCanvasWidget> WidgetRoot;
+	struct FWidgetOverlay { uint64 Handle; TUniquePtr<UCanvasWidget> Root; bool bModal; };
+	TArray<FWidgetOverlay> WidgetOverlays;
+	uint64 NextWidgetOverlayHandle = 1;
+	TUniquePtr<FWidgetRenderer> WidgetRenderer;
+	UButtonWidget* PressedButton = nullptr;
+	bool bUIBlockingClick = false;
+	int32 UIMouseX = 0;
+	int32 UIMouseY = 0;
 };

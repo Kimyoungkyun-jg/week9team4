@@ -44,7 +44,7 @@ public:
 	const TArray<UActorComponent*>& GetComponents() const { return Components; }
 	USceneComponent* GetRootComponent() const { return RootComponent; }
 	void SetRootComponent(USceneComponent* SceneComponent) { RootComponent = SceneComponent; }
-	void SetActorEnableCollision(bool bEnabled) { bActorEnableCollision = bEnabled; }
+	void SetActorEnableCollision(bool bEnabled);
 	bool GetActorEnableCollision() const { return bActorEnableCollision; }
 
 	void RemoveOwnedComponent(UActorComponent* Component);

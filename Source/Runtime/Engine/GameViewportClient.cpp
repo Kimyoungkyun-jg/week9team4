@@ -12,9 +12,90 @@
 #include <cmath>
 #include "Math/Frustum.h"
 #include "Render/RenderCommand.h"
+#include "UI/Widget.h"
+#include "UI/WidgetAsset.h"
+#include "UI/WidgetRenderer.h"
+
+namespace
+{
+	void StartAutoTimers(UWidget* Widget)
+	{
+		if (UTimerWidget* Timer = Cast<UTimerWidget>(Widget))
+			if (Timer->GetAutoStart()) Timer->Start();
+		if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
+			for (UWidget* Child : Canvas->GetChildren()) StartAutoTimers(Child);
+	}
+}
 
 FGameViewportClient::FGameViewportClient()
 {
+}
+
+FGameViewportClient::~FGameViewportClient() = default;
+
+bool FGameViewportClient::LoadWidgetRoot(const FString& AssetPath)
+{
+	TUniquePtr<UCanvasWidget> LoadedRoot = FWidgetAsset::Load(AssetPath);
+	if (!LoadedRoot) return false;
+	SetWidgetRoot(std::move(LoadedRoot));
+	return true;
+}
+
+void FGameViewportClient::SetWidgetRoot(TUniquePtr<UCanvasWidget> InRoot)
+{
+	if (PressedButton) { PressedButton->SetPressed(false); bUIBlockingClick = true; }
+	PressedButton = nullptr;
+	WidgetRoot = std::move(InRoot);
+	if (WidgetRoot) StartAutoTimers(WidgetRoot.get());
+}
+
+void FGameViewportClient::ClearWidgetRoot()
+{
+	if (PressedButton) { PressedButton->SetPressed(false); bUIBlockingClick = true; }
+	PressedButton = nullptr;
+	WidgetRoot.reset();
+}
+
+uint64 FGameViewportClient::AddWidgetOverlay(const FString& AssetPath, bool bModal)
+{
+	TUniquePtr<UCanvasWidget> Overlay = FWidgetAsset::Load(AssetPath);
+	if (!Overlay) return 0;
+	StartAutoTimers(Overlay.get());
+	const uint64 Handle = NextWidgetOverlayHandle++;
+	WidgetOverlays.Add({Handle, std::move(Overlay), bModal});
+	return Handle;
+}
+
+bool FGameViewportClient::RemoveWidgetOverlay(uint64 Handle)
+{
+	for (uint32 Index = 0; Index < WidgetOverlays.Num(); ++Index)
+	{
+		if (WidgetOverlays[Index].Handle != Handle) continue;
+		if (PressedButton) { PressedButton->SetPressed(false); PressedButton = nullptr; bUIBlockingClick = true; }
+		WidgetOverlays.RemoveAt(Index);
+		return true;
+	}
+	return false;
+}
+
+void FGameViewportClient::ClearWidgetOverlays()
+{
+	if (PressedButton) { PressedButton->SetPressed(false); PressedButton = nullptr; }
+	WidgetOverlays.Empty();
+	bUIBlockingClick = false;
+}
+
+void FGameViewportClient::RenderUI()
+{
+	if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
+	if (!WidgetRenderer)
+	{
+		WidgetRenderer = MakeUnique<FWidgetRenderer>();
+		if (!WidgetRenderer->Init()) { WidgetRenderer.reset(); return; }
+	}
+	WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
+	for (const FWidgetOverlay& Overlay : WidgetOverlays)
+		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
 }
 
 void FGameViewportClient::Init(FWorldContext& InWorldContext, UEngine* InEngine)
@@ -31,12 +112,103 @@ UWorld* FGameViewportClient::GetWorld() const
 
 void FGameViewportClient::MouseMove(FViewport* Viewport, int32 X, int32 Y)
 {
+	UIMouseX = X;
+	UIMouseY = Y;
 	HandleUIMouseMove(X, Y);
+}
+
+namespace
+{
+	UButtonWidget* HitButton(UWidget* Widget, float X, float Y)
+	{
+		if (!Widget || !Widget->IsVisible()) return nullptr;
+		if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
+		{
+			TArray<UWidget*> Ordered = Canvas->GetChildrenInPaintOrder();
+			for (int32 Index = static_cast<int32>(Ordered.Num()) - 1; Index >= 0; --Index)
+				if (UButtonWidget* Hit = HitButton(Ordered[Index], X, Y)) return Hit;
+		}
+		const FRect& Rect = Widget->GetLayoutRect();
+		return X >= Rect.X && Y >= Rect.Y && X < Rect.X + Rect.Width && Y < Rect.Y + Rect.Height
+			? Cast<UButtonWidget>(Widget) : nullptr;
+	}
+
+	UWidget* FindWidgetInTree(UWidget* Widget, const FString& Name)
+	{
+		if (!Widget) return nullptr;
+		if (Widget->GetWidgetName() == Name) return Widget;
+		if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
+			for (UWidget* Child : Canvas->GetChildren())
+				if (UWidget* Found = FindWidgetInTree(Child, Name)) return Found;
+		return nullptr;
+	}
+}
+
+UWidget* FGameViewportClient::FindWidget(const FString& WidgetName) const
+{
+	for (int32 Index = static_cast<int32>(WidgetOverlays.Num()) - 1; Index >= 0; --Index)
+		if (UWidget* Found = FindWidgetInTree(WidgetOverlays[Index].Root.get(), WidgetName)) return Found;
+	return FindWidgetInTree(WidgetRoot.get(), WidgetName);
+}
+
+bool FGameViewportClient::BindButtonAction(const FString& WidgetName, std::function<void()> Callback)
+{
+	if (UButtonWidget* Button = Cast<UButtonWidget>(FindWidget(WidgetName)))
+	{
+		Button->SetOnClicked(std::move(Callback));
+		return true;
+	}
+	return false;
+}
+
+bool FGameViewportClient::ProcessUIKey(int32 Key, bool bDown)
+{
+	if (Key != static_cast<int32>(EKeyCode::LButton)) return false;
+	bool bBlocked = false;
+	const auto Hit = [this, &bBlocked]() -> UButtonWidget*
+	{
+		if (!Width || !Height || UIMouseX < 0 || UIMouseY < 0 ||
+			static_cast<uint32>(UIMouseX) >= Width || static_cast<uint32>(UIMouseY) >= Height) return nullptr;
+		const FRect Rect{0, 0, static_cast<float>(Width), static_cast<float>(Height)};
+		for (int32 Index = static_cast<int32>(WidgetOverlays.Num()) - 1; Index >= 0; --Index)
+		{
+			const FWidgetOverlay& Overlay = WidgetOverlays[Index];
+			UCanvasWidget* Root = Overlay.Root.get();
+			if (!Root->IsVisible()) continue;
+			Root->Layout(Rect);
+			if (UButtonWidget* Button = HitButton(Root, static_cast<float>(UIMouseX), static_cast<float>(UIMouseY)))
+				return Button;
+			if (Overlay.bModal) { bBlocked = true; return nullptr; }
+		}
+		if (!WidgetRoot) return nullptr;
+		WidgetRoot->Layout(Rect);
+		return HitButton(WidgetRoot.get(), static_cast<float>(UIMouseX), static_cast<float>(UIMouseY));
+	};
+	if (!bDown && PressedButton)
+	{
+		UButtonWidget* Button = PressedButton;
+		PressedButton = nullptr;
+		bUIBlockingClick = false;
+		Button->SetPressed(false);
+		if (Hit() == Button) Button->Click();
+		return true;
+	}
+	if (!bDown && bUIBlockingClick) { bUIBlockingClick = false; return true; }
+	if (!bDown) return false;
+	bUIBlockingClick = false;
+	PressedButton = Hit();
+	if (!PressedButton)
+	{
+		bUIBlockingClick = bBlocked;
+		return bBlocked;
+	}
+	PressedButton->SetPressed(true);
+	return true;
 }
 
 bool FGameViewportClient::InputKey(FViewport* Viewport, int32 Key, bool bDown)
 {
-	if (HandleUIKey(Key, bDown))
+	if (ProcessUIKey(Key, bDown) || HandleUIKey(Key, bDown))
 		return true;
 	if (bDown && Key == static_cast<int32>(EKeyCode::Escape))
 	{
@@ -81,6 +253,8 @@ bool FGameViewportClient::InputAxis(FViewport* Viewport, int32 ControllerId, EGa
 
 void FGameViewportClient::LostFocus()
 {
+	if (PressedButton) { PressedButton->SetPressed(false); PressedButton = nullptr; }
+	bUIBlockingClick = false;
 	std::fill(std::begin(bSIEKeyDown), std::end(bSIEKeyDown), false);
 	SIEMouseDeltaX = SIEMouseDeltaY = SIEWheelDelta = 0.0f;
 	if (World)
@@ -308,6 +482,9 @@ void FGameViewportClient::Resize(uint32 InWidth, uint32 InHeight)
 
 void FGameViewportClient::Reset()
 {
+	ClearWidgetRoot();
+	ClearWidgetOverlays();
+	WidgetRenderer.reset();
 	RenderData.ResetScene();
 	EndSIEMode();
 	LostFocus();

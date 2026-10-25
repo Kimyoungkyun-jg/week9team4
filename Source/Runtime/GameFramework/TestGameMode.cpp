@@ -8,6 +8,7 @@
 
 ATestGameMode::ATestGameMode()
 {
+	SetHUDClass(ASampleHUD::StaticClass());
 	ScriptComponent = CreateDefaultSubobject<ULuaScriptComponent>("GameModeScript");
 	ScriptComponent->SetScriptPath("Assets/Scripts/Gamemode.lua");
 }

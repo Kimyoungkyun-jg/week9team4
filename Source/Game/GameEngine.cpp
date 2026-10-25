@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "GameEngine.h"
+#include "GameActor/PlayerPawn.h"
+#include "GameActor/FlashlightActor.h"
 
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -31,6 +33,10 @@ namespace
 	// 정적 라이브러리에서 씬이 이름으로 생성하는 클래스의 등록 코드를 링크한다.
 	void RegisterGameSceneClasses()
 	{
+		(void)ATestGameMode::StaticClass();
+		(void)APlayerPawn::StaticClass();
+		(void)AFlashlightActor::StaticClass();
+		(void)ASampleHUD::StaticClass();
 		(void)ADirectionalLightActor::StaticClass();
 		(void)AParticleActor::StaticClass();
 		(void)ASkyLightActor::StaticClass();
@@ -71,7 +77,6 @@ bool UGameEngine::Init()
 	GameContext->SetCurrentWorld(UWorld::CreateWorld(EWorldType::Game, false));
 	UWorld* World = GameContext->World();
 	if (!World || !FJsonArchive::LoadWorld(World, "Scenes/Bocchi.scene")) return false;
-	if (!World->SetGameModeClass(ATestGameMode::StaticClass())) return false;
 
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	GameInstance->SetWorldContext(GameContext);
@@ -87,6 +92,7 @@ void UGameEngine::Tick(float DeltaTime)
 {
 	if (!GameContext || !GameContext->World() || !GameContext->GameViewport) return;
 	FGameViewportClient& Viewport = *GameContext->GameViewport;
+	Viewport.MouseMove(nullptr, FInputSystem::GetMouseX(), FInputSystem::GetMouseY());
 	for (int32 Key = 0; Key < 256; ++Key)
 	{
 		const EKeyCode Code = static_cast<EKeyCode>(Key);
@@ -120,6 +126,7 @@ void UGameEngine::Render()
 	FSceneRenderer SceneRenderer(GameContext->World(), View, Viewport.GetRenderData());
 	SceneRenderer.InitViews(Renderer, Options);
 	if (!ViewPipeline.Render(SceneRenderer, Renderer, Viewport.GetViewTargets(), GameContext->World(), View, Options)) return;
+	Viewport.RenderUI();
 
 	FTexture2D* Backbuffer = GetEngineLoop().GetSwapchain()->GetBackbuffer();
 	FTexture2D* SceneColor = Viewport.GetColorTarget();
