@@ -1,6 +1,7 @@
 param(
     [ValidateSet('Debug', 'Release', 'ObjViewer', 'Benchmark', 'Benchmark_Debug')]
     [string]$Configuration = 'Release',
+    [switch]$Build,
     [switch]$SkipBuild
 )
 
@@ -48,7 +49,7 @@ Push-Location $RepoRoot
 try {
     & (Join-Path $PSScriptRoot 'premake5.exe') $Action
     if ($LASTEXITCODE -ne 0) { throw 'Solution generation failed.' }
-    if (-not $SkipBuild) {
+    if ($Build -and -not $SkipBuild) {
         $MsBuild = Join-Path $VsPath 'MSBuild\Current\Bin\MSBuild.exe'
         if (-not (Test-Path $MsBuild)) { throw "MSBuild not found: $MsBuild" }
         $SavedClOptions = $env:_CL_
