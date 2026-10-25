@@ -144,6 +144,19 @@ void ULuaScriptComponent::TickComponent(float DeltaTime)
 
 void ULuaScriptComponent::EndPlay()
 {
+	if (LuaSelfTable.valid())
+	{
+		sol::protected_function LuaEndPlayFunc = LuaSelfTable["EndPlay"];
+		if (LuaEndPlayFunc.valid())
+		{
+			sol::protected_function_result Result = LuaEndPlayFunc(LuaSelfTable);
+			if (!Result.valid())
+			{
+				sol::error Err = Result;
+				HTR_LOG(Error, "[Lua] EndPlay error: {}", Err.what());
+			}
+		}
+	}
 	LuaBeginPlayFunc = {};
 	LuaTickFunc = {};
 	LuaSelfTable = {};

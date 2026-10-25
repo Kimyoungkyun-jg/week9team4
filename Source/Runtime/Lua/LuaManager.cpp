@@ -1,11 +1,8 @@
 #include "EnginePCH.h"
 #include "LuaManager.h"
-
 #include "LuaMacros.h"
-#include "Math/Vector.h"
+#include "LuaBinding.h"
 #include "Engine/GameInstance.h"
-#include "Collision/HitResult.h"
-#include "UObject/Object.h"
 
 void FLuaManager::Init(UGameInstance& GameInstance)
 {
@@ -18,25 +15,11 @@ void FLuaManager::Init(UGameInstance& GameInstance)
 		sol::lib::table,
 		sol::lib::coroutine);
 
-	Lua.set_function("Log", [](const FString& Message) { HTR_LOG(Info, "[Lua] {}", Message); });
-	Lua.set_function("EndGame", [&GameInstance]() { GameInstance.RequestEndSession(); });
-	Lua.new_usertype<UObject>("UObject", sol::no_constructor,
-		"UUID", &UObject::GetUUID,
-		"GetName", &UObject::GetName);
-	Lua.new_usertype<FHitResult>("FHitResult", sol::no_constructor,
-		"bBlockingHit", &FHitResult::bBlockingHit,
-		"Distance", &FHitResult::Distance,
-		"ImpactPoint", &FHitResult::ImpactPoint,
-		"ImpactNormal", &FHitResult::ImpactNormal);
-
-	// 기본 수학 구조체 (FVector, FMatrix), FString, FMultiplecastDelegate 등 바인딩
-	// 추후 LuaBindingMathcpp, LuaBindingEngine.cpp 형태로 분리
-	Lua.new_usertype<FVector>("FVector",
-		sol::constructors<FVector(), FVector(float, float, float)>(),
-		"X", &FVector::X,
-		"Y", &FVector::Y,
-		"Z", &FVector::Z
-	);
+	// 모듈화된 바인딩 호출
+	LuaBindings::BindCore(Lua, GameInstance);
+	LuaBindings::BindMath(Lua);
+	LuaBindings::BindInput(Lua);
+	LuaBindings::BindDelegates(Lua);
 
 	// 매크로로 등록된 C++ 클래스를 자동으로 바인딩
 	for (auto& BindFunc : GetLuaAutoRegistry())
@@ -47,5 +30,18 @@ void FLuaManager::Init(UGameInstance& GameInstance)
 
 void FLuaManager::Shutdown()
 {
-	// 추후 전역 콜백 해제
+	if (!Lua.lua_state()) return;
+
+	// 1. C++ 참조를 캡처한 전역 바인딩 해제 (댕글링 포인터 방지)
+	Lua["EndGame"] = sol::nil;
+	Lua["Log"] = sol::nil;
+	Lua["LogWarning"] = sol::nil;
+	Lua["LogError"] = sol::nil;
+	Lua["Input"] = sol::nil;
+
+	// 2. 가비지 컬렉터 강제 실행 (남아있는 루아 객체 및 __gc 정리)
+	Lua.collect_garbage();
+
+	// 3. 루아 상태 명시적 리셋 (lua_close 호출 효과)
+	Lua = sol::state();
 }

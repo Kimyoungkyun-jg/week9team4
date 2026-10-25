@@ -24,7 +24,15 @@ class AActor : public UObject
 		LUA_FUNC(Destroy)
 		LUA_FUNC(GetRootComponent)
 		LUA_FUNC(GetName)
-		LUA_BIND_END()
+		LUA_FUNC(GetActorLocation)
+		LUA_FUNC(GetActorRotation)
+		LUA_FUNC(GetActorScale3D)
+		LUA_FUNC(SetActorLocation)
+		LUA_FUNC(SetActorRotation)
+		UserType["FindComponentByName"] = [](AActor& Self, const FString& Name) -> UActorComponent* {
+			return Self.FindComponentByName(FName(Name));
+		};
+	LUA_BIND_END()
 public:
 	AActor();
 	virtual ~AActor();
@@ -52,6 +60,8 @@ public:
 	FVector GetActorLocation() const;
 	FRotator GetActorRotation() const;
 	FVector GetActorScale3D() const;
+	void SetActorLocation(const FVector& NewLocation);
+	void SetActorRotation(const FRotator& NewRotation);
 	FQuat GetActorQuat() const;           //xx 타입명변경
 	FTransform GetActorTransform() const;
 	bool TryGetActorBounds(FBox& OutBounds) const;

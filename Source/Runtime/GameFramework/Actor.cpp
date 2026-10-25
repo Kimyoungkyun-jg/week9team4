@@ -254,6 +254,22 @@ FVector AActor::GetActorScale3D() const
 	return FVector::OneVector;
 }
 
+void AActor::SetActorLocation(const FVector& NewLocation)
+{
+	if (RootComponent)
+	{
+		RootComponent->SetWorldLocation(NewLocation, false);
+	}
+}
+
+void AActor::SetActorRotation(const FRotator& NewRotation)
+{
+	if (RootComponent)
+	{
+		RootComponent->SetWorldRotation(NewRotation, false);
+	}
+}
+
 FQuat AActor::GetActorQuat() const
 {
 	if (RootComponent)

@@ -167,6 +167,7 @@ private:
 	TArray<FCollisionEvent> CollisionEvents;
 	TArray<UPrimitiveComponent*> PendingOverlapUpdates;
 	bool bDispatchingCollisionEvents = false;
+	bool bInTick = false;
 	TArray<AActor*> DeferredActorDestruction;
 	TArray<std::pair<AActor*, UActorComponent*>> DeferredComponentDestruction;
 	EWorldType WorldType = EWorldType::None;

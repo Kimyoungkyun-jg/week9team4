@@ -121,6 +121,7 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 
 void UWorld::Tick(float DeltaTime)
 {
+	bInTick = true;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UpdateAllTransforms);
 		Scene.UpdateAllTransforms();
@@ -171,6 +172,18 @@ void UWorld::Tick(float DeltaTime)
         if (CollisionComponents.Find(Component) != INDEX_NONE) UpdateComponentOverlaps(Component);
     DispatchCollisionEvents();
 
+	bInTick = false;
+
+	// 프레임 끝에서 지연된 액터 삭제 일괄 실행
+	const auto Actors = DeferredActorDestruction;
+	DeferredActorDestruction.Reset();
+	for (AActor* Actor : Actors)
+	{
+		if (GUObjectArray.Find(Actor) != INDEX_NONE)
+		{
+			DestroyActor(Actor);
+		}
+	}
 }
 
 void UWorld::ClearWorld()
@@ -497,7 +510,7 @@ bool UWorld::DestroyActor(AActor* Actor)
 	if (!Actor)
 		return false;
 	if (Actor->bIsEndingPlay) return false;
-    if (bDispatchingCollisionEvents)
+    if (bInTick || bDispatchingCollisionEvents)
     {
         if (DeferredActorDestruction.Find(Actor) == INDEX_NONE) DeferredActorDestruction.Add(Actor);
         return true;
