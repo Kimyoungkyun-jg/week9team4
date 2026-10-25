@@ -16,6 +16,7 @@ class AGameHUD : public AActor
 	REFLECT_END()
 
 public:
+	AGameHUD();
 	void SetWidgetAssetPath(const FString& Path) { WidgetAssetPath = Path; }
 	const FString& GetWidgetAssetPath() const { return WidgetAssetPath; }
 	APlayerController* GetOwningPlayerController() const { return OwningPlayerController; }

@@ -44,6 +44,7 @@ class UWorld : public UObject
 		CLASS_PROPERTY(DefaultPawnClass, APawn)
 		CLASS_PROPERTY(PlayerControllerClass, APlayerController)
 		CLASS_PROPERTY(HUDClassOverride, AGameHUD)
+		PROPERTY(InitialUIOverride)
 	REFLECT_END()
 
 public:
@@ -118,6 +119,8 @@ public:
 	UClass* GetHUDClass() const;
 	bool SetGameModeClass(UClass* Class);
 	bool SetHUDClassOverride(UClass* Class);
+	const FString& GetInitialUIOverride() const { return InitialUIOverride; }
+	void SetInitialUIOverride(const FString& Path) { InitialUIOverride = Path; }
 	UClass* GetDefaultPawnClass() const;
 	UClass* GetPlayerControllerClass() const;
 	bool SetDefaultPawnClass(UClass* Class);
@@ -198,6 +201,7 @@ private:
 	UClass* DefaultPawnClass = nullptr;
 	UClass* PlayerControllerClass = nullptr;
 	UClass* HUDClassOverride = nullptr;
+	FString InitialUIOverride;
 	bool bIsPaused = false;
 	bool bBegunPlay = false;
 

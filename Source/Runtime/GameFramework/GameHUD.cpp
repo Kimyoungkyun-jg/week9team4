@@ -4,6 +4,11 @@
 #include "UI/Widget.h"
 #include "Core/EngineLog.h"
 
+AGameHUD::AGameHUD()
+{
+	WidgetAssetPath = "Assets/UI/GameUI.ui.json";
+}
+
 bool AGameHUD::Initialize(APlayerController* PlayerController, FGameViewportClient* Viewport)
 {
 	if (!PlayerController || !Viewport) return false;

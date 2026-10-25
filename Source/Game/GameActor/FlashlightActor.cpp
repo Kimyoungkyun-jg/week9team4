@@ -11,13 +11,16 @@ AFlashlightActor::AFlashlightActor()
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("FlashlightMesh");
 	MeshComponent->SetupAttachment(GetRootComponent());
 	MeshComponent->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Flashlight/Flashlight.obj"));
+	MeshComponent->SetRelativeScale3D({0.2f, 0.2f, 0.2f});
+	MeshComponent->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	MeshComponent->SetCastShadow(false);
 
 	SpotLightComponent = CreateDefaultSubobject<USpotLightComponent>("FlashlightSpotLight");
-	SpotLightComponent->SetupAttachment(MeshComponent);
-	SpotLightComponent->SetRelativeLocation({1.0f, 0.0f, 0.0f});
-	SpotLightComponent->SetInnerConeAngle(15.0f);
-	SpotLightComponent->SetOuterConeAngle(30.0f);
-	SpotLightComponent->SetAttenuationRadius(25.0f);
+	SpotLightComponent->SetupAttachment(GetRootComponent());
+	SpotLightComponent->SetRelativeLocation({0.2f, 0.0f, 0.0f});
+	SpotLightComponent->SetInnerConeAngle(20.0f);
+	SpotLightComponent->SetOuterConeAngle(35.0f);
+	SpotLightComponent->SetAttenuationRadius(15.0f);
 	UpdateLightIntensity();
 }
 
@@ -30,8 +33,8 @@ void AFlashlightActor::BeginPlay()
 void AFlashlightActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (DeltaTime > 0.0f && Gauge > 0.0f)
-		SetGauge(Gauge - std::max(0.0f, DrainRatePerSecond) * DeltaTime);
+	//if (DeltaTime > 0.0f && Gauge > 0.0f)
+	//	SetGauge(Gauge - std::max(0.0f, DrainRatePerSecond) * DeltaTime);
 }
 
 void AFlashlightActor::PostEditChangeProperty(const FProperty& Property)

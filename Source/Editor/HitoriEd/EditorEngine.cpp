@@ -3,6 +3,7 @@
 #include "Editor/HitoriEd/EditorEngine.h"
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
+#include "GameActor/CoinActor.h"
 
 #include "Core/EngineStatics.h"
 #include "Core/EngineTimer.h"
@@ -73,6 +74,7 @@ bool UEditorEngine::Init()
 		return false;
 	APlayerPawn::StaticClass();
 	AFlashlightActor::StaticClass();
+	ACoinActor::StaticClass();
 
 	FWorldContext& InitialWorldContext = CreateNewWorldContext(EWorldType::Editor);
 	InitialWorldContext.SetCurrentWorld(UWorld::CreateWorld(EWorldType::Editor, true));
@@ -246,6 +248,7 @@ bool UEditorEngine::Init()
 	EditorControlsPanel->SetIsPlayingQuery([this]() { return IsPlaying(); });
 	EditorControlsPanel->SetGizmo(Gizmo.get());
 	EditorControlsPanel->SetViewportsPanel(ViewportsPanel);
+	EditorControlsPanel->SetSettingsPanel(SettingsPanel);
 
 	SettingsPanel->SetWorld(EditorWorld);
 	SettingsPanel->SetViewportsPanel(ViewportsPanel);
@@ -433,7 +436,7 @@ void UEditorEngine::UpdateViewportState(const float DeltaTime)
 	for (int32 i = 0; i < 4; ++i)
 	{
 		FEditorViewportClient* Client = ViewportsPanel->GetViewportClient(i);
-		if (!Client || !Client->IsActive())
+		if (!Client || !Client->IsActive() || (PlayWorld && i == PIEViewIndex))
 			continue;
 
 		Client->TickInput(DeltaTime, i == CapturedViewportIndex,
@@ -442,17 +445,20 @@ void UEditorEngine::UpdateViewportState(const float DeltaTime)
 
 	// 활성 뷰포트 시점 동기화
 	const int32 ActiveIndex = ViewportsPanel->GetActiveViewIndex();
-	if (FEditorViewportClient* ActiveClient = ViewportsPanel->GetViewportClient(ActiveIndex))
+	if (!PlayWorld)
 	{
-		if (ACameraActor* MainCam = GetActiveWorld()->GetMainCamera())
+		if (FEditorViewportClient* ActiveClient = ViewportsPanel->GetViewportClient(ActiveIndex))
 		{
-			if (UCameraComponent* CamCom = MainCam->GetCameraComponent())
+			if (ACameraActor* MainCam = EditorWorld->GetMainCamera())
 			{
-				CamCom->SetRelativeLocation(ActiveClient->GetViewLocation());
-				CamCom->SetRelativeRotation(ActiveClient->GetViewRotation());
-				CamCom->SetFieldOfView(ActiveClient->GetViewFOV());
-				CamCom->SetOrthoWidth(ActiveClient->GetOrthoWidth());
-				CamCom->SetIsOrthogonal(!ActiveClient->IsPerspective());
+				if (UCameraComponent* CamCom = MainCam->GetCameraComponent())
+				{
+					CamCom->SetRelativeLocation(ActiveClient->GetViewLocation());
+					CamCom->SetRelativeRotation(ActiveClient->GetViewRotation());
+					CamCom->SetFieldOfView(ActiveClient->GetViewFOV());
+					CamCom->SetOrthoWidth(ActiveClient->GetOrthoWidth());
+					CamCom->SetIsOrthogonal(!ActiveClient->IsPerspective());
+				}
 			}
 		}
 	}
@@ -480,13 +486,14 @@ void UEditorEngine::TickWorldAndEditor(const float DeltaTime)
 			GetActiveWorld()->Tick(DeltaTime);
 
 	}
+	UpdatePIEViewCamera();
 	{
 		SCOPE_CYCLE_COUNTER(STAT_EditorTick);
 		EditorUI->Tick(DeltaTime);
 	}
 	UpdateGizmoAndPicking();
 	EditorWorld->GetScene().UpdateAllTransforms();
-	if (PlayWorld && bIsPaused)
+	if (PlayWorld)
 		PlayWorld->GetScene().UpdateAllTransforms();
 }
 
@@ -560,7 +567,7 @@ void UEditorEngine::RenderViewports()
 					FSceneRenderer SceneRenderer(CurrentWorld, SceneView, GameClient->GetRenderData());
 					SceneRenderer.InitViews(Renderer, Options);
 
-					RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, bIsSIEMode);
+					RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode());
 
 					break;
 				}
@@ -600,7 +607,7 @@ void UEditorEngine::RenderViewports()
 				FSceneRenderer SceneRenderer(Context->World(), SceneView, GameClient->GetRenderData());
 				SceneRenderer.InitViews(Renderer, Options);
 
-				RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, bIsSIEMode);
+				RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode());
 
 				CopyPIEWindowToBackbuffer();
 			}
@@ -655,13 +662,14 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	const int32 ActiveViewIdx = ViewportsPanel ? ViewportsPanel->GetActiveViewIndex() : -1;
 	const bool bEditorSIEFocus = IsPIEInWindow() && GameViewport.IsSIEMode() &&
 		::GetForegroundWindow() == MainWindow->GetHandle() &&
-		ActiveViewIdx == PIEStartEditorViewIndex && ViewportsPanel->IsHovered() &&
+		ActiveViewIdx == PIEStartEditorViewIndex &&
+		(ViewportsPanel->IsHovered() || FInputSystem::IsMouseDown(EMouseButton::Right)) &&
 		!ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
 	const bool bFocused = IsPIEInWindow()
 		? ::GetForegroundWindow() == PIEWindow->GetHandle() || bEditorSIEFocus
 		: ::GetForegroundWindow() == MainWindow->GetHandle() &&
 			ActiveViewIdx == InputViewIndex &&
-			ViewportsPanel->IsHovered() &&
+			(ViewportsPanel->IsHovered() || (GameViewport.IsSIEMode() && FInputSystem::IsMouseDown(EMouseButton::Right))) &&
 			!ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
 	if (!bFocused) { GameViewport.LostFocus(); return; }
 	if (!IsPIEInWindow() &&
@@ -698,7 +706,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		return;
 	}
 	constexpr EKeyCode Keys[] = { EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
-		EKeyCode::Space, EKeyCode::Shift };
+		EKeyCode::E, EKeyCode::Q, EKeyCode::Space, EKeyCode::Shift };
 	for (EKeyCode Key : Keys)
 	{
 		if (FInputSystem::IsKeyPressed(Key))
@@ -735,12 +743,14 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	}
 	const float MouseX = static_cast<float>(FInputSystem::GetMouseDeltaX());
 	const float MouseY = static_cast<float>(FInputSystem::GetMouseDeltaY());
+	const float Wheel = static_cast<float>(FInputSystem::GetWheelDelta());
 	if (GameViewport.IsSIEMode())
 	{
 		GameViewport.GetAxisInputBySIEMode(EGameInputAxis::MouseX, MouseX);
 		GameViewport.GetAxisInputBySIEMode(EGameInputAxis::MouseY, MouseY);
-		GameViewport.TickSIEInput(DeltaTime, SettingsPanel->GetSettings().CameraSpeed,
-			SettingsPanel->GetSettings().MouseSensitivity);
+		GameViewport.GetAxisInputBySIEMode(EGameInputAxis::MouseWheel, Wheel);
+		GameViewport.TickSIEInput(DeltaTime, 10.0f * SettingsPanel->GetSettings().CameraSpeed,
+			0.2f * SettingsPanel->GetSettings().MouseSensitivity);
 	}
 	else
 	{
@@ -1024,6 +1034,7 @@ UWorld* UEditorEngine::CreatePIEWorldByDuplication(FWorldContext& PIEContext, UW
 		Camera->SetFieldOfView(Source->GetViewFOV());
 		Camera->SetOrthoWidth(Source->GetOrthoWidth());
 		Camera->SetIsOrthogonal(!Source->IsPerspective());
+		Camera->SetExternalInputManaged(true);
 	}
 	PIEContext.SetCurrentWorld(NewPIEWorld);
 	return NewPIEWorld;
@@ -1037,6 +1048,8 @@ void UEditorEngine::OnActiveWorldChanged()
 	if (DetailsPanel) DetailsPanel->SetWorld(UIWorld);
 	if (EditorControlsPanel) EditorControlsPanel->SetWorld(UIWorld);
 	if (SettingsPanel) SettingsPanel->SetWorld(UIWorld);
+	for (FEditorViewportClient* Client : AllViewportClients)
+		if (Client) Client->SetWorld(UIWorld);
 }
 
 void UEditorEngine::EndPlayMap()

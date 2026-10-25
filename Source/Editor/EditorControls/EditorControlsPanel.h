@@ -14,7 +14,10 @@
 #include "GameFramework/Actor/ExponentialHeightFogActor.h"
 #include "GameFramework/Actor/FireBallActor.h"
 #include "GameFramework/Actor/ProjectileActor.h"
+#include "GameFramework/Actor/PlayerStart.h"
+#include "GameActor/CoinActor.h"
 class FViewportsPanel;
+class FSettingsPanel;
 
 // 액터 생성과 카메라·기즈모 편집에 필요한 패널 상태를 보관한다.
 class FEditorControlsPanel : public IEditorPanel
@@ -27,17 +30,19 @@ public:
 	inline void SetGizmo(FGizmo* InGizmo) { Gizmo = InGizmo; }
 	inline void SetWorld(UWorld* InWorld) { World = InWorld; }
 	inline void SetViewportsPanel(FViewportsPanel* InPanel) { ViewportsPanel = InPanel; }
+	inline void SetSettingsPanel(FSettingsPanel* InPanel) { SettingsPanel = InPanel; }
 	inline void SetIsPlayingQuery(std::function<bool()> InQuery) { IsPlayingQuery = InQuery; }
 
 	float DeltaTime = 1.0f;
 	UWorld* World = nullptr;
 	FViewportsPanel* ViewportsPanel = nullptr;
+	FSettingsPanel* SettingsPanel = nullptr;
 
 	void AddActor(uint32 Index);
 
 	int32 SelectedIndex = 0;
 
-	const char* Items[6] = {"StaticMesh", "Particle", "Text", "HeightFog", "FireBall", "Projectile" };
+	const char* Items[8] = {"StaticMesh", "Particle", "Text", "HeightFog", "FireBall", "Projectile", "PlayerStart", "Coin" };
 
 	FGizmo* Gizmo = nullptr;
 	int32 GizmoSelectedIndex = 0;
@@ -54,6 +59,8 @@ public:
 		AExponentialHeightFogActor::StaticClass(),
 		AFireBallActor::StaticClass(),
 		AProjectileActor::StaticClass(),
+		APlayerStart::StaticClass(),
+		ACoinActor::StaticClass(),
 	};
 
 private:

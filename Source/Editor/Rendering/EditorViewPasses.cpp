@@ -57,7 +57,8 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 		 Cast<APointLightActor>(Resources.Gizmo->GetTarget()->GetOwner()) ||
 		 Cast<ARectLightActor>(Resources.Gizmo->GetTarget()->GetOwner()));
 	const bool bDrawCascadeBounds = Settings.bDrawCascadeBounds;
-	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds)
+	const bool bDrawAllCollision = Settings.bDrawAllCollision;
+	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds || bDrawAllCollision)
 		Overlays.EditorLines = [this, ViewClient, bDrawSelectedLight, bDrawCascadeBounds]
 		{
 			RenderEditorLines(ViewClient, bDrawSelectedLight, bDrawCascadeBounds);
@@ -149,6 +150,23 @@ void FEditorViewPasses::RenderEditorLines(FEditorViewportClient* ViewClient,
         for (UActorComponent* Component : Target->GetOwner()->GetComponents())
             if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
     }
+	if (Settings.bDrawAllCollision && OverlayResources.ActiveWorld && OverlayResources.ActiveWorld->GetPersistentLevel())
+	{
+		for (AActor* Actor : OverlayResources.ActiveWorld->GetPersistentLevel()->GetActors())
+		{
+			if (!Actor) continue;
+			for (UActorComponent* Component : Actor->GetComponents())
+			{
+				if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component))
+				{
+					if (Primitive->IsCollisionEnabled())
+					{
+						Primitive->DrawCollision(*Lines, FVector4(0.0f, 1.0f, 1.0f, 1.0f));
+					}
+				}
+			}
+		}
+	}
     Lines->OnRender(View.ViewProjectionMatrix);
 }
 

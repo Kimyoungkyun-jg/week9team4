@@ -702,6 +702,7 @@ void UWorld::BeginPlay()
 			FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(this) : nullptr;
 			if (HUD)
 			{
+				if (!InitialUIOverride.empty()) HUD->SetWidgetAssetPath(InitialUIOverride);
 				PlayerController->SetHUD(HUD);
 				if (!HUD->Initialize(PlayerController, Context ? Context->GameViewport.get() : nullptr))
 					HTR_LOG(Warning, "Failed to initialize HUD {}", Class->Name);

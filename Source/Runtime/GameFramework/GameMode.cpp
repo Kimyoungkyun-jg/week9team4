@@ -1,8 +1,11 @@
 #include "EnginePCH.h"
 #include "GameFramework/GameMode.h"
 #include "GameFramework/DefaultPawn.h"
+#include "GameFramework/Actor/PlayerStart.h"
 #include "Engine/World.h"
 #include "Engine/Level.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
 
 AGameMode::AGameMode()
 	: DefaultPawnClass(ADefaultPawn::StaticClass())
@@ -39,20 +42,26 @@ void AGameMode::SpawnPlayer(APawn*& OutPawn, APlayerController*& OutController)
 
 	if (!OutPawn)
 	{
-		for (AActor* Actor : World->GetPersistentLevel()->GetActors())
-		{
-			if (APawn* Pawn = Cast<APawn>(Actor)) { OutPawn = Pawn; break; }
-		}
-	}
-	if (!OutPawn)
-	{
 		UClass* PawnClass = DefaultPawnClass;
 		if (!PawnClass || !PawnClass->IsChildOf(APawn::StaticClass()) || !PawnClass->Constructor)
 		{
 			HTR_LOG(Warning, "Invalid DefaultPawnClass; using ADefaultPawn");
 			PawnClass = ADefaultPawn::StaticClass();
 		}
-		const FTransform Transform = World->GetMainCamera() ? World->GetMainCamera()->GetActorTransform() : FTransform::Identity;
+		FTransform Transform = FTransform::Identity;
+		APlayerStart* Start = nullptr;
+		for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+		{
+			Start = Cast<APlayerStart>(Actor);
+			if (Start) break;
+		}
+		if (Start)
+			Transform = Start->GetActorTransform();
+		else if (ACameraActor* Camera = World->GetMainCamera())
+		{
+			if (UCameraComponent* CameraComponent = Camera->GetCameraComponent())
+				Transform = FTransform(CameraComponent->GetWorldRotation(), CameraComponent->GetWorldLocation());
+		}
 		OutPawn = Cast<APawn>(World->SpawnActor(PawnClass, NAME_None, &Transform));
 	}
 

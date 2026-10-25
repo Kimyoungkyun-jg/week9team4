@@ -2,6 +2,9 @@
 
 #include "UObject/Object.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/SceneComponent.h"
+#include "Serialization/StructuredArchive.h"
+#include "Serialization/StructuredArchiveSlots.h"
 
 #include "UObject/Class.h"
 #include "UObject/UObjectGlobals.h"
@@ -51,7 +54,35 @@ public:
 	
 	FVector GetActorLocation() const;
 	FRotator GetActorRotation() const;
+	void SetActorLocation(const FVector& NewLocation, bool bSweep = false)
+	{
+		if (RootComponent) RootComponent->SetWorldLocation(NewLocation, bSweep);
+	}
+	void SetActorRotation(const FRotator& NewRotation, bool bSweep = false)
+	{
+		if (RootComponent) RootComponent->SetWorldRotation(NewRotation, bSweep);
+	}
+	void SetActorRelativeLocation(const FVector& NewRelativeLocation)
+	{
+		if (RootComponent) RootComponent->SetRelativeLocation(NewRelativeLocation);
+	}
+	void SetActorRelativeRotation(const FRotator& NewRelativeRotation)
+	{
+		if (RootComponent) RootComponent->SetRelativeRotation(NewRelativeRotation);
+	}
+	void AttachToComponent(USceneComponent* Parent, const FTransform& RelativeTransform = FTransform::Identity)
+	{
+		if (RootComponent && Parent)
+		{
+			RootComponent->SetupAttachment(Parent);
+			RootComponent->SetTransform(RelativeTransform);
+		}
+	}
 	FVector GetActorScale3D() const;
+	void SetActorScale3D(const FVector& NewScale)
+	{
+		if (RootComponent) RootComponent->SetRelativeScale3D(NewScale);
+	}
 	FQuat GetActorQuat() const;           //xx 타입명변경
 	FTransform GetActorTransform() const;
 	bool TryGetActorBounds(FBox& OutBounds) const;
