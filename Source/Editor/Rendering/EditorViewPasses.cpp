@@ -4,6 +4,7 @@
 #include "Editor/Rendering/SceneDepthRenderer.h"
 #include "Editor/Rendering/CascadeFloorRenderer.h"
 #include "Editor/Rendering/GridRenderer.h"
+#include "Editor/Rendering/MapTileRenderer.h"
 #include "Editor/Rendering/Outline.h"
 #include "Editor/Rendering/OutLineRenderer.h"
 #include "Editor/Gizmo/Gizmo.h"
@@ -50,6 +51,11 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 {
 	if (bIsPIE || !ViewClient || !Resources.Settings) return;
 	OverlayResources = Resources;
+	if (Resources.MapTiles && Resources.MapTileEditor && Resources.EditorWorld)
+		Overlays.EditorMapTiles = [this]
+		{
+			OverlayResources.MapTiles->OnRender(*OverlayResources.EditorWorld, View.ViewProjectionMatrix, *OverlayResources.MapTileEditor);
+		};
 	const FEditorSettings& Settings = *Resources.Settings;
 	const FViewportSettings ViewportSetting{ 0, 0, Color->GetWidth(), Color->GetHeight(), 0.0f, 1.0f };
 	const bool bDrawSelectedLight = bIsActiveViewport && Resources.Gizmo->GetTarget() &&
@@ -252,6 +258,7 @@ bool FEditorViewPasses::AddPasses(FRenderGraphBuilder& Graph, FSceneRenderer& Sc
 	}
 
 	if (!AddOverlay(Graph, FinalColor, DepthRef, "EditorLines", Overlays.EditorLines) ||
+		!AddOverlay(Graph, FinalColor, DepthRef, "EditorMapTiles", Overlays.EditorMapTiles) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGrid", Overlays.EditorGrid) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorOutline", Overlays.EditorOutline) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGizmo", Overlays.EditorGizmo, ERenderGraphLoadAction::Clear) ||

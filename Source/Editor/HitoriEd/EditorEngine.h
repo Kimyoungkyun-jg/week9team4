@@ -10,6 +10,7 @@
 #include "Render/Swapchain.h"
 #include "Editor/EditorUI/ImGuiRenderer.h"
 #include "Editor/Rendering/GridRenderer.h"
+#include "Editor/Rendering/MapTileRenderer.h"
 #include "Editor/Gizmo/GizmoRenderer.h"
 #include "Render/LineBatcher.h"
 #include "Editor/Rendering/SceneDepthRenderer.h"
@@ -142,6 +143,7 @@ private:
 
 	TUniquePtr<FImGuiRenderer> ImGuiRenderer;
 	TUniquePtr<FGridRenderer> GridRenderer;
+	TUniquePtr<FMapTileRenderer> MapTileRenderer;
 	TUniquePtr<FGizmoRenderer> GizmoRenderer;
 	TUniquePtr<FTextRenderer> TextRenderer;
 	TUniquePtr<FLineBatcher> LineBatcher;
