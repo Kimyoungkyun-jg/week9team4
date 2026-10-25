@@ -194,6 +194,8 @@ void UWorld::ClearWorld()
 	for (ULevel* Level : Levels)
 		Level->ClearActors();
 	GameMode = nullptr;
+	HUD = nullptr;
+	HUDClassOverride = nullptr;
 	HTR_LOG(Info, "{} : ", PersistentLevel->GetActorNum());
 }
 
@@ -745,6 +747,22 @@ void UWorld::BeginPlay()
 	if (DefaultPawnClass) GameMode->SetDefaultPawnClass(DefaultPawnClass);
 	if (PlayerControllerClass) GameMode->SetPlayerControllerClass(PlayerControllerClass);
 	GameMode->SpawnPlayer(PlayerPawn, PlayerController);
+	if (PlayerController)
+	{
+		UClass* Class = GetHUDClass();
+		if (Class && Class->IsChildOf(AGameHUD::StaticClass()) && Class->Constructor)
+		{
+			HUD = Cast<AGameHUD>(SpawnActor(Class));
+			FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(this) : nullptr;
+			if (HUD)
+			{
+				PlayerController->SetHUD(HUD);
+				if (!HUD->Initialize(PlayerController, Context ? Context->GameViewport.get() : nullptr))
+					HTR_LOG(Warning, "Failed to initialize HUD {}", Class->Name);
+			}
+		}
+		else HTR_LOG(Warning, "Invalid HUD class for world");
+	}
 
 	// 기존 액터 목록을 고정한 후 시작한다. BeginPlay 중 생성된 액터는 대기열로 간다.
 	TArray<AActor*> InitialActors;
@@ -771,6 +789,24 @@ bool UWorld::SetGameModeClass(UClass* Class)
 	GameModeClass = Class;
 	DefaultPawnClass = nullptr;
 	PlayerControllerClass = nullptr;
+	return true;
+}
+
+UClass* UWorld::GetHUDClass() const
+{
+	if (HUDClassOverride) return HUDClassOverride;
+	if (GameMode) return GameMode->GetHUDClass();
+	UClass* ModeClass = GameModeClass;
+	if (!ModeClass || !ModeClass->IsChildOf(AGameMode::StaticClass()) || !ModeClass->Constructor)
+		return AGameHUD::StaticClass();
+	AGameMode* DefaultMode = static_cast<AGameMode*>(ModeClass->GetDefaultObject());
+	return DefaultMode->GetHUDClass();
+}
+
+bool UWorld::SetHUDClassOverride(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(AGameHUD::StaticClass()) || !Class->Constructor)) return false;
+	HUDClassOverride = Class;
 	return true;
 }
 
@@ -825,12 +861,14 @@ void UWorld::EndPlay()
 	}
 	if (PlayerController)
 	{
+		PlayerController->SetHUD(nullptr);
 		PlayerController->ClearInputState();
 		PlayerController->UnPossess();
 	}
 	PlayerController = nullptr;
 	PlayerPawn = nullptr;
 	GameMode = nullptr;
+	HUD = nullptr;
 	bIsPaused = false;
 }
 

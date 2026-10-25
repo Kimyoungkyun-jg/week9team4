@@ -1,0 +1,139 @@
+{
+    "Root": {
+        "Children": [
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        1.0,
+                        0.0
+                    ],
+                    "Position": [
+                        -12.0,
+                        24.0
+                    ],
+                    "Size": [
+                        48.0,
+                        48.0
+                    ],
+                    "TexturePath": "Assets/Icons/Toolbar/Play.png",
+                    "Tint": [
+                        0.20000000298023224,
+                        0.4000000059604645,
+                        0.6000000238418579,
+                        0.800000011920929
+                    ],
+                    "WidgetName": "HealthIcon",
+                    "ZOrder": 3,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [
+                    {
+                        "Children": [],
+                        "Class": "UTextWidget",
+                        "Properties": {
+                            "Anchor": [
+                                0.0,
+                                0.0
+                            ],
+                            "Color": [
+                                0.8999999761581421,
+                                0.699999988079071,
+                                0.5,
+                                1.0
+                            ],
+                            "FontPath": "Assets/Fonts/Pretendard.json",
+                            "FontSize": 20.0,
+                            "Pivot": [
+                                0.0,
+                                0.0
+                            ],
+                            "Position": [
+                                0.0,
+                                0.0
+                            ],
+                            "Size": [
+                                100.0,
+                                100.0
+                            ],
+                            "Text": "HP: 100",
+                            "WidgetName": "HPText",
+                            "ZOrder": 0,
+                            "bVisible": true
+                        }
+                    }
+                ],
+                "Class": "UCanvasWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        24.0,
+                        24.0
+                    ],
+                    "Size": [
+                        200.0,
+                        40.0
+                    ],
+                    "WidgetName": "Panel",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UButtonWidget",
+                "Properties": {
+                    "Anchor": [1.0, 1.0],
+                    "BackgroundColor": [0.2, 0.35, 0.65, 1.0],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 20.0,
+                    "Pivot": [1.0, 1.0],
+                    "Position": [-20.0, -20.0],
+                    "Size": [160.0, 48.0],
+                    "Text": "Click Me",
+                    "TextColor": [1.0, 1.0, 1.0, 1.0],
+                    "WidgetName": "DemoButton",
+                    "ZOrder": 5,
+                    "bVisible": true
+                }
+            }
+        ],
+        "Class": "UCanvasWidget",
+        "Properties": {
+            "Anchor": [
+                0.0,
+                0.0
+            ],
+            "Pivot": [
+                0.0,
+                0.0
+            ],
+            "Position": [
+                0.0,
+                0.0
+            ],
+            "Size": [
+                100.0,
+                100.0
+            ],
+            "WidgetName": "SampleHUD",
+            "ZOrder": 0,
+            "bVisible": true
+        }
+    },
+    "Version": 1
+}

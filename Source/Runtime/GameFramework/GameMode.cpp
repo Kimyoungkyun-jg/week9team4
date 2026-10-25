@@ -7,6 +7,7 @@
 AGameMode::AGameMode()
 	: DefaultPawnClass(ADefaultPawn::StaticClass())
 	, PlayerControllerClass(APlayerController::StaticClass())
+	, HUDClass(AGameHUD::StaticClass())
 {
 }
 
@@ -21,6 +22,13 @@ bool AGameMode::SetPlayerControllerClass(UClass* Class)
 {
 	if (!Class || !Class->IsChildOf(APlayerController::StaticClass()) || !Class->Constructor) return false;
 	PlayerControllerClass = Class;
+	return true;
+}
+
+bool AGameMode::SetHUDClass(UClass* Class)
+{
+	if (!Class || !Class->IsChildOf(AGameHUD::StaticClass()) || !Class->Constructor) return false;
+	HUDClass = Class;
 	return true;
 }
 

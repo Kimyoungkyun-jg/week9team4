@@ -733,6 +733,12 @@ namespace
 			bChanged = ImGui::DragFloat3(Label.c_str(), Value->V, 0.1f);
 			break;
 		}
+		case EPropertyType::Vector2:
+		{
+			FVector2* Value = static_cast<FVector2*>(ValuePtr);
+			bChanged = ImGui::DragFloat2(Label.c_str(), Value->V, 0.1f);
+			break;
+		}
 		case EPropertyType::Rotator:
 		{
 			FRotator* Value = static_cast<FRotator*>(ValuePtr);

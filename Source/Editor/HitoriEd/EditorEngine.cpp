@@ -29,6 +29,7 @@
 #include "Render/RenderCommand.h"
 #include "Editor/Outliner/OutlinerPanel.h"
 #include "Editor/HitoriEd/EditorFileUtils.h"
+#include "Editor/UIEditor/WidgetEditorPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
 #include "Core/EngineLog.h"
@@ -132,6 +133,12 @@ bool UEditorEngine::Init()
 	EditorControlsPanel = EditorUI->AddEditorPanel<FEditorControlsPanel>();
 	ViewportsPanel = EditorUI->AddEditorPanel<FViewportsPanel>();
 	ContentDrawerPanel = EditorUI->AddEditorPanel<FContentDrawerPanel>();
+	WidgetEditorPanel = EditorUI->AddEditorPanel<FWidgetEditorPanel>();
+	ContentDrawerPanel->SetOpenUIAssetCallback([this](const FString& Path)
+	{
+		if (!WidgetEditorPanel->RequestOpenAsset(Path))
+			HTR_LOG(Error, "Failed to open UI asset: {}", Path);
+	});
 
 	// OutLine
 	OutlineRenderer = MakeUnique<FOutlineRenderer>();
@@ -660,6 +667,16 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		GameViewport.LostFocus();
 		return;
 	}
+	if (IsPIEInWindow() && !bEditorSIEFocus)
+	{
+		POINT Cursor{};
+		::GetCursorPos(&Cursor);
+		::ScreenToClient(PIEWindow->GetHandle(), &Cursor);
+		GameViewport.MouseMove(nullptr, Cursor.x, Cursor.y);
+	}
+	else
+		GameViewport.MouseMove(nullptr, static_cast<int32>(Mouse.X - PIEViewRect.X),
+			static_cast<int32>(Mouse.Y - PIEViewRect.Y));
 
 	if (FInputSystem::IsKeyPressed(EKeyCode::F8))
 		GameViewport.InputKey(nullptr, static_cast<int32>(EKeyCode::F8), true);
@@ -697,12 +714,18 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		const int32 Key = Button == EMouseButton::Left ? static_cast<int32>(EKeyCode::LButton) : static_cast<int32>(EKeyCode::RButton);
 		if (FInputSystem::IsMousePressed(Button))
 		{
-			if (GameViewport.IsSIEMode()) GameViewport.GetKeyInputBySIEMode(Key, true);
+			if (GameViewport.IsSIEMode())
+			{
+				if (!GameViewport.ProcessUIKey(Key, true)) GameViewport.GetKeyInputBySIEMode(Key, true);
+			}
 			else GameViewport.InputKey(nullptr, Key, true);
 		}
 		if (FInputSystem::IsMouseReleased(Button))
 		{
-			if (GameViewport.IsSIEMode()) GameViewport.GetKeyInputBySIEMode(Key, false);
+			if (GameViewport.IsSIEMode())
+			{
+				if (!GameViewport.ProcessUIKey(Key, false)) GameViewport.GetKeyInputBySIEMode(Key, false);
+			}
 			else GameViewport.InputKey(nullptr, Key, false);
 		}
 	}
@@ -832,10 +855,10 @@ void UEditorEngine::RenderGameFrame(FGameViewportClient* GameClient, const FScen
 
 	FSceneViewTargets& Targets = GameClient->GetViewTargets();
 	if (!Targets.SceneColor || !Targets.Depth) return;
-	if (bIsSIEMode)
-		RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions, nullptr, false, true);
-	else
-		ViewPipeline.Render(SceneRenderer, Renderer, Targets, GameClient->GetWorld(), SceneView, RenderOptions);
+	const bool bSceneRendered = bIsSIEMode
+		? RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions, nullptr, false, true)
+		: ViewPipeline.Render(SceneRenderer, Renderer, Targets, GameClient->GetWorld(), SceneView, RenderOptions);
+	if (bSceneRendered) GameClient->RenderUI();
 }
 
 bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& SceneView,
@@ -904,6 +927,7 @@ void UEditorEngine::DrawPIEWindows()
 void UEditorEngine::PreExit()
 {
 	EndPlayMap();
+	if (WidgetEditorPanel) WidgetEditorPanel->ReleaseAsset();
 	if (SettingsPanel) SettingsPanel->SaveSettings();
 	EditorWorld->ClearWorld();
 	// PIE 창이 열린 채 종료하면 Device가 살아 있을 때 Swapchain과 타깃을 먼저 정리한다.
@@ -1152,6 +1176,7 @@ void UEditorEngine::CreateNewScene()
 	}
 	if (!FEditorFileUtils::NewScene(EditorWorld))
 		return;
+	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
 
 	ResetSceneSelection();
 }
@@ -1166,6 +1191,7 @@ void UEditorEngine::OpenScene()
 	}
 	if (!FEditorFileUtils::LoadScene(EditorWorld))
 		return;
+	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
 
 	ResetSceneSelection();
 }
@@ -1178,7 +1204,7 @@ void UEditorEngine::SaveCurrentScene()
 		HTR_LOG(Warning, "Cannot save during PIE. Stop the play session first.");
 		return;
 	}
-	FEditorFileUtils::SaveScene(EditorWorld);
+	if (FEditorFileUtils::SaveScene(EditorWorld) && SettingsPanel) SettingsPanel->MarkSceneSaved();
 }
 
 // 공통 파일 유틸리티로 새 경로에 씬을 저장한다.
@@ -1189,5 +1215,5 @@ void UEditorEngine::SaveSceneAs()
 		HTR_LOG(Warning, "Cannot save during PIE. Stop the play session first.");
 		return;
 	}
-	FEditorFileUtils::SaveSceneAs(EditorWorld);
+	if (FEditorFileUtils::SaveSceneAs(EditorWorld) && SettingsPanel) SettingsPanel->MarkSceneSaved();
 }
