@@ -94,6 +94,7 @@ public:
     // 종료 저장은 마지막 프레임의 복사본을 사용해 저장 설정을 유지한다.
     void CaptureViewportSettings();
     void ApplyViewportSettings();
+	void MarkSceneSaved() { bHUDClassDirty = false; }
 
 private:
 	static constexpr float SectionGap = 10.0f;
@@ -112,4 +113,5 @@ private:
 	FViewportsPanel* ViewportsPanel = nullptr;
 	std::function<void(const FString&)> EditScriptCallback;
 	FEditorSettings Settings;
+	bool bHUDClassDirty = false;
 };

@@ -119,6 +119,13 @@ void UObject::Serialize(json& Handle, bool bIsLoading)
 				else Handle[Property.Name] = Value;
 				break;
 			}
+			case EPropertyType::Vector2:
+			{
+				FVector2& Value = *static_cast<FVector2*>(Ptr);
+				if (bIsLoading) Value = Handle[Property.Name].get<FVector2>();
+				else Handle[Property.Name] = Value;
+				break;
+			}
 			case EPropertyType::Vector4:
 			{
 				FVector4& Value = *static_cast<FVector4*>(Ptr);
@@ -250,6 +257,7 @@ void UObject::SerializeScriptProperties(FStructuredArchive::FSlot Slot)
 			case EPropertyType::String:    Value << *static_cast<FString*>(Ptr); break;
 			case EPropertyType::Bool:      Value << *static_cast<bool*>(Ptr); break;
 			case EPropertyType::Vector:    Value << *static_cast<FVector*>(Ptr); break;
+			case EPropertyType::Vector2:   Value << *static_cast<FVector2*>(Ptr); break;
 			case EPropertyType::Vector4:
 			case EPropertyType::LinearColor: Value << *static_cast<FVector4*>(Ptr); break;
 			case EPropertyType::Color:     Value << *static_cast<FColor*>(Ptr); break;

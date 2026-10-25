@@ -1,5 +1,6 @@
 #pragma once
 #include "MovementComponent.h"
+#include "Core/Delegates/Delegate.h"
 
 class UProjectileMovementComponent : public UMovementComponent
 {
@@ -24,6 +25,9 @@ class UProjectileMovementComponent : public UMovementComponent
 
 public:
 	UProjectileMovementComponent();
+
+	DECLARE_MULTICAST_DELEGATE(FOnProjectileImpact, const FHitResult&)
+	FOnProjectileImpact OnProjectileImpact;
 
 	// Projectile
 	float InintialSpeed = 0.0f;

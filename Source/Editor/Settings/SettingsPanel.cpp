@@ -8,6 +8,7 @@
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/GameMode.h"
+#include "GameFramework/GameHUD.h"
 #include "GameFramework/TestGameMode.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/LuaScriptComponent.h"
@@ -188,6 +189,35 @@ void FSettingsPanel::OnRender()
 			DrawClassPicker("Player Controller Class", APlayerController::StaticClass(), World->GetPlayerControllerClass(),
 				[this](UClass* Class) { World->SetPlayerControllerClass(Class); });
 		}
+		UWorld* HUDWorld = EditorWorld ? EditorWorld : World;
+		UClass* Override = HUDWorld->GetHUDClassOverride();
+		ASampleHUD::StaticClass();
+		ImGui::BeginDisabled(World->IsPlayInEditor());
+		ImGui::SetNextItemWidth(200.0f);
+		if (ImGui::BeginCombo("HUD Class Override", Override ? Override->Name.c_str() : "GameMode Default"))
+		{
+			if (ImGui::Selectable("GameMode Default", Override == nullptr) && Override)
+			{ HUDWorld->SetHUDClassOverride(nullptr); bHUDClassDirty = true; }
+			TArray<UClass*> Classes{AGameHUD::StaticClass()};
+			GetDerivedClasses(AGameHUD::StaticClass(), Classes);
+			for (UClass* Class : Classes)
+			{
+				if (!Class || !Class->Constructor) continue;
+				if (ImGui::Selectable(Class->Name.c_str(), Override == Class) && Override != Class)
+				{ HUDWorld->SetHUDClassOverride(Class); bHUDClassDirty = true; }
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::EndDisabled();
+		UClass* Effective = HUDWorld->GetHUDClass();
+		ImGui::Text("Effective HUD: %s", Effective ? Effective->Name.c_str() : "None");
+		if (Effective && Effective->IsChildOf(AGameHUD::StaticClass()) && Effective->Constructor)
+		{
+			const AGameHUD* DefaultHUD = static_cast<AGameHUD*>(Effective->GetDefaultObject());
+			ImGui::TextWrapped("Initial UI: %s", DefaultHUD->GetWidgetAssetPath().empty()
+				? "None" : DefaultHUD->GetWidgetAssetPath().c_str());
+		}
+		if (bHUDClassDirty) ImGui::TextDisabled("HUD selection changed. Save the scene to keep it.");
 	}
 	//////////////////////////////////////////////////////////
 
