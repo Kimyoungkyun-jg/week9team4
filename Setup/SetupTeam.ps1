@@ -32,6 +32,10 @@ if (-not ((Test-Path (Join-Path $Installed 'include\luajit\lua.h')) -and
     & $Vcpkg install luajit:x64-windows --classic
     if ($LASTEXITCODE -ne 0) { throw 'Failed to install LuaJIT.' }
 }
+if (-not (Test-Path (Join-Path $Installed 'include\sol\sol.hpp'))) {
+    & $Vcpkg install sol2:x64-windows --classic
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to install sol2.' }
+}
 
 $VsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (-not (Test-Path $VsWhere)) { throw 'Visual Studio Installer (vswhere.exe) was not found.' }
