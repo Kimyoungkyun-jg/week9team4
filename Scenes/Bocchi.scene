@@ -1462,6 +1462,7 @@
             "Properties": {}
         },
         "Properties": {
+            "DefaultPawnClass": "APlayerPawn",
             "GameModeClass": "ATestGameMode"
         }
     }

@@ -28,7 +28,7 @@
                         1.0,
                         1.0
                     ],
-                    "WidgetName": "Image1",
+                    "WidgetName": "Heart",
                     "ZOrder": 0,
                     "bVisible": true
                 }
@@ -46,53 +46,89 @@
                         0.0
                     ],
                     "Position": [
-                        75.03399658203125,
-                        20.0
+                        166.4406280517578,
+                        18.644046783447266
                     ],
                     "Size": [
-                        54.23723602294922,
-                        54.779640197753906
+                        54.0,
+                        54.0
                     ],
-                    "TexturePath": "Assets/Icons/heart.png",
+                    "TexturePath": "Assets/Icons/coin.png",
                     "Tint": [
                         1.0,
                         1.0,
                         1.0,
                         1.0
                     ],
-                    "WidgetName": "Image1Copy",
+                    "WidgetName": "Coin",
                     "ZOrder": 0,
                     "bVisible": true
                 }
             },
             {
                 "Children": [],
-                "Class": "UImageWidget",
+                "Class": "UTextWidget",
                 "Properties": {
                     "Anchor": [
                         0.0,
                         0.0
                     ],
-                    "Pivot": [
-                        0.0,
-                        0.0
-                    ],
-                    "Position": [
-                        127.06800079345703,
-                        20.0
-                    ],
-                    "Size": [
-                        54.23723602294922,
-                        54.779640197753906
-                    ],
-                    "TexturePath": "Assets/Icons/heart.png",
-                    "Tint": [
+                    "Color": [
                         1.0,
                         1.0,
                         1.0,
                         1.0
                     ],
-                    "WidgetName": "Image1CopyCopy",
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 24.0,
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        87.79663848876953,
+                        28.135595321655273
+                    ],
+                    "Size": [
+                        65.0847396850586,
+                        45.28813171386719
+                    ],
+                    "Text": "Text",
+                    "WidgetName": "Life",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UTextWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Color": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 24.0,
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        234.2374725341797,
+                        25.423730850219727
+                    ],
+                    "Size": [
+                        67.79658508300781,
+                        45.28813934326172
+                    ],
+                    "Text": "Text",
+                    "WidgetName": "Coins",
                     "ZOrder": 0,
                     "bVisible": true
                 }

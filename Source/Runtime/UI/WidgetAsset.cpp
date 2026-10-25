@@ -39,6 +39,7 @@ namespace
 		if (ClassName == "UCanvasWidget") Widget.reset(NewObject<UCanvasWidget>());
 		else if (ClassName == "UImageWidget") Widget.reset(NewObject<UImageWidget>());
 		else if (ClassName == "UTextWidget") Widget.reset(NewObject<UTextWidget>());
+		else if (ClassName == "UTimerWidget") Widget.reset(NewObject<UTimerWidget>());
 		else if (ClassName == "UButtonWidget") Widget.reset(NewObject<UButtonWidget>());
 		else return nullptr;
 		if (!Widget) return nullptr;

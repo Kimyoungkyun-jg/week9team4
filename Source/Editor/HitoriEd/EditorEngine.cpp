@@ -1,6 +1,8 @@
 #include "EnginePCH.h"
 
 #include "Editor/HitoriEd/EditorEngine.h"
+#include "GameActor/PlayerPawn.h"
+#include "GameActor/FlashlightActor.h"
 
 #include "Core/EngineStatics.h"
 #include "Core/EngineTimer.h"
@@ -69,6 +71,8 @@ bool UEditorEngine::Init()
 {
 	if (!Super::Init())
 		return false;
+	APlayerPawn::StaticClass();
+	AFlashlightActor::StaticClass();
 
 	FWorldContext& InitialWorldContext = CreateNewWorldContext(EWorldType::Editor);
 	InitialWorldContext.SetCurrentWorld(UWorld::CreateWorld(EWorldType::Editor, true));

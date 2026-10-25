@@ -187,6 +187,8 @@ project "HitoriEditor"
 	{
 		"Source/Editor/**.h",
 		"Source/Editor/**.cpp",
+		"Source/Game/GameActor/**.h",
+		"Source/Game/GameActor/**.cpp",
 		"Source/Programs/**.h",
 		"Source/Programs/**.cpp",
 		"Source/Editor/**.rc",   -- 창·exe 아이콘
@@ -195,6 +197,7 @@ project "HitoriEditor"
 	includedirs
 	{
 		"Source",             -- "Editor/OutputLog/ConsolePanel.h"처럼 Source 기준 include를 쓴다
+		"Source/Game",
 		"Source/Runtime",
 		"Source/Programs",
 		"%{IncludeDir.ImGui}",

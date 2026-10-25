@@ -27,6 +27,12 @@ public:
 	bool RemoveOverlay(uint64 Handle);
 	UWidget* FindWidget(const FString& Name) const;
 	bool SetText(const FString& Name, const FString& Text);
+	bool StartTimer(const FString& Name);
+	bool PauseTimer(const FString& Name);
+	bool ResumeTimer(const FString& Name);
+	bool StopTimer(const FString& Name);
+	bool ResetTimer(const FString& Name, bool bStartImmediately = true);
+	double GetTimerElapsedSeconds(const FString& Name) const;
 	bool SetWidgetVisible(const FString& Name, bool bVisible);
 	bool BindButton(const FString& Name, std::function<void()> Callback);
 	void EndPlay() override;

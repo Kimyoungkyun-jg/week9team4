@@ -6,6 +6,7 @@
 #include "Math/Color.h"
 #include "Containers/Array.h"
 #include <functional>
+#include <chrono>
 
 class UCanvasWidget;
 
@@ -113,6 +114,7 @@ public:
 	void SetFontSize(float InSize) { FontSize = InSize; }
 	void SetColor(const FLinearColor& InColor) { Color = InColor; }
 	const FString& GetText() const { return Text; }
+	virtual FString GetDisplayText() const { return Text; }
 	const FString& GetFontPath() const { return FontPath; }
 	float GetFontSize() const { return FontSize; }
 	const FLinearColor& GetColor() const { return Color; }
@@ -122,6 +124,33 @@ private:
 	FString FontPath;
 	float FontSize = 16.0f;
 	FLinearColor Color{1.0f, 1.0f, 1.0f, 1.0f};
+};
+
+class UTimerWidget : public UTextWidget
+{
+	DECLARE_CLASS(UTimerWidget, UTextWidget)
+	REFLECT_START(UTimerWidget)
+		PROPERTY(bAutoStart)
+	REFLECT_END()
+
+public:
+	UTimerWidget();
+	void SetAutoStart(bool Value) { bAutoStart = Value; }
+	bool GetAutoStart() const { return bAutoStart; }
+	void Start();
+	void Pause();
+	void Resume();
+	void Stop() { Pause(); }
+	void Reset();
+	bool IsRunning() const { return bRunning; }
+	double GetElapsedSeconds() const;
+	FString GetDisplayText() const override;
+
+private:
+	bool bAutoStart = true;
+	bool bRunning = false;
+	double AccumulatedSeconds = 0.0;
+	std::chrono::steady_clock::time_point StartedAt{};
 };
 
 class UButtonWidget : public UWidget

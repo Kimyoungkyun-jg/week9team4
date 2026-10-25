@@ -71,7 +71,7 @@ void FWidgetRenderer::DrawWidget(UWidget* Widget)
 
 void FWidgetRenderer::DrawTextWidget(const UTextWidget* Widget)
 {
-	DrawText(Widget->GetText(), Widget->GetFontPath(), Widget->GetFontSize(),
+	DrawText(Widget->GetDisplayText(), Widget->GetFontPath(), Widget->GetFontSize(),
 		Widget->GetColor(), Widget->GetLayoutRect());
 }
 

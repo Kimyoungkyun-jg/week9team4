@@ -48,6 +48,50 @@ bool AGameHUD::SetText(const FString& Name, const FString& Text)
 	return false;
 }
 
+bool AGameHUD::StartTimer(const FString& Name)
+{
+	if (UTimerWidget* Timer = Cast<UTimerWidget>(FindWidget(Name)))
+	{ Timer->Start(); return true; }
+	return false;
+}
+
+bool AGameHUD::PauseTimer(const FString& Name)
+{
+	if (UTimerWidget* Timer = Cast<UTimerWidget>(FindWidget(Name)))
+	{ Timer->Pause(); return true; }
+	return false;
+}
+
+bool AGameHUD::ResumeTimer(const FString& Name)
+{
+	if (UTimerWidget* Timer = Cast<UTimerWidget>(FindWidget(Name)))
+	{ Timer->Resume(); return true; }
+	return false;
+}
+
+bool AGameHUD::StopTimer(const FString& Name)
+{
+	return PauseTimer(Name);
+}
+
+bool AGameHUD::ResetTimer(const FString& Name, bool bStartImmediately)
+{
+	if (UTimerWidget* Timer = Cast<UTimerWidget>(FindWidget(Name)))
+	{
+		Timer->Reset();
+		if (bStartImmediately) Timer->Resume();
+		return true;
+	}
+	return false;
+}
+
+double AGameHUD::GetTimerElapsedSeconds(const FString& Name) const
+{
+	if (UTimerWidget* Timer = Cast<UTimerWidget>(FindWidget(Name)))
+		return Timer->GetElapsedSeconds();
+	return 0.0;
+}
+
 bool AGameHUD::SetWidgetVisible(const FString& Name, bool bVisible)
 {
 	if (UWidget* Widget = FindWidget(Name))

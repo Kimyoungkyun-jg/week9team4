@@ -211,8 +211,9 @@ void FWidgetEditorPanel::AddWidget(int Type)
 	UWidget* Widget = Type == 0 ? static_cast<UWidget*>(NewObject<UCanvasWidget>())
 		: Type == 1 ? static_cast<UWidget*>(NewObject<UImageWidget>())
 		: Type == 2 ? static_cast<UWidget*>(NewObject<UTextWidget>())
-		: static_cast<UWidget*>(NewObject<UButtonWidget>());
-	const FString Name = (Type == 0 ? "Canvas" : Type == 1 ? "Image" : Type == 2 ? "Text" : "Button") + std::to_string(NewWidgetIndex++);
+		: Type == 3 ? static_cast<UWidget*>(NewObject<UButtonWidget>())
+		: static_cast<UWidget*>(NewObject<UTimerWidget>());
+	const FString Name = (Type == 0 ? "Canvas" : Type == 1 ? "Image" : Type == 2 ? "Text" : Type == 3 ? "Button" : "Timer") + std::to_string(NewWidgetIndex++);
 	Widget->SetWidgetName(Name);
 	Widget->SetPosition({20.0f, 20.0f});
 	Widget->SetSize(Type == 0 ? FVector2{240.0f, 120.0f} : FVector2{160.0f, 48.0f});
@@ -220,7 +221,7 @@ void FWidgetEditorPanel::AddWidget(int Type)
 		Image->SetTexturePath("Assets/Icons/Toolbar/Play.png");
 	if (UTextWidget* Text = Cast<UTextWidget>(Widget))
 	{
-		Text->SetText("Text");
+		if (!Cast<UTimerWidget>(Widget)) Text->SetText("Text");
 		Text->SetFontPath("Assets/Fonts/Pretendard.json");
 		Text->SetFontSize(24.0f);
 	}
@@ -331,7 +332,7 @@ void FWidgetEditorPanel::DrawPreview(UWidget* Widget, ImDrawList* DrawList, ImVe
 	}
 	else if (UTextWidget* Text = Cast<UTextWidget>(Widget))
 		DrawList->AddText(nullptr, std::max(8.0f, Text->GetFontSize() * Scale), Min,
-			ToColor(Text->GetColor()), Text->GetText().c_str());
+			ToColor(Text->GetColor()), Text->GetDisplayText().c_str());
 	else if (UButtonWidget* Button = Cast<UButtonWidget>(Widget))
 	{
 		DrawList->AddRectFilled(Min, Max, ToColor(Button->GetBackgroundColor()));
@@ -487,7 +488,13 @@ void FWidgetEditorPanel::DrawDetails()
 	}
 	else if (UTextWidget* Text = Cast<UTextWidget>(Selected))
 	{
-		if (ImGui::InputText("Text", ValueBuffer, sizeof(ValueBuffer))) { Text->SetText(ValueBuffer); MarkDirty(); }
+		if (UTimerWidget* Timer = Cast<UTimerWidget>(Selected))
+		{
+			ImGui::TextUnformatted("Preview: 00:00.00");
+			bool bAutoStart = Timer->GetAutoStart();
+			if (ImGui::Checkbox("Auto Start", &bAutoStart)) { Timer->SetAutoStart(bAutoStart); MarkDirty(); }
+		}
+		else if (ImGui::InputText("Text", ValueBuffer, sizeof(ValueBuffer))) { Text->SetText(ValueBuffer); MarkDirty(); }
 		if (ImGui::InputText("Font", FontBuffer, sizeof(FontBuffer))) { Text->SetFontPath(FontBuffer); MarkDirty(); }
 		if (ImGui::BeginDragDropTarget())
 		{
@@ -572,6 +579,8 @@ void FWidgetEditorPanel::OnRender()
 		if (ImGui::Button("Text")) AddWidget(2);
 		ImGui::SameLine();
 		if (ImGui::Button("Button")) AddWidget(3);
+		ImGui::SameLine();
+		if (ImGui::Button("Timer")) AddWidget(4);
 		if (ImGui::Button("Delete Selected")) DeleteSelected();
 		ImGui::SameLine();
 		if (ImGui::Button("Duplicate")) DuplicateSelected();

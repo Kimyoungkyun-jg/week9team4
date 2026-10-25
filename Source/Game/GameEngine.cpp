@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "GameEngine.h"
+#include "GameActor/PlayerPawn.h"
+#include "GameActor/FlashlightActor.h"
 
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -32,6 +34,8 @@ namespace
 	void RegisterGameSceneClasses()
 	{
 		(void)ATestGameMode::StaticClass();
+		(void)APlayerPawn::StaticClass();
+		(void)AFlashlightActor::StaticClass();
 		(void)ASampleHUD::StaticClass();
 		(void)ADirectionalLightActor::StaticClass();
 		(void)AParticleActor::StaticClass();

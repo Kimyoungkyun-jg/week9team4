@@ -16,6 +16,17 @@
 #include "UI/WidgetAsset.h"
 #include "UI/WidgetRenderer.h"
 
+namespace
+{
+	void StartAutoTimers(UWidget* Widget)
+	{
+		if (UTimerWidget* Timer = Cast<UTimerWidget>(Widget))
+			if (Timer->GetAutoStart()) Timer->Start();
+		if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
+			for (UWidget* Child : Canvas->GetChildren()) StartAutoTimers(Child);
+	}
+}
+
 FGameViewportClient::FGameViewportClient()
 {
 }
@@ -35,6 +46,7 @@ void FGameViewportClient::SetWidgetRoot(TUniquePtr<UCanvasWidget> InRoot)
 	if (PressedButton) { PressedButton->SetPressed(false); bUIBlockingClick = true; }
 	PressedButton = nullptr;
 	WidgetRoot = std::move(InRoot);
+	if (WidgetRoot) StartAutoTimers(WidgetRoot.get());
 }
 
 void FGameViewportClient::ClearWidgetRoot()
@@ -48,6 +60,7 @@ uint64 FGameViewportClient::AddWidgetOverlay(const FString& AssetPath, bool bMod
 {
 	TUniquePtr<UCanvasWidget> Overlay = FWidgetAsset::Load(AssetPath);
 	if (!Overlay) return 0;
+	StartAutoTimers(Overlay.get());
 	const uint64 Handle = NextWidgetOverlayHandle++;
 	WidgetOverlays.Add({Handle, std::move(Overlay), bModal});
 	return Handle;
