@@ -23,7 +23,10 @@ class AGhostActor : public AActor
 	LUA_BIND_START(AGhostActor)
 		LUA_FUNC(ChangeEye)
 		LUA_FUNC(RestoreEye)
-		LUA_FUNC(IsPlayerInDetectionRange)
+		UserType["IsPlayerInDetectionRange"] = sol::overload(
+			[](const AGhostActor& Self) { return Self.IsPlayerInDetectionRange(false); },
+			[](const AGhostActor& Self, bool bChase) { return Self.IsPlayerInDetectionRange(bChase); }
+		);
 		LUA_FUNC(IsPlayerInChaseRange)
 		LUA_FUNC(GetAIComponent)
 		sol::table ActorTable = lua["AActor"];
@@ -42,11 +45,18 @@ class AGhostActor : public AActor
 				if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
 					Ghost->RestoreEye();
 			};
-			ActorTable["IsPlayerInDetectionRange"] = [](AActor& Self) -> bool {
-				if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
-					return Ghost->IsPlayerInDetectionRange();
-				return false;
-			};
+			ActorTable["IsPlayerInDetectionRange"] = sol::overload(
+				[](AActor& Self) -> bool {
+					if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
+						return Ghost->IsPlayerInDetectionRange(false);
+					return false;
+				},
+				[](AActor& Self, bool bChase) -> bool {
+					if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
+						return Ghost->IsPlayerInDetectionRange(bChase);
+					return false;
+				}
+			);
 			ActorTable["IsPlayerInChaseRange"] = [](AActor& Self) -> bool {
 				if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
 					return Ghost->IsPlayerInChaseRange();
@@ -71,12 +81,14 @@ public:
 	UStaticMeshComponent* GetBodyMesh() const { return BodyMesh; }
 	UStaticMeshComponent* GetEyesMesh() const { return EyesMesh; }
 	UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComponent; }
-	UBoxComponent* GetDetectionBox() const { return DetectionBox; }
+	UBoxComponent* GetPatrolDetectionBox() const { return PatrolDetectionBox; }
+	UBoxComponent* GetChaseDetectionBox() const { return ChaseDetectionBox; }
 	ULuaScriptComponent* GetLuaScriptComponent() const { return LuaScriptComponent; }
 
 private:
 	UCapsuleComponent* CapsuleComponent = nullptr;
-	UBoxComponent* DetectionBox = nullptr;
+	UBoxComponent* PatrolDetectionBox = nullptr;
+	UBoxComponent* ChaseDetectionBox = nullptr;
 	UStaticMeshComponent* BodyMesh = nullptr;
 	UStaticMeshComponent* EyesMesh = nullptr;
 	UGhostAIComponent* AIComponent = nullptr;

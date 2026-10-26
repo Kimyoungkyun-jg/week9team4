@@ -1044,9 +1044,23 @@ namespace
 
 		// 2. 이동 및 타이머 파라미터
 		float Speed = AIComp.GetMoveSpeed();
-		if (ImGui::DragFloat("Move Speed", &Speed, 0.1f, 0.5f, 15.0f, "%.1f"))
+		if (ImGui::DragFloat("Move Speed (Patrol)", &Speed, 0.1f, 0.5f, 15.0f, "%.1f"))
 		{
 			AIComp.SetMoveSpeed(Speed);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Default movement speed during patrol and return");
+		}
+
+		float ChaseSpeed = AIComp.GetChaseSpeed();
+		if (ImGui::DragFloat("Chase Speed", &ChaseSpeed, 0.1f, 0.5f, 15.0f, "%.1f"))
+		{
+			AIComp.SetChaseSpeed(ChaseSpeed);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Movement speed while actively chasing the player");
 		}
 
 		float WaitTime = AIComp.GetWaitTimeBeforeChase();
@@ -1067,8 +1081,8 @@ namespace
 
 		ImGui::Separator();
 
-		// 3. 방향성 타일 탐지 범위 (Directional Detection Range)
-		ImGui::Text("Patrol Detection Range (Tiles):");
+		// 3. 탐지 및 추격 박스 콜라이더 범위 (Box Colliders)
+		ImGui::Text("Patrol Detection Box (Tiles):");
 		int32 ForwardTiles = AIComp.GetForwardDetectionTiles();
 		if (ImGui::DragInt("Forward Tiles", &ForwardTiles, 1, 0, 30))
 		{
@@ -1100,7 +1114,7 @@ namespace
 		}
 
 		ImGui::Spacing();
-		ImGui::Text("Chase Detection Range (Tiles):");
+		ImGui::Text("Chase Detection Box (Tiles):");
 		int32 ChaseForward = AIComp.GetChaseForwardDetectionTiles();
 		if (ImGui::DragInt("Chase Forward Tiles", &ChaseForward, 1, 0, 40))
 		{
@@ -1130,6 +1144,8 @@ namespace
 		{
 			ImGui::SetTooltip("Extended lateral half-width while chasing to prevent losing player on turns (number of tiles)");
 		}
+
+		ImGui::TextDisabled("※ Line of sight is blocked by walls automatically (LOS check)");
 
 		ImGui::Separator();
 
@@ -1360,10 +1376,8 @@ void FDetailsPanel::DrawScriptEditor()
 	if (ImGui::Begin("Lua Script Editor", &bWindowOpen))
 	{
 		ImGui::TextUnformatted(EditingScriptPath.c_str());
-		if (bPlaying) ImGui::TextDisabled("Stop PIE to edit or save this script.");
 		if (!ScriptEditorStatus.empty()) ImGui::TextWrapped("%s", ScriptEditorStatus.c_str());
 
-		ImGui::BeginDisabled(bPlaying);
 		const float EditorHeight = std::max(200.0f, ImGui::GetContentRegionAvail().y - 45.0f);
 		if (ImGui::InputTextMultiline("##LuaSource", EditingScriptText.data(), EditingScriptText.capacity() + 1,
 			ImVec2(-1, EditorHeight), ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput,
@@ -1381,7 +1395,7 @@ void FDetailsPanel::DrawScriptEditor()
 			if (File)
 			{
 				bScriptEditorDirty = false;
-				ScriptEditorStatus = "Saved. Changes take effect on the next PIE start.";
+				ScriptEditorStatus = bPlaying ? "Saved. Changes will hot-reload in PIE." : "Saved. Changes take effect on the next PIE start.";
 			}
 			else
 			{
@@ -1389,7 +1403,6 @@ void FDetailsPanel::DrawScriptEditor()
 				HTR_LOG(Error, "Cannot save Lua script: {}", EditingScriptPath);
 			}
 		}
-		ImGui::EndDisabled();
 		if (bScriptEditorDirty)
 		{
 			ImGui::SameLine();
@@ -1483,10 +1496,8 @@ void FDetailsPanel::OnRender()
 					&& std::filesystem::is_regular_file(ScriptPath, Error);
 				if (bValidScript)
 				{
-					ImGui::BeginDisabled(World && World->IsPlayInEditor());
 					if (ImGui::Button("Edit Lua Script"))
 						OpenScriptEditor(ScriptPath);
-					ImGui::EndDisabled();
 				}
 			}
 

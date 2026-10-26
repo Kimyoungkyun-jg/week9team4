@@ -14,6 +14,30 @@
 #include "UObject/Casts.h"
 
 #include "Lua/LuaMacros.h"
+#include "Components/MovementComponent.h"
+
+inline sol::object PushComponentToLua(lua_State* L, UActorComponent* Comp)
+{
+	if (!Comp)
+	{
+		return sol::make_object(L, sol::nil);
+	}
+
+	if (auto* MoveComp = Cast<UMovementComponent>(Comp))
+	{
+		return sol::make_object(L, MoveComp);
+	}
+	if (auto* PrimComp = Cast<UPrimitiveComponent>(Comp))
+	{
+		return sol::make_object(L, PrimComp);
+	}
+	if (auto* SceneComp = Cast<USceneComponent>(Comp))
+	{
+		return sol::make_object(L, SceneComp);
+	}
+
+	return sol::make_object(L, Comp);
+}
 
 class UWorld;
 class ULevel;
@@ -38,12 +62,14 @@ class AActor : public UObject
 		UserType["SetActorRotation"] = [](AActor& Self, const FRotator& Rot, sol::optional<bool> bSweep) {
 			Self.SetActorRotation(Rot, bSweep.value_or(false));
 		};
-		UserType["FindComponentByName"] = [](AActor& Self, const FString& Name) -> UActorComponent* {
-			return Self.FindComponentByName(FName(Name));
+		UserType["FindComponentByName"] = [](AActor& Self, const FString& Name, sol::this_state s) -> sol::object {
+			UActorComponent* Comp = Self.FindComponentByName(FName(Name));
+			return PushComponentToLua(s.lua_state(), Comp);
 		};
-		UserType["GetComponentByClass"] = [](AActor& Self, const FString& ClassName) -> UActorComponent* {
+		UserType["GetComponentByClass"] = [](AActor& Self, const FString& ClassName, sol::this_state s) -> sol::object {
 			UClass* TargetClass = FindClass(ClassName);
-			return TargetClass ? Self.GetComponentByClass(TargetClass) : nullptr;
+			UActorComponent* Comp = TargetClass ? Self.GetComponentByClass(TargetClass) : nullptr;
+			return PushComponentToLua(s.lua_state(), Comp);
 		};
 		UserType["GetComponentsByClass"] = [](AActor& Self, const FString& ClassName, sol::this_state s) -> sol::table {
 			sol::state_view lua(s);
@@ -54,9 +80,15 @@ class AActor : public UObject
 			TArray<UActorComponent*> List = Self.GetComponentsByClass(TargetClass);
 			for (int32 i = 0; i < List.Num(); ++i)
 			{
-				Result[i + 1] = List[i];
+				Result[i + 1] = PushComponentToLua(s.lua_state(), List[i]);
 			}
 			return Result;
+		};
+		UserType["CastToMovementComponent"] = [](AActor& Self, sol::object CompObj) -> UMovementComponent* {
+			if (!CompObj.valid() || CompObj.is<sol::nil_t>()) return nullptr;
+			if (CompObj.is<UMovementComponent*>()) return CompObj.as<UMovementComponent*>();
+			if (CompObj.is<UActorComponent*>()) return Cast<UMovementComponent>(CompObj.as<UActorComponent*>());
+			return nullptr;
 		};
 	LUA_BIND_END()
 public:

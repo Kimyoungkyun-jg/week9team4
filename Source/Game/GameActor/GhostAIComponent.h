@@ -23,6 +23,7 @@ class UGhostAIComponent : public UActorComponent
 
 	REFLECT_START(UGhostAIComponent)
 		PROPERTY(MoveSpeed)
+		PROPERTY(ChaseSpeed)
 		PROPERTY(WaitTimeBeforeChase)
 		PROPERTY(MaxChaseDuration)
 		PROPERTY(ForwardDetectionTiles)
@@ -42,6 +43,8 @@ class UGhostAIComponent : public UActorComponent
 		LUA_FUNC(HasReachedDestination)
 		LUA_FUNC(SetMoveSpeed)
 		LUA_FUNC(GetMoveSpeed)
+		LUA_FUNC(SetChaseSpeed)
+		LUA_FUNC(GetChaseSpeed)
 		LUA_FUNC(GetWaitTimeBeforeChase)
 		LUA_FUNC(SetWaitTimeBeforeChase)
 		LUA_FUNC(GetMaxChaseDuration)
@@ -60,8 +63,16 @@ class UGhostAIComponent : public UActorComponent
 		LUA_FUNC(SetChaseSideDetectionTiles)
 		LUA_FUNC(IsChasing)
 		LUA_FUNC(SetChasing)
-		LUA_FUNC(IsPlayerInDetectionRange)
-		LUA_FUNC(IsPlayerInChaseRange)
+		UserType["IsPlayerInDetectionRange"] = sol::overload(
+			[](const UGhostAIComponent& Self) { return Self.IsPlayerInDetectionRange(nullptr, false); },
+			[](const UGhostAIComponent& Self, AActor* Player) { return Self.IsPlayerInDetectionRange(Player, false); },
+			[](const UGhostAIComponent& Self, AActor* Player, bool bChase) { return Self.IsPlayerInDetectionRange(Player, bChase); }
+		);
+		UserType["IsPlayerInChaseRange"] = sol::overload(
+			[](const UGhostAIComponent& Self) { return Self.IsPlayerInChaseRange(nullptr); },
+			[](const UGhostAIComponent& Self, AActor* Player) { return Self.IsPlayerInChaseRange(Player); }
+		);
+		LUA_FUNC(HasLineOfSightTo)
 		LUA_FUNC(AddPatrolPoint)
 		LUA_FUNC(AddPatrolWorldLocation)
 		LUA_FUNC(ClearPatrolPoints)
@@ -101,6 +112,9 @@ public:
 	void SetMoveSpeed(float Speed) { MoveSpeed = Speed; }
 	float GetMoveSpeed() const { return MoveSpeed; }
 
+	void SetChaseSpeed(float Speed) { ChaseSpeed = Speed; }
+	float GetChaseSpeed() const { return ChaseSpeed; }
+
 	float GetWaitTimeBeforeChase() const { return WaitTimeBeforeChase; }
 	void SetWaitTimeBeforeChase(float InVal) { WaitTimeBeforeChase = InVal; }
 
@@ -132,7 +146,10 @@ public:
 
 	bool IsPlayerInDetectionRange(AActor* PlayerActor = nullptr, bool bForceChaseRange = false) const;
 	bool IsPlayerInChaseRange(AActor* PlayerActor = nullptr) const { return IsPlayerInDetectionRange(PlayerActor, true); }
-	void UpdateDetectionBoxExtent();
+	bool HasLineOfSightTo(AActor* TargetActor) const;
+	bool IsPlayerInBoxMath(AActor* PlayerActor, bool bUseChase) const;
+	void UpdateDetectionBoxes();
+	void UpdateDetectionBoxExtent() { UpdateDetectionBoxes(); }
 
 	const FVector& GetHomeLocation() const { return HomeLocation; }
 	void SetHomeLocation(const FVector& InHome) { HomeLocation = InHome; }
@@ -154,18 +171,19 @@ private:
 	int32 CurrentPatrolIndex = -1;
 
 	float MoveSpeed = 2.5f;
+	float ChaseSpeed = 3.5f;
 	float WaitTimeBeforeChase = 1.0f;
-	float MaxChaseDuration = 2.0f;
+	float MaxChaseDuration = 6.0f;
 
 	// Normal Detection Range
-	int32 ForwardDetectionTiles = 5;
-	int32 BackwardDetectionTiles = 1;
-	int32 SideDetectionTiles = 1;
+	int32 ForwardDetectionTiles = 6;
+	int32 BackwardDetectionTiles = 3;
+	int32 SideDetectionTiles = 2;
 
 	// Chase Detection Range (추격 시 넓어지는 감지 범위)
-	int32 ChaseForwardDetectionTiles = 8;
-	int32 ChaseBackwardDetectionTiles = 3;
-	int32 ChaseSideDetectionTiles = 4;
+	int32 ChaseForwardDetectionTiles = 10;
+	int32 ChaseBackwardDetectionTiles = 5;
+	int32 ChaseSideDetectionTiles = 6;
 
 	bool bIsChasing = false;
 	bool bIsMoving = false;

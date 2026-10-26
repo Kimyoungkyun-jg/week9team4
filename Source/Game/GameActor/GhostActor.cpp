@@ -31,15 +31,25 @@ AGhostActor::AGhostActor()
 	CapsuleComponent->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Overlap);
 	CapsuleComponent->SetGenerateOverlapEvents(true);
 
-	// 플레이어 감지용 센서 트리거 박스
-	DetectionBox = CreateDefaultSubobject<UBoxComponent>("DetectionBox");
-	DetectionBox->SetupAttachment(GetRootComponent());
-	DetectionBox->SetBoxExtent(FVector(4.0f, 4.0f, 1.5f));
-	DetectionBox->SetCollisionEnabled(true);
-	DetectionBox->SetCollisionObjectType(ECollisionChannel::WorldDynamic);
-	DetectionBox->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
-	DetectionBox->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Overlap);
-	DetectionBox->SetGenerateOverlapEvents(true);
+	// 순찰 시 사용할 탐지 박스 콜라이더
+	PatrolDetectionBox = CreateDefaultSubobject<UBoxComponent>("PatrolDetectionBox");
+	PatrolDetectionBox->SetupAttachment(GetRootComponent());
+	PatrolDetectionBox->SetBoxExtent(FVector(3.0f, 1.0f, 1.5f));
+	PatrolDetectionBox->SetCollisionEnabled(true);
+	PatrolDetectionBox->SetCollisionObjectType(ECollisionChannel::WorldDynamic);
+	PatrolDetectionBox->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
+	PatrolDetectionBox->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Overlap);
+	PatrolDetectionBox->SetGenerateOverlapEvents(true);
+
+	// 추격 시 사용할 확장 추격 박스 콜라이더
+	ChaseDetectionBox = CreateDefaultSubobject<UBoxComponent>("ChaseDetectionBox");
+	ChaseDetectionBox->SetupAttachment(GetRootComponent());
+	ChaseDetectionBox->SetBoxExtent(FVector(5.0f, 3.0f, 1.5f));
+	ChaseDetectionBox->SetCollisionEnabled(true);
+	ChaseDetectionBox->SetCollisionObjectType(ECollisionChannel::WorldDynamic);
+	ChaseDetectionBox->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
+	ChaseDetectionBox->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Overlap);
+	ChaseDetectionBox->SetGenerateOverlapEvents(true);
 
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>("BodyMesh");
 	BodyMesh->SetupAttachment(GetRootComponent());
@@ -96,6 +106,7 @@ void AGhostActor::BeginPlay()
 	}
 
 	InitialLocation = GetActorLocation();
+
 	if (CapsuleComponent)
 	{
 		CapsuleComponent->OnComponentBeginOverlap.AddRaw(this, &AGhostActor::OnCapsuleBeginOverlap);
@@ -104,12 +115,16 @@ void AGhostActor::BeginPlay()
 
 	if (AIComponent)
 	{
-		AIComponent->UpdateDetectionBoxExtent();
+		AIComponent->UpdateDetectionBoxes();
 	}
 
-	if (DetectionBox)
+	if (PatrolDetectionBox)
 	{
-		DetectionBox->UpdateOverlaps();
+		PatrolDetectionBox->UpdateOverlaps();
+	}
+	if (ChaseDetectionBox)
+	{
+		ChaseDetectionBox->UpdateOverlaps();
 	}
 }
 
