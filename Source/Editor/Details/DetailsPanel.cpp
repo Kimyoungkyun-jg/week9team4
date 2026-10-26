@@ -1200,7 +1200,16 @@ void FDetailsPanel::OnRender()
 		// 액터 -> 컴포넌트 순으로, 클래스별 프로퍼티 표시
 		ImGui::PushID(TargetActor);
 		DrawProperties(TargetActor, CustomFont);
-		if (AMapActor* Map = Cast<AMapActor>(TargetActor)) MapTileEditor.DrawDetails(*Map);
+		if (AMapActor* Map = Cast<AMapActor>(TargetActor))
+			MapTileEditor.DrawDetails(*Map, [this]
+			{
+				// Includes rename, deferred drag/drop and context-menu pointers into the component tree.
+				PendingDeleteComponent = nullptr;
+				PendingDroppedComponent = PendingDragComponent = nullptr;
+				EditingNameComponent = nullptr;
+				bFocusNameEdit = bIsEditingName = false;
+				SelectComponent(nullptr); // Existing selection callback releases the Gizmo and outline.
+			});
 		ImGui::PopID();
 
 		if (TargetComponent)
