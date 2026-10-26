@@ -272,6 +272,7 @@ void APlayerPawn::SetLife(int32 InLife)
 void APlayerPawn::RespawnAtPlayerStart()
 {
 	ResetWalkingEffects();
+	SetHeadBobSuspended(false);
 	HeadBobBaseLocation = PlayerStartCameraLocation;
 	SetActorLocation(PlayerStartLocation);
 	SetActorRotation(PlayerStartRotation);

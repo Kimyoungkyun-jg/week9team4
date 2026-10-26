@@ -287,14 +287,13 @@ void APacmanGameMode::ResolveGhostHit()
 			}
 		}
 	}
-	HitPlayer = nullptr;
-	HitCamera = nullptr;
 }
 
 void APacmanGameMode::ReleaseGhostHitCamera()
 {
 	if (IsValid(HitPlayer)) HitPlayer->SetHeadBobSuspended(false);
 	HitPlayer = nullptr;
+	HitCamera = nullptr;
 }
 
 void APacmanGameMode::TickGhostHit(float DeltaTime)

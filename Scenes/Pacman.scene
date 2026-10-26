@@ -5687,7 +5687,7 @@
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": 2.7173256874084473
+                                        "Z": 2.7200000286102295
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -5767,8 +5767,8 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 12.937554359436035,
-                                        "Y": 7.45801305770874,
+                                        "X": 6.881067752838135,
+                                        "Y": 2.700030565261841,
                                         "Z": -1.870315670967102
                                     },
                                     "Rotation": {
@@ -6020,6 +6020,40 @@
                         },
                         {
                             "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 34,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 44,
+                                        "Row": 31
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 44
+                                    },
+                                    {
+                                        "Col": 39,
+                                        "Row": 36
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
                             "Name": "GhostAIComponent",
                             "Parent": "",
                             "Properties": {
@@ -6219,6 +6253,2574 @@
                     ],
                     "Name": "AStaticMeshActor_2",
                     "Properties": {
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 6.960122108459473,
+                                        "Y": -2.619715690612793,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0701751708984375,
+                                            "Y": 0.0,
+                                            "Z": 1.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 34,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 44,
+                                        "Row": 16
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 4
+                                    },
+                                    {
+                                        "Col": 39,
+                                        "Row": 4
+                                    },
+                                    {
+                                        "Col": 31,
+                                        "Row": 11
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_0",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -3.8653564453125,
+                                        "Y": 6.803126335144043,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 1.0,
+                                            "Y": 0.45614033937454224,
+                                            "Z": 0.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 24,
+                                        "Row": 31
+                                    },
+                                    {
+                                        "Col": 14,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 4,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 9,
+                                        "Row": 44
+                                    },
+                                    {
+                                        "Col": 19,
+                                        "Row": 40
+                                    },
+                                    {
+                                        "Col": 26,
+                                        "Row": 36
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_2",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -3.8269124031066895,
+                                        "Y": -6.84912109375,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 1.0,
+                                            "Y": 0.0,
+                                            "Z": 0.6842107772827148
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 24,
+                                        "Row": 16
+                                    },
+                                    {
+                                        "Col": 14,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 4,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 9,
+                                        "Row": 6
+                                    },
+                                    {
+                                        "Col": 19,
+                                        "Row": 11
+                                    },
+                                    {
+                                        "Col": 27,
+                                        "Row": 11
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_3",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 23.744272232055664,
+                                        "Y": -19.968891143798828,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0701751708984375,
+                                            "Y": 0.0,
+                                            "Z": 1.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 34,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 44,
+                                        "Row": 16
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 4
+                                    },
+                                    {
+                                        "Col": 39,
+                                        "Row": 4
+                                    },
+                                    {
+                                        "Col": 31,
+                                        "Row": 11
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_4",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 24.33832550048828,
+                                        "Y": 20.133766174316406,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 34,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 44,
+                                        "Row": 31
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 51,
+                                        "Row": 44
+                                    },
+                                    {
+                                        "Col": 39,
+                                        "Row": 36
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_5",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -23.350717544555664,
+                                        "Y": -19.938819885253906,
+                                        "Z": -1.625270962715149
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 1.0,
+                                            "Y": 0.0,
+                                            "Z": 0.6842107772827148
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 24,
+                                        "Row": 16
+                                    },
+                                    {
+                                        "Col": 14,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 4,
+                                        "Row": 21
+                                    },
+                                    {
+                                        "Col": 9,
+                                        "Row": 6
+                                    },
+                                    {
+                                        "Col": 19,
+                                        "Row": 11
+                                    },
+                                    {
+                                        "Col": 27,
+                                        "Row": 11
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_6",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -24.3882999420166,
+                                        "Y": 19.71267318725586,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 1.0,
+                                            "Y": 0.45614033937454224,
+                                            "Z": 0.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "GhostAI": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "PatrolPoints": [
+                                    {
+                                        "Col": 24,
+                                        "Row": 31
+                                    },
+                                    {
+                                        "Col": 14,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 4,
+                                        "Row": 26
+                                    },
+                                    {
+                                        "Col": 9,
+                                        "Row": 44
+                                    },
+                                    {
+                                        "Col": 19,
+                                        "Row": 40
+                                    },
+                                    {
+                                        "Col": 26,
+                                        "Row": 36
+                                    }
+                                ],
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0
+                            },
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_7",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
