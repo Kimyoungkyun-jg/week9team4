@@ -21,12 +21,14 @@
 #include "Serialization/JsonArchive.h"
 #include "GameFramework/TestGameMode.h"
 #include "GameFramework/Actor/DirectionalLightActor.h"
+#include "GameFramework/Actor/ExponentialHeightFogActor.h"
 #include "GameFramework/Actor/ParticleActor.h"
 #include "GameFramework/Actor/SkyLightActor.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
 #include "GameFramework/Actor/TextRenderActor.h"
 #include "Components/BillboardComponent.h"
 #include "Components/DirectionalLightComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/ParticleSubUVComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -51,12 +53,14 @@ namespace
 		(void)APacmanHUD::StaticClass();
 		(void)ASampleHUD::StaticClass();
 		(void)ADirectionalLightActor::StaticClass();
+		(void)AExponentialHeightFogActor::StaticClass();
 		(void)AParticleActor::StaticClass();
 		(void)ASkyLightActor::StaticClass();
 		(void)AStaticMeshActor::StaticClass();
 		(void)ATextRenderActor::StaticClass();
 		(void)UBillboardComponent::StaticClass();
 		(void)UDirectionalLightComponent::StaticClass();
+		(void)UExponentialHeightFogComponent::StaticClass();
 		(void)UParticleSubUVComponent::StaticClass();
 		(void)USceneComponent::StaticClass();
 		(void)USkyLightComponent::StaticClass();

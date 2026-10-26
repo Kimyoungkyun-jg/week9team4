@@ -14,8 +14,8 @@
                         0.5
                     ],
                     "Position": [
-                        52.34307861328125,
-                        -165.0
+                        33.343082427978516,
+                        -222.00006103515625
                     ],
                     "Size": [
                         1084.9654541015625,
@@ -47,14 +47,20 @@
                         0.6509804129600525,
                         0.0
                     ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 90.0,
                     "HoverBackgroundColor": [
                         0.19912341237068176,
                         0.3479704260826111,
                         0.6509804129600525,
                         0.0
                     ],
-                    "FontPath": "Assets/Fonts/Pretendard.json",
-                    "FontSize": 90.0,
+                    "HoverTextColor": [
+                        1.0,
+                        0.8999999761581421,
+                        0.4000000059604645,
+                        1.0
+                    ],
                     "Pivot": [
                         0.5,
                         0.5
@@ -72,12 +78,6 @@
                         1.0,
                         1.0,
                         1.0,
-                        1.0
-                    ],
-                    "HoverTextColor": [
-                        1.0,
-                        0.9,
-                        0.4,
                         1.0
                     ],
                     "WidgetName": "Button4",
@@ -99,37 +99,37 @@
                         0.6509804129600525,
                         0.0
                     ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 90.0,
                     "HoverBackgroundColor": [
                         0.19912341237068176,
                         0.3479704260826111,
                         0.6509804129600525,
                         0.0
                     ],
-                    "FontPath": "Assets/Fonts/Pretendard.json",
-                    "FontSize": 90.0,
+                    "HoverTextColor": [
+                        1.0,
+                        0.8999999761581421,
+                        0.4000000059604645,
+                        1.0
+                    ],
                     "Pivot": [
                         0.5,
                         0.5
                     ],
                     "Position": [
-                        40.0,
-                        195.0
+                        49.500030517578125,
+                        202.38890075683594
                     ],
                     "Size": [
-                        236.90252685546875,
-                        104.41098022460938
+                        272.7914733886719,
+                        119.18876647949219
                     ],
                     "Text": "Score",
                     "TextColor": [
                         1.0,
                         1.0,
                         1.0,
-                        1.0
-                    ],
-                    "HoverTextColor": [
-                        1.0,
-                        0.9,
-                        0.4,
                         1.0
                     ],
                     "WidgetName": "ScoreButton",
@@ -151,37 +151,37 @@
                         0.6509804129600525,
                         0.0
                     ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 92.0,
                     "HoverBackgroundColor": [
                         0.19912341237068176,
                         0.3479704260826111,
                         0.6509804129600525,
                         0.0
                     ],
-                    "FontPath": "Assets/Fonts/Pretendard.json",
-                    "FontSize": 92.0,
+                    "HoverTextColor": [
+                        1.0,
+                        0.8999999761581421,
+                        0.4000000059604645,
+                        1.0
+                    ],
                     "Pivot": [
                         0.5,
                         0.5
                     ],
                     "Position": [
-                        53.53288650512695,
-                        305.0
+                        48.255104064941406,
+                        309.2221984863281
                     ],
                     "Size": [
-                        230.55714416503906,
-                        102.72245025634766
+                        220.00157165527344,
+                        106.9446792602539
                     ],
                     "Text": "Quit",
                     "TextColor": [
                         1.0,
                         1.0,
                         1.0,
-                        1.0
-                    ],
-                    "HoverTextColor": [
-                        1.0,
-                        0.9,
-                        0.4,
                         1.0
                     ],
                     "WidgetName": "Button4Copy",
