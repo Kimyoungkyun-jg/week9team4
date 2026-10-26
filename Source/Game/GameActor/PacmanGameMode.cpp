@@ -176,6 +176,7 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 	HitGhost = Ghost;
 	HitPlayer = Player;
 	HitCamera = Camera;
+	Player->SetHeadBobSuspended(true);
 	SavedCameraLocation = Camera->GetRelativeLocation();
 	SavedCameraRotation = Camera->GetRelativeRotation();
 	SavedCameraFov = Camera->GetFieldOfView();
@@ -265,10 +266,16 @@ void APacmanGameMode::ResolveGhostHit()
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
+			ReleaseGhostHitCamera();
 		}
 	}
-	HitPlayer = nullptr;
 	HitCamera = nullptr;
+}
+
+void APacmanGameMode::ReleaseGhostHitCamera()
+{
+	if (IsValid(HitPlayer)) HitPlayer->SetHeadBobSuspended(false);
+	HitPlayer = nullptr;
 }
 
 void APacmanGameMode::TickGhostHit(float DeltaTime)
@@ -300,6 +307,7 @@ void APacmanGameMode::TickGhostHit(float DeltaTime)
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
+			ReleaseGhostHitCamera();
 			GhostHitCooldown = 1.0f;
 		}
 		break;
@@ -378,6 +386,7 @@ void APacmanGameMode::Tick(float DeltaTime)
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
+			ReleaseGhostHitCamera();
 			HUD->RemoveOverlay(FadeOverlayHandle);
 			FadeOverlayHandle = 0;
 			FadeImage = nullptr;
@@ -392,6 +401,7 @@ void APacmanGameMode::Tick(float DeltaTime)
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
+			ReleaseGhostHitCamera();
 		}
 		FadePhase = EResultFadePhase::FadeIn;
 		FadeElapsed = 0.0f;
