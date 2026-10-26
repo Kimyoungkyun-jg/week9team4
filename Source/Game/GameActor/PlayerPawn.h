@@ -12,6 +12,10 @@ class APlayerPawn : public ADefaultPawn
 	DECLARE_CLASS(APlayerPawn, ADefaultPawn)
 	REFLECT_START(APlayerPawn)
 		PROPERTY(Life)
+		PROPERTY(bHeadBobEnabled)
+		PROPERTY(HeadBobAmplitude)
+		PROPERTY(HeadBobForwardMultiplier)
+		PROPERTY(HeadBobDuration)
 	REFLECT_END()
 
 public:
@@ -27,8 +31,26 @@ public:
 	int32 GetLife() const { return Life; }
 	void SetLife(int32 InLife);
 	void RespawnAtPlayerStart();
+	// The hit sequence owns the camera until it explicitly returns control.
+	void SetHeadBobSuspended(bool bSuspended);
 
 private:
+	void ResetWalkingEffects();
+	void ResetHeadBob();
+	void UpdateHeadBob(float DeltaTime, const FVector& Movement, bool bStep);
+	bool bHeadBobEnabled = true;
+	float HeadBobAmplitude = 0.04f;
+	float HeadBobForwardMultiplier = 1.5f;
+	float HeadBobDuration = 0.24f;
+	FVector HeadBobBaseLocation = FVector::ZeroVector;
+	float HeadBobOffset = 0.0f;
+	float HeadBobStartOffset = 0.0f;
+	float HeadBobStepAmplitude = 0.0f;
+	float HeadBobElapsed = 0.0f;
+	bool bHeadBobActive = false;
+	bool bHeadBobReturning = false;
+	bool bHeadBobSuspended = false;
+	uint32 WalkStateRevision = 0;
 	FFootstepCadence FootstepCadence;
 	std::mt19937 FootstepRandom{std::random_device{}()};
 	FVector WalkDisplacement = FVector::ZeroVector;
