@@ -33,8 +33,8 @@ void AFlashlightActor::BeginPlay()
 void AFlashlightActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	//if (DeltaTime > 0.0f && Gauge > 0.0f)
-	//	SetGauge(Gauge - std::max(0.0f, DrainRatePerSecond) * DeltaTime);
+	if (DeltaTime > 0.0f && Gauge > 0.0f)
+		SetGauge(Gauge - std::max(0.0f, DrainRatePerSecond) * DeltaTime);
 }
 
 void AFlashlightActor::PostEditChangeProperty(const FProperty& Property)

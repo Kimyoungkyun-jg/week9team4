@@ -33,6 +33,6 @@ private:
 	UStaticMeshComponent* MeshComponent = nullptr;
 	USpotLightComponent* SpotLightComponent = nullptr;
 	float Gauge = MaxGauge;
-	float DrainRatePerSecond = 1.0f;
+	float DrainRatePerSecond = 4.0f;
 	float MaxLightIntensity = 30.0f;
 };
