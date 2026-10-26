@@ -89,8 +89,54 @@ void FWindow::Destroy()
 	if (!hWnd)
 		return;
 
+	ReleaseCursor();
 	DestroyWindow(hWnd);
 	hWnd = nullptr;
+}
+
+void FWindow::CaptureCursor(const RECT* ScreenRect)
+{
+	if (!hWnd || ::GetForegroundWindow() != hWnd) return;
+	RECT Rect{};
+	if (ScreenRect) Rect = *ScreenRect;
+	else
+	{
+		::GetClientRect(hWnd, &Rect);
+		::MapWindowPoints(hWnd, nullptr, reinterpret_cast<POINT*>(&Rect), 2);
+	}
+	if (Rect.right <= Rect.left || Rect.bottom <= Rect.top) return;
+	CursorCaptureRect = Rect;
+	::ClipCursor(&CursorCaptureRect);
+	if (!bCursorCaptured)
+	{
+		::ShowCursor(FALSE);
+		bCursorCaptured = true;
+		RecenterCursor();
+	}
+}
+
+void FWindow::RecenterCursor()
+{
+	if (!bCursorCaptured || !hWnd) return;
+	POINT Center{ (CursorCaptureRect.left + CursorCaptureRect.right) / 2,
+		(CursorCaptureRect.top + CursorCaptureRect.bottom) / 2 };
+	::SetCursorPos(Center.x, Center.y);
+	::ScreenToClient(hWnd, &Center);
+	FInputSystem::SyncMousePosition(Center.x, Center.y);
+}
+
+void FWindow::ReleaseCursor()
+{
+	if (!bCursorCaptured) return;
+	::ClipCursor(nullptr);
+	::ShowCursor(TRUE);
+	bCursorCaptured = false;
+	if (hWnd)
+	{
+		POINT Cursor{};
+		if (::GetCursorPos(&Cursor) && ::ScreenToClient(hWnd, &Cursor))
+			FInputSystem::SyncMousePosition(Cursor.x, Cursor.y);
+	}
 }
 
 void FWindow::ProcessMessage(bool& bIsRunning)
@@ -173,12 +219,16 @@ LRESULT FWindow::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 	// 포커스를 잃으면 이후의 KeyUp/ButtonUp 메시지가 이 창으로 오지 않으므로
 	// 눌린 상태가 그대로 남는다. 여기서 전부 비워준다.
 	case WM_KILLFOCUS:
+		ReleaseCursor();
 		FInputSystem::ClearAllStates();
 		break;
 
 	case WM_ACTIVATEAPP:
 		if (wParam == FALSE)
+		{
+			ReleaseCursor();
 			FInputSystem::ClearAllStates();
+		}
 		break;
 
 	// 포커스가 없는 동안 커서가 이동했어도 델타가 튀지 않도록 현재 위치로 맞춰준다.
@@ -198,6 +248,7 @@ LRESULT FWindow::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 		break;
 
 	case WM_DESTROY:
+		ReleaseCursor();
 		if (bQuitOnClose)
 			PostQuitMessage(0);
 		// 파괴 뒤에 오는 메시지가 해제된 FWindow를 가리키지 않게 연결을 끊는다.

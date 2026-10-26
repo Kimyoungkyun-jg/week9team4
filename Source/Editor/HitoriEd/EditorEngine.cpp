@@ -689,6 +689,10 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	FWorldContext* Context = GetPIEWorldContext();
 	if (!Context || !Context->GameViewport) return;
 	FGameViewportClient& GameViewport = *Context->GameViewport;
+	FWindow* InputWindow = IsPIEInWindow() ? PIEWindow.get() : MainWindow;
+	const APacmanGameMode* PacmanMode = Cast<APacmanGameMode>(Context->World()->GetGameMode());
+	const bool bWantsCapture = PacmanMode && PacmanMode->WantsMouseCapture() && !GameViewport.IsSIEMode();
+	if (!bWantsCapture) bMouseCaptureReleasedByUser = false;
 	const FVector2 Mouse = ViewportsPanel->GetLocalMousePosition();
 	const int32 InputViewIndex = IsPIEInWindow() && GameViewport.IsSIEMode()
 		? PIEStartEditorViewIndex : PIEViewIndex;
@@ -706,15 +710,48 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		? ::GetForegroundWindow() == PIEWindow->GetHandle() || bEditorSIEFocus
 		: ::GetForegroundWindow() == MainWindow->GetHandle() &&
 			ActiveViewIdx == InputViewIndex &&
-			(ViewportsPanel->IsHovered() || (GameViewport.IsSIEMode() && FInputSystem::IsMouseDown(EMouseButton::Right))) &&
+			(ViewportsPanel->IsHovered() || bWantsCapture || (GameViewport.IsSIEMode() && FInputSystem::IsMouseDown(EMouseButton::Right))) &&
 			!ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-	if (!bFocused) { GameViewport.LostFocus(); return; }
+	if (!bFocused) { if (InputWindow) InputWindow->ReleaseCursor(); GameViewport.LostFocus(); return; }
 	if (!IsPIEInWindow() &&
 		(FInputSystem::IsMousePressed(EMouseButton::Left) || FInputSystem::IsMousePressed(EMouseButton::Right)) &&
 		!bMouseOverPIE)
 	{
+		if (InputWindow) InputWindow->ReleaseCursor();
 		GameViewport.LostFocus();
 		return;
+	}
+	auto CaptureGameCursor = [&]()
+	{
+		if (!InputWindow) return;
+		if (IsPIEInWindow()) InputWindow->CaptureCursor();
+		else
+		{
+			const FVector2 Origin = ViewportsPanel->GetContentOrigin();
+			const RECT Rect{
+				static_cast<LONG>(Origin.X + PIEViewRect.X), static_cast<LONG>(Origin.Y + PIEViewRect.Y),
+				static_cast<LONG>(Origin.X + PIEViewRect.X + PIEViewRect.Width),
+				static_cast<LONG>(Origin.Y + PIEViewRect.Y + PIEViewRect.Height) };
+			InputWindow->CaptureCursor(&Rect);
+		}
+	};
+	if (InputWindow)
+	{
+		if (!bWantsCapture || bMouseCaptureReleasedByUser) InputWindow->ReleaseCursor();
+		else CaptureGameCursor();
+	}
+	if (bWantsCapture && InputWindow && InputWindow->IsCursorCaptured() &&
+		(FInputSystem::IsKeyPressed(EKeyCode::Escape) || FInputSystem::IsKeyPressed(EKeyCode::F8)))
+	{
+		InputWindow->ReleaseCursor();
+		bMouseCaptureReleasedByUser = true;
+	}
+	const bool bRecaptureClick = bWantsCapture && bMouseCaptureReleasedByUser && (IsPIEInWindow() || bMouseOverPIE) &&
+		FInputSystem::IsMousePressed(EMouseButton::Left);
+	if (bRecaptureClick)
+	{
+		bMouseCaptureReleasedByUser = false;
+		CaptureGameCursor();
 	}
 	if (IsPIEInWindow() && !bEditorSIEFocus)
 	{
@@ -735,7 +772,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		else GameViewport.BeginSIEMode();
 		OnActiveWorldChanged();
 	}
-	if (FInputSystem::IsKeyPressed(EKeyCode::Escape))
+	if (FInputSystem::IsKeyPressed(EKeyCode::Escape) && !bWantsCapture)
 		GameViewport.InputKey(nullptr, static_cast<int32>(EKeyCode::Escape), true);
 	if (GameViewport.ConsumeExitRequest())
 	{
@@ -763,7 +800,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	for (EMouseButton Button : MouseButtons)
 	{
 		const int32 Key = Button == EMouseButton::Left ? static_cast<int32>(EKeyCode::LButton) : static_cast<int32>(EKeyCode::RButton);
-		if (FInputSystem::IsMousePressed(Button))
+		if (FInputSystem::IsMousePressed(Button) && !(bRecaptureClick && Button == EMouseButton::Left))
 		{
 			if (GameViewport.IsSIEMode())
 			{
@@ -780,8 +817,10 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 			else GameViewport.InputKey(nullptr, Key, false);
 		}
 	}
-	const float MouseX = static_cast<float>(FInputSystem::GetMouseDeltaX());
-	const float MouseY = static_cast<float>(FInputSystem::GetMouseDeltaY());
+	const float MouseX = bWantsCapture && (!InputWindow || !InputWindow->IsCursorCaptured())
+		? 0.0f : static_cast<float>(FInputSystem::GetMouseDeltaX());
+	const float MouseY = bWantsCapture && (!InputWindow || !InputWindow->IsCursorCaptured())
+		? 0.0f : static_cast<float>(FInputSystem::GetMouseDeltaY());
 	const float Wheel = static_cast<float>(FInputSystem::GetWheelDelta());
 	if (GameViewport.IsSIEMode())
 	{
@@ -796,6 +835,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		GameViewport.InputAxis(nullptr, 0, EGameInputAxis::MouseX, MouseX, DeltaTime);
 		GameViewport.InputAxis(nullptr, 0, EGameInputAxis::MouseY, MouseY, DeltaTime);
 	}
+	if (InputWindow && InputWindow->IsCursorCaptured()) InputWindow->RecenterCursor();
 }
 
 // 화면을 표시하고 UI 변경 후 View 설정을 보관한다.
@@ -1112,6 +1152,9 @@ void UEditorEngine::EndPlayMap()
 {
 	if (!PlayWorld)
 		return;
+	if (PIEWindow) PIEWindow->ReleaseCursor();
+	if (MainWindow) MainWindow->ReleaseCursor();
+	bMouseCaptureReleasedByUser = false;
 	bIsPaused = false;
 	bStepRequested = false;
 

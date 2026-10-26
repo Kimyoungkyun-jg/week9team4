@@ -5767,8 +5767,8 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 4.802724838256836,
-                                        "Y": 0.0,
+                                        "X": 12.937554359436035,
+                                        "Y": 7.45801305770874,
                                         "Z": -1.870315670967102
                                     },
                                     "Rotation": {
@@ -5812,6 +5812,102 @@
                                         "X": 0.0,
                                         "Y": 0.0,
                                         "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "PatrolDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 3.0,
+                                    "Y": 1.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "ChaseDetectionBox",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 5.0,
+                                    "Y": 3.0,
+                                    "Z": 1.5
+                                },
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -5919,6 +6015,37 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": true,
                                 "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UGhostAIComponent",
+                            "Name": "GhostAIComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BackwardDetectionTiles": 3,
+                                "ChaseBackwardDetectionTiles": 5,
+                                "ChaseForwardDetectionTiles": 10,
+                                "ChaseSideDetectionTiles": 6,
+                                "ChaseSpeed": 3.5,
+                                "ForwardDetectionTiles": 6,
+                                "MaxChaseDuration": 6.0,
+                                "MoveSpeed": 2.5,
+                                "SideDetectionTiles": 2,
+                                "WaitTimeBeforeChase": 1.0,
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "LuaScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/GhostAI.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         }

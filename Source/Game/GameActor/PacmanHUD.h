@@ -15,10 +15,14 @@ protected:
 private:
 	void ShowNameEntry();
 	void LayoutNameEntry();
+	void LayoutResultScreen();
+	void LayoutGameUI();
 	void ShowScoreboard();
 	void SaveScore();
 	double ClearSeconds = 0.0;
 	bool bNameEntryOpen = false;
+	bool bResultScreenOpen = false;
+	bool bShowingGameOver = false;
 	bool bScoreboardOpen = false;
 	bool bScoreSaved = false;
 };
