@@ -31,6 +31,33 @@ end
 assert(VcpkgRoot and VcpkgRoot ~= "", "VCPKG_ROOT must point to the vcpkg installation")
 VcpkgRoot = VcpkgRoot:gsub("\\", "/")
 local LuaJitDir = path.join(VcpkgRoot, "installed/x64-windows")
+local function AudioReady(root)
+	local command = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' .. path.getabsolute('Setup/AudioDependency.ps1') .. '" -Check -InstallRoot "' .. root .. '"'
+	local result = os.execute(command .. ' >nul 2>&1')
+	return result == true or result == 0
+end
+local AudioRoot = path.join(VcpkgRoot, "installed")
+if not AudioReady(AudioRoot) then AudioRoot = path.join(VcpkgRoot, "installed-hitori-audio") end
+assert(AudioReady(AudioRoot), "DirectXTK [xaudio2-9] x64-windows is missing/incomplete. Run SlnGenerator.bat to install dependencies.")
+local AudioDir = path.join(AudioRoot, "x64-windows")
+
+function AudioSettings(copyRuntime)
+	includedirs { path.join(AudioDir, "include/directxtk"), path.join(AudioDir, "include") }
+	defines { "DIRECTX_TOOLKIT_IMPORT", "_WIN32_WINNT=0x0A00" }
+	if copyRuntime then links { "DirectXTK.lib", "ole32.lib" } end
+	filter "configurations:Debug or Benchmark_Debug"
+		libdirs { path.join(AudioDir, "debug/lib") }
+		if copyRuntime then
+			postbuildcommands { '{COPYFILE} %[' .. path.join(AudioDir, "debug/bin/DirectXTK.dll") .. '] %[%{!cfg.targetdir}/DirectXTK.dll]' }
+		end
+	filter "configurations:Release or ObjViewer or Benchmark"
+		libdirs { path.join(AudioDir, "lib") }
+		if copyRuntime then
+			postbuildcommands { '{COPYFILE} %[' .. path.join(AudioDir, "bin/DirectXTK.dll") .. '] %[%{!cfg.targetdir}/DirectXTK.dll]' }
+		end
+	filter {}
+	prebuildcommands { 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' .. path.getabsolute('Setup/AudioDependency.ps1') .. '" -Check -InstallRoot "' .. AudioRoot .. '"' }
+end
 
 -- premake의 filter는 project()를 만나면 초기화된다.
 -- 두 프로젝트가 같은 런타임(/MDd vs /MD)으로 컴파일되지 않으면 링크가 실패하므로
@@ -140,6 +167,7 @@ project "HitoriEngine"
 	location "Source/Runtime"
 	kind     "StaticLib"
 	CommonSettings()
+	AudioSettings(false)
 
 	pchheader "EnginePCH.h"
 	pchsource "Source/Runtime/EnginePCH.cpp"
@@ -183,6 +211,7 @@ project "HitoriEditor"
 	location "Source/Editor"
 	kind     "WindowedApp"
 	CommonSettings()
+	AudioSettings(true)
 
 	pchheader "EnginePCH.h"
 	pchsource "Source/Editor/EditorPCH.cpp"
@@ -246,6 +275,7 @@ project "HitoriGame"
 	location "Source/Game"
 	kind     "WindowedApp"
 	CommonSettings()
+	AudioSettings(true)
 
 	pchheader "EnginePCH.h"
 	pchsource "Source/Game/GamePCH.cpp"

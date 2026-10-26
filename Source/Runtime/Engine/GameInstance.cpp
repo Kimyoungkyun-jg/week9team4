@@ -3,6 +3,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
+#include "Audio/SoundManager.h"
 
 UGameInstance::UGameInstance() = default;
 UGameInstance::~UGameInstance() = default;
@@ -12,6 +13,12 @@ void UGameInstance::Init()
 	bEndSessionRequested = false;
 	bRunTimerRunning = false;
 	LastRunSeconds = 0.0;
+	SoundManager = MakeUnique<FSoundManager>();
+	SoundManager->Initialize();
+	for (const char* Path : {"Assets/Sounds/coin.wav", "Assets/Sounds/footstep00.wav",
+		"Assets/Sounds/footstep01.wav", "Assets/Sounds/footstep02.wav", "Assets/Sounds/footstep03.wav",
+		"Assets/Sounds/footstep04.wav", "Assets/Sounds/Damaged.wav", "Assets/Sounds/GameClear.wav", "Assets/Sounds/GameOver.wav"})
+		SoundManager->Preload(Path);
 	LuaManager = MakeUnique<FLuaManager>();
 	LuaManager->Init(*this);
 }
@@ -46,6 +53,7 @@ void UGameInstance::RequestEndSession()
 
 void UGameInstance::Shutdown()
 {
+	SoundManager.reset();
 	if (LuaManager)
 	{
 		LuaManager->Shutdown();

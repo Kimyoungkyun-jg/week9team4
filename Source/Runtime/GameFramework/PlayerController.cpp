@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/World.h"
+#include "GameFramework/GameMode.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/TestPawn.h"
 #include <cstring>
@@ -18,6 +20,13 @@ void APlayerController::Tick(float DeltaTime)
 void APlayerController::ProcessPlayerInput(float DeltaTime)
 {
 	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
+	UWorld* World = GetWorld();
+	if (World && World->GetGameMode() && !World->GetGameMode()->AllowsPlayerControllerInput())
+	{
+		// Key-up events may be blocked too; discard the previously held input.
+		ClearInputState();
+		return;
+	}
 	const float Forward = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::W)]) -
 		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::S)]);
 	const float Right = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::D)]) -

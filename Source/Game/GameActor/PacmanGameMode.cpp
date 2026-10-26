@@ -8,9 +8,11 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor/MapActor.h"
 #include "GameFramework/GameHUD.h"
+#include "GameFramework/PlayerController.h"
 #include "Components/LuaScriptComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/GameInstance.h"
+#include "Audio/SoundManager.h"
 #include "UI/Widget.h"
 #include <algorithm>
 #include <limits>
@@ -146,6 +148,11 @@ void APacmanGameMode::ShowGameResult(bool bCleared)
 		if (bCleared) ClearSeconds = Seconds;
 	}
 	bResultShown = true;
+	if (APlayerController* Controller = World->GetPlayerController())
+		Controller->ClearInputState();
+	if (UGameInstance* Instance = World->GetGameInstance())
+		if (FSoundManager* Sound = Instance->GetSoundManager())
+			Sound->PlaySFX(bCleared ? "Assets/Sounds/GameClear.wav" : "Assets/Sounds/GameOver.wav", 0.7f);
 	FadeElapsed = 0.0f;
 	FadePhase = EResultFadePhase::FadeOut;
 }

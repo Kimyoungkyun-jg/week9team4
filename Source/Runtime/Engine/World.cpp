@@ -6,6 +6,7 @@
 
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
+#include "Audio/SoundManager.h"
 
 #include "Core/EngineStatics.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
@@ -118,6 +119,13 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 	if (bBegunPlay) BeginPlayList.Enqueue(NewActor);
 
 	return NewActor;
+}
+
+void UWorld::SetPaused(bool bPaused)
+{
+	bIsPaused = bPaused;
+	if (UGameInstance* Instance = GetGameInstance())
+		if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->SetPaused(bPaused);
 }
 
 void UWorld::Tick(float DeltaTime)
@@ -773,6 +781,12 @@ bool UWorld::SetPlayerControllerClass(UClass* Class)
 void UWorld::EndPlay()
 {
 	if (!bBegunPlay) return;
+	if (UGameInstance* Instance = GetGameInstance())
+		if (FSoundManager* Sound = Instance->GetSoundManager())
+		{
+			Sound->StopAll();
+			Sound->SetPaused(false);
+		}
 	bBegunPlay = false;
 	TArray<AActor*> EndingActors;
 	for (ULevel* Level : Levels)
