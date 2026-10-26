@@ -1,7 +1,10 @@
 #include "EnginePCH.h"
 #include "GhostActor.h"
+#include "PacmanGameMode.h"
+#include "PlayerPawn.h"
 
 #include "Asset/AssetManager.h"
+#include "Engine/World.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Render/Material.h"
@@ -42,7 +45,17 @@ void AGhostActor::BeginPlay()
 {
 	Super::BeginPlay();
 	InitialLocation = GetActorLocation();
+	CapsuleComponent->OnComponentBeginOverlap.AddRaw(this, &AGhostActor::OnOverlapBegin);
 	CapsuleComponent->UpdateOverlaps();
+}
+
+void AGhostActor::OnOverlapBegin(UPrimitiveComponent*, UPrimitiveComponent* OtherComponent)
+{
+	APlayerPawn* Player = OtherComponent ? Cast<APlayerPawn>(OtherComponent->GetOwner()) : nullptr;
+	if (!Player || OtherComponent != Player->GetCollisionComponent()) return;
+	if (UWorld* World = GetWorld())
+		if (APacmanGameMode* Mode = Cast<APacmanGameMode>(World->GetGameMode()))
+			Mode->StartGhostHit(this, Player);
 }
 
 void AGhostActor::Tick(float DeltaTime)

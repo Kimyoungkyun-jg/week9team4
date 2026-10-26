@@ -5,6 +5,7 @@
 class UStaticMeshComponent;
 class UCapsuleComponent;
 class UMaterial;
+class UPrimitiveComponent;
 
 class AGhostActor : public AActor
 {
@@ -27,6 +28,7 @@ public:
 	UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComponent; }
 
 private:
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimitiveComponent* OtherComponent);
 	UCapsuleComponent* CapsuleComponent = nullptr;
 	UStaticMeshComponent* BodyMesh = nullptr;
 	UStaticMeshComponent* EyesMesh = nullptr;

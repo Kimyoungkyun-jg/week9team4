@@ -1,4 +1,4 @@
-﻿#include "EnginePCH.h"
+#include "EnginePCH.h"
 #include "Editor/Outliner/OutlinerPanel.h"
 
 #include "Engine/Level.h"
@@ -14,6 +14,11 @@ bool FOutlinerPanel::Init()
 
 void FOutlinerPanel::Tick(float DeltaTime)
 {
+	// 삭제된 객체가 선택되어 있으면 초기화
+	if (SelectedObject && GUObjectArray.Find(SelectedObject) == INDEX_NONE)
+	{
+		SelectActor(nullptr);
+	}
 }
 
 void FOutlinerPanel::OnRender()
@@ -152,5 +157,9 @@ void FOutlinerPanel::SelectActor(AActor* Actor)
 
 AActor* FOutlinerPanel::GetSelectedActor() const
 {
-    return Cast<AActor>(SelectedObject);
+	// 해제된 객체 캐스팅 방지
+	if (!SelectedObject || GUObjectArray.Find(SelectedObject) == INDEX_NONE)
+		return nullptr;
+
+	return Cast<AActor>(SelectedObject);
 }

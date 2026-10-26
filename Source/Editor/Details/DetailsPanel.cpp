@@ -1019,8 +1019,10 @@ void FDetailsPanel::Tick(float DeltaTime)
 
 const ULightComponent* FDetailsPanel::GetSelectedLight() const
 {
+	if (!TargetComponent || GUObjectArray.Find(TargetComponent) == INDEX_NONE)
+		return nullptr;
 	UActorComponent* Component = TargetComponent;
-	while (Component && Component->IsHiddenInDetails())
+	while (Component && GUObjectArray.Find(Component) != INDEX_NONE && Component->IsHiddenInDetails())
 	{
 		USceneComponent* SceneComponent = Cast<USceneComponent>(Component);
 		Component = SceneComponent ? SceneComponent->GetAttachParent() : nullptr;
@@ -1182,6 +1184,16 @@ void FDetailsPanel::OnRender()
 	ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
 
 	ImGui::Begin("Details");
+
+	// 해제된 액터 및 컴포넌트 참조 정리
+	if (TargetActor && GUObjectArray.Find(TargetActor) == INDEX_NONE)
+	{
+		SetTarget(nullptr);
+	}
+	if (TargetComponent && (GUObjectArray.Find(TargetComponent) == INDEX_NONE || TargetComponent->GetOwner() != TargetActor))
+	{
+		TargetComponent = TargetActor ? TargetActor->GetRootComponent() : nullptr;
+	}
 
 	if (TargetActor)
 	{

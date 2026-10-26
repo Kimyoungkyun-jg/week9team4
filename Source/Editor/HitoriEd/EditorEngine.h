@@ -204,6 +204,8 @@ private:
 	bool bIsStep = false;
 
 	bool bPlaySessionRequested = false;
+	enum class ESceneFileAction { None, New, Open, Save, SaveAs };
+	ESceneFileAction PendingSceneFileAction = ESceneFileAction::None;
 	bool bRequestEndPlayMapQueued = false;
 	bool bStepRequested = false;
 	bool bIsPaused = false;

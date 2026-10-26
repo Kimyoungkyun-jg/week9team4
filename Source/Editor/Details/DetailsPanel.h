@@ -31,7 +31,14 @@ public:
 
 	void SetTarget(AActor* InTargetActor) 
 	{ 
-		if (TargetActor != InTargetActor) MapTileEditor.ClearSelection();
+		if (TargetActor != InTargetActor)
+		{
+			MapTileEditor.ClearSelection();
+			PendingDeleteComponent = nullptr;
+			PendingDroppedComponent = PendingDragComponent = nullptr;
+			EditingNameComponent = nullptr;
+			bFocusNameEdit = bIsEditingName = false;
+		}
 		TargetActor = InTargetActor;
 		TargetComponent = InTargetActor ? InTargetActor->GetRootComponent() : nullptr;
 	}

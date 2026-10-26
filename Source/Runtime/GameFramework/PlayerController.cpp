@@ -22,11 +22,8 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::S)]);
 	const float Right = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::D)]) -
 		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::A)]);
-	if (bKeyDown[static_cast<int32>(EKeyCode::RButton)])
-	{
-		PossessedPawn->AddControllerYawInput(MouseAxisX * LookSensitivity);
-		PossessedPawn->AddControllerPitchInput(MouseAxisY * LookSensitivity);
-	}
+	PossessedPawn->AddControllerYawInput(MouseAxisX * LookSensitivity);
+	PossessedPawn->AddControllerPitchInput(MouseAxisY * LookSensitivity);
 	MouseAxisX = MouseAxisY = 0.0f;
 	const FQuat Rotation = PossessedPawn->GetActorRotation().Quaternion();
 	if (Forward != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetForwardVector(), Forward * DeltaTime);
