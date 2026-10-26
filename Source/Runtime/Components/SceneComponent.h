@@ -24,7 +24,20 @@ class USceneComponent : public UActorComponent
 	LUA_BIND_START(USceneComponent)
 		LUA_FUNC(GetRelativeLocation)
 		LUA_FUNC(SetRelativeLocation)
-		LUA_BIND_END()
+		LUA_FUNC(GetRelativeRotation)
+		LUA_FUNC(SetRelativeRotation)
+		LUA_FUNC(GetRelativeScale3D)
+		LUA_FUNC(SetRelativeScale3D)
+		LUA_FUNC(GetWorldLocation)
+		LUA_FUNC(GetWorldRotation)
+		LUA_FUNC(GetWorldScale3D)
+		UserType["SetWorldLocation"] = [](USceneComponent& Self, const FVector& Loc, sol::optional<bool> bSweep) {
+			Self.SetWorldLocation(Loc, bSweep.value_or(false));
+		};
+		UserType["SetWorldRotation"] = [](USceneComponent& Self, const FRotator& Rot, sol::optional<bool> bSweep) {
+			Self.SetWorldRotation(Rot, bSweep.value_or(false));
+		};
+	LUA_BIND_END()
 
 public:
 	enum class EVisibilityPropagation : uint8 { NoPropagation, DirtyOnly, Propagate };

@@ -27,7 +27,9 @@ public:																\
 // 멤버 변수 바인딩
 #define LUA_PROP(PropName)											\
 	UserType[#PropName] = &CurrentClass::PropName;
-// 추후 Delegate 바인딩 매크로 추가해줘야 Lua 에서 Add, Clear 호출 가능
+// Delegate 멤버 변수 바인딩 (Lua에서 Obj.OnEvent:Add(...) 형태로 사용 가능)
+#define LUA_DELEGATE(PropName)										\
+	UserType[#PropName] = &CurrentClass::PropName;
 
 // 클래스 바인딩 종료 및 전역 대기열에 등록
 #define LUA_BIND_END()												\
