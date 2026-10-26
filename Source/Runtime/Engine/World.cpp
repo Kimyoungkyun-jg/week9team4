@@ -40,11 +40,13 @@
 
 namespace
 {
-	inline void WritePerObjectConstants(uint8* Dest, const FMatrix& LocalToWorld, const FMatrix& WorldToLocal)
+	inline void WritePerObjectConstants(uint8* Dest, const FMatrix& LocalToWorld, const FMatrix& WorldToLocal,
+		bool bReceiveSpecular)
 	{
 		FPerObjectConstants Constants{};
 		Constants.World = LocalToWorld;
 		Constants.NormalMatrix = WorldToLocal.GetTransposed();
+		Constants.LightingFlags.X = bReceiveSpecular ? 1.0f : 0.0f;
 		std::memcpy(Dest, &Constants, sizeof(Constants));
 	}
 }
@@ -120,6 +122,7 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 
 void UWorld::Tick(float DeltaTime)
 {
+	bInTick = true;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UpdateAllTransforms);
 		Scene.UpdateAllTransforms();
@@ -167,6 +170,18 @@ void UWorld::Tick(float DeltaTime)
         if (CollisionComponents.Find(Component) != INDEX_NONE) UpdateComponentOverlaps(Component);
     DispatchCollisionEvents();
 
+	bInTick = false;
+
+	// 프레임 끝에서 지연된 액터 삭제 일괄 실행
+	const auto Actors = DeferredActorDestruction;
+	DeferredActorDestruction.Reset();
+	for (AActor* Actor : Actors)
+	{
+		if (GUObjectArray.Find(Actor) != INDEX_NONE)
+		{
+			DestroyActor(Actor);
+		}
+	}
 }
 
 void UWorld::ClearWorld()
@@ -331,7 +346,8 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 					FRenderPacket& Packet = RenderQueue[p];
 					const FMatrix& Model = Packet.Proxy ? Packet.Proxy->GetLocalToWorld() : Packet.Model ? *Packet.Model : FMatrix::Identity;
 					const FMatrix WorldToLocal = Packet.Proxy ? Packet.Proxy->GetWorldToLocal() : Model.Inverse();
-					WritePerObjectConstants(SlotDest + size_t(NextExtraSlot) * ObjectSlotBytes, Model, WorldToLocal);
+					WritePerObjectConstants(SlotDest + size_t(NextExtraSlot) * ObjectSlotBytes, Model, WorldToLocal,
+						!Packet.Proxy || Packet.Proxy->bReceiveSpecular);
 					Packet.Slot = NextExtraSlot++;
 				}
 			}
@@ -372,7 +388,7 @@ void UWorld::GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
 		if (SlotDest)
 		{
 			WritePerObjectConstants(SlotDest + size_t(VisibleIndex) * ObjectSlotBytes,
-				Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal());
+				Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal(), Proxy->bReceiveSpecular);
 			Slot = VisibleIndex;
 		}
 
@@ -481,7 +497,7 @@ bool UWorld::DestroyActor(AActor* Actor)
 	if (!Actor)
 		return false;
 	if (Actor->bIsEndingPlay) return false;
-    if (bDispatchingCollisionEvents)
+    if (bInTick || bDispatchingCollisionEvents)
     {
         if (DeferredActorDestruction.Find(Actor) == INDEX_NONE) DeferredActorDestruction.Add(Actor);
         return true;

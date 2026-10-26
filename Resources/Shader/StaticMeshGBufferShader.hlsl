@@ -9,6 +9,7 @@ cbuffer WorldConstants : register(b2)
 {
     matrix World;
     matrix NormalMatrix;
+    float4 LightingFlags; // x: specular enabled
 };
 
 cbuffer MaterialParams : register(b1)
@@ -97,6 +98,7 @@ GBUFFER_OUTPUT mainPS(PS_INPUT Input)
 
     // 현재 UMaterial에는 Metallic/Roughness 값이 없어 임시 상수를 쓴다.
     Output.BaseColorMetallic = float4(LinearAlbedo, 0.0f);
-    Output.NormalRoughness = float4(Normal, 0.8f);
+    // HDR GBuffer의 roughness 부호로 객체별 specular 사용 여부를 전달한다.
+    Output.NormalRoughness = float4(Normal, LightingFlags.x > 0.5f ? 0.8f : -0.8f);
     return Output;
 }

@@ -4,6 +4,8 @@
 #include "UI/Widget.h"
 #include <vector>
 
+class FViewportsPanel;
+
 class FWidgetEditorPanel : public IEditorPanel
 {
 public:
@@ -15,6 +17,7 @@ public:
 	bool RequestOpenAsset(const FString& Path);
 	const FString& GetAssetPath() const { return AssetPath; }
 	void ReleaseAsset();
+	void SetViewportsPanel(FViewportsPanel* InPanel) { ViewportsPanel = InPanel; }
 
 private:
 	void NewAsset();
@@ -53,6 +56,8 @@ private:
 	int32 NewWidgetIndex = 1;
 	float PreviewWidth = 1280.0f;
 	float PreviewHeight = 720.0f;
+	FViewportsPanel* ViewportsPanel = nullptr;
+	bool bPreviewSizeInitialized = false;
 	std::vector<FString> History;
 	FString SavedSnapshot;
 	size_t HistoryIndex = 0;

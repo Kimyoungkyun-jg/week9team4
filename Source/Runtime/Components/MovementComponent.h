@@ -1,6 +1,8 @@
 #pragma once
 #include "ActorComponent.h"
 #include "SceneComponent.h"
+#include "Lua/LuaMacros.h"
+#include "Collision/HitResult.h"
 
 class UMovementComponent : public UActorComponent
 {
@@ -8,6 +10,16 @@ class UMovementComponent : public UActorComponent
 	REFLECT_START(ClassName)
 		PROPERTY(UpdatedComponentName)
 		REFLECT_END()
+
+	LUA_BIND_START(UMovementComponent)
+		LUA_PROP(Velocity)
+		LUA_PROP(Gravity)
+		LUA_FUNC(StopMovementImmediately)
+		LUA_FUNC(HasValidUpdatedComponent)
+		UserType["MoveUpdatedComponent"] = [](UMovementComponent& Self, const FVector& Delta, const FRotator& NewRotation, bool bSweep, sol::optional<FHitResult*> InHit) -> bool {
+			return Self.MoveUpdatedComponent(Delta, NewRotation, bSweep, InHit.value_or(nullptr));
+		};
+	LUA_BIND_END()
 
 protected:
 	USceneComponent* UpdatedComponent = nullptr;

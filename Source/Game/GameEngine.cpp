@@ -2,6 +2,9 @@
 #include "GameEngine.h"
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
+#include "GameActor/GhostActor.h"
+#include "GameActor/MainMenuGameMode.h"
+#include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
 #include "GameActor/PacmanHUD.h"
 
@@ -38,6 +41,9 @@ namespace
 		(void)ATestGameMode::StaticClass();
 		(void)APlayerPawn::StaticClass();
 		(void)AFlashlightActor::StaticClass();
+		(void)AGhostActor::StaticClass();
+		(void)AMainMenuGameMode::StaticClass();
+		(void)AMainMenuHUD::StaticClass();
 		(void)APacmanGameMode::StaticClass();
 		(void)APacmanHUD::StaticClass();
 		(void)ASampleHUD::StaticClass();
@@ -80,7 +86,7 @@ bool UGameEngine::Init()
 	GameContext = &CreateNewWorldContext(EWorldType::Game);
 	GameContext->SetCurrentWorld(UWorld::CreateWorld(EWorldType::Game, false));
 	UWorld* World = GameContext->World();
-	if (!World || !FJsonArchive::LoadWorld(World, "Scenes/Bocchi.scene")) return false;
+	if (!World || !FJsonArchive::LoadWorld(World, "Scenes/MainMenu.scene")) return false;
 
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	GameInstance->SetWorldContext(GameContext);

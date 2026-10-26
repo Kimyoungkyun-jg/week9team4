@@ -89,6 +89,8 @@ void FEditorControlsPanel::OnRender()
 
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", CountText);
+	if (ImGui::Button("Duplicate Selected") && DuplicateActorCallback)
+		DuplicateActorCallback();
 
 	ImGui::Dummy(ImVec2(0.0f, SubsectionGap));
 	ImGui::SeparatorText("Collision Debug Lines");

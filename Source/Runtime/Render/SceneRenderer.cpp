@@ -906,7 +906,8 @@ void FSceneRenderer::GatherRenderPackets(FScene& Scene, FSceneRenderData& Data,
 					if (!bPrepareObjectSlots || NextExtraSlot >= MaxSlots) break;
 					FRenderPacket& Packet = RenderQueue[p];
 					const FMatrix& Model = Packet.Proxy ? Packet.Proxy->GetLocalToWorld() : Packet.Model ? *Packet.Model : FMatrix::Identity;
-					Data.ObjectConstants[NextExtraSlot] = MakePerObjectConstants(Model);
+					Data.ObjectConstants[NextExtraSlot] = MakePerObjectConstants(Model,
+						!Packet.Proxy || Packet.Proxy->bReceiveSpecular);
 					Packet.Slot = NextExtraSlot++;
 				}
 			}
@@ -947,7 +948,7 @@ void FSceneRenderer::GatherPacketChunk(FSceneRenderData& Data, uint32 Begin, uin
 		uint32 Slot = InvalidObjectSlot;
 		if (bPrepareObjectSlots)
 		{
-			Data.ObjectConstants[VisibleIndex] = MakePerObjectConstants(Proxy->GetLocalToWorld());
+			Data.ObjectConstants[VisibleIndex] = MakePerObjectConstants(Proxy->GetLocalToWorld(), Proxy->bReceiveSpecular);
 			Slot = VisibleIndex;
 		}
 
