@@ -12,6 +12,7 @@
 #include "GameFramework/GameHUD.h"
 #include "Collision/HitResult.h"
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 APlayerPawn::APlayerPawn()
@@ -38,9 +39,10 @@ APlayerPawn::APlayerPawn()
 void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
-	FootstepCadence.Reset();
-	WalkDisplacement = FVector::ZeroVector;
 	UCameraComponent* Camera = GetCameraComponent();
+	bHeadBobSuspended = false;
+	if (Camera) HeadBobBaseLocation = Camera->GetRelativeLocation();
+	ResetWalkingEffects();
 	const FRotator SpawnRotation = GetActorRotation();
 	SetActorRotation(FRotator(0.0f, SpawnRotation.Yaw, 0.0f));
 	if (Camera) Camera->SetRelativeRotation(FRotator(SpawnRotation.Pitch, 0.0f, 0.0f));
@@ -96,20 +98,29 @@ void APlayerPawn::BeginPlay()
 
 void APlayerPawn::AddMovementInput(const FVector& WorldDirection, float ScaleValue)
 {
-	if (!CollisionComponent || ScaleValue == 0.0f) return;
+	if (!CollisionComponent || bHeadBobSuspended || ScaleValue == 0.0f) return;
 	const FVector FlatDirection(WorldDirection.X, WorldDirection.Y, 0.0f);
 	const FVector Delta = FlatDirection.GetSafeNormal() * (ScaleValue * GetMoveSpeed());
 	if (Delta.SizeSquared() <= SMALL_NUMBER) return;
 	const FVector BeforeMove = GetActorLocation();
+	const uint32 MoveRevision = WalkStateRevision;
 	FHitResult Hit;
-	CollisionComponent->MoveComponent(Delta, CollisionComponent->GetWorldRotation(), true, &Hit);
+	const bool bMoved = CollisionComponent->MoveComponent(Delta, CollisionComponent->GetWorldRotation(), true, &Hit);
+	// Overlap callbacks can start a hit sequence, respawn, or teleport during the sweep.
+	if (MoveRevision != WalkStateRevision || bHeadBobSuspended ||
+		(bMoved && (GetActorLocation() - Hit.Location).SizeSquared() > 0.00000001f)) return;
 	if (Hit.bBlockingHit && !Hit.bStartPenetrating)
 	{
 		const FVector Normal(Hit.Normal.X, Hit.Normal.Y, 0.0f);
 		const FVector Remaining = Delta * (1.0f - Hit.Time);
 		const FVector Slide = Remaining - Normal * Remaining.Dot(Normal);
 		if (Slide.SizeSquared() > SMALL_NUMBER)
-			CollisionComponent->MoveComponent(Slide, CollisionComponent->GetWorldRotation(), true);
+		{
+			FHitResult SlideHit;
+			const bool bSlid = CollisionComponent->MoveComponent(Slide, CollisionComponent->GetWorldRotation(), true, &SlideHit);
+			if (MoveRevision != WalkStateRevision || bHeadBobSuspended ||
+				(bSlid && (GetActorLocation() - SlideHit.Location).SizeSquared() > 0.00000001f)) return;
+		}
 	}
 	// Sample only the completed swept move, not arbitrary location changes between frames.
 	// A teleport from an overlap callback must not count as a walk either.
@@ -128,14 +139,114 @@ void APlayerPawn::Tick(float DeltaTime)
 	UWorld* PawnWorld = GetWorld();
 	const bool bPlaying = PawnWorld && !PawnWorld->IsPaused() &&
 		(PawnWorld->GetWorldType() == EWorldType::Game || PawnWorld->GetWorldType() == EWorldType::PIE);
-	const bool bStep = FootstepCadence.Advance(DeltaTime, bPlaying && WalkDisplacement.SizeSquared() > 0.00000001f);
+	const FVector FrameMovement = WalkDisplacement;
+	const bool bMoved = bPlaying && !bHeadBobSuspended && FrameMovement.SizeSquared() > 0.00000001f;
+	const bool bStep = FootstepCadence.Advance(DeltaTime, bMoved);
 	WalkDisplacement = FVector::ZeroVector;
+	// Bob progression and recovery must run even on frames without a footstep or audio device.
+	if (bPlaying && !bHeadBobSuspended) UpdateHeadBob(DeltaTime, FrameMovement, bStep);
 	if (!bStep) return;
 	static constexpr const char* Steps[] = {"Assets/Sounds/footstep00.wav", "Assets/Sounds/footstep01.wav",
 		"Assets/Sounds/footstep02.wav", "Assets/Sounds/footstep03.wav", "Assets/Sounds/footstep04.wav"};
 	const int Index = std::uniform_int_distribution<int>(0, 4)(FootstepRandom);
 	if (UGameInstance* Instance = PawnWorld->GetGameInstance())
 		if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->PlaySFX(Steps[Index], 0.5f);
+}
+
+void APlayerPawn::ResetHeadBob()
+{
+	HeadBobOffset = 0.0f;
+	HeadBobStartOffset = 0.0f;
+	HeadBobStepAmplitude = 0.0f;
+	HeadBobElapsed = 0.0f;
+	bHeadBobActive = false;
+	bHeadBobReturning = false;
+	if (!bHeadBobSuspended)
+		if (UCameraComponent* Camera = GetCameraComponent()) Camera->SetRelativeLocation(HeadBobBaseLocation);
+}
+
+void APlayerPawn::ResetWalkingEffects()
+{
+	++WalkStateRevision;
+	FootstepCadence.Reset();
+	WalkDisplacement = FVector::ZeroVector;
+	ResetHeadBob();
+}
+
+void APlayerPawn::SetHeadBobSuspended(bool bSuspended)
+{
+	if (bHeadBobSuspended == bSuspended) return;
+	if (bSuspended)
+	{
+		// Remove the offset before the hit sequence saves the normal camera transform.
+		ResetWalkingEffects();
+		bHeadBobSuspended = true;
+	}
+	else
+	{
+		// The caller has restored the camera (or respawned) before returning ownership.
+		if (UCameraComponent* Camera = GetCameraComponent()) HeadBobBaseLocation = Camera->GetRelativeLocation();
+		bHeadBobSuspended = false;
+		ResetWalkingEffects();
+	}
+}
+
+void APlayerPawn::UpdateHeadBob(float DeltaTime, const FVector& Movement, bool bStep)
+{
+	if (!bHeadBobEnabled || !std::isfinite(HeadBobAmplitude) || HeadBobAmplitude <= 0.0f ||
+		!std::isfinite(HeadBobDuration) || HeadBobDuration <= 0.0f)
+	{
+		ResetHeadBob();
+		return;
+	}
+	if (!std::isfinite(DeltaTime) || DeltaTime <= 0.0f) return;
+	const float Duration = std::max(0.01f, HeadBobDuration);
+	const bool bMoved = Movement.SizeSquared() > 0.00000001f;
+	const float ForwardMultiplier = std::isfinite(HeadBobForwardMultiplier) ? std::max(0.0f, HeadBobForwardMultiplier) : 1.0f;
+	const float MaxAmplitude = HeadBobAmplitude * std::max(1.0f, ForwardMultiplier);
+	HeadBobOffset = std::clamp(HeadBobOffset, -MaxAmplitude, 0.0f);
+	if (bStep)
+	{
+		// Use completed movement relative to the capsule's heading, including backward steps.
+		const FVector Forward = GetActorRotation().Quaternion().GetForwardVector();
+		const FVector FlatForward(Forward.X, Forward.Y, 0.0f);
+		const float ForwardWeight = std::clamp(std::abs(Movement.GetSafeNormal().Dot(FlatForward.GetSafeNormal())), 0.0f, 1.0f);
+		HeadBobStepAmplitude = HeadBobAmplitude * (1.0f + (ForwardMultiplier - 1.0f) * ForwardWeight);
+		// Restart from the current bounded offset, never add another pulse to it.
+		HeadBobStartOffset = HeadBobOffset;
+		HeadBobElapsed = 0.0f;
+		bHeadBobActive = true;
+		bHeadBobReturning = false;
+	}
+	else if (!bMoved && bHeadBobActive && !bHeadBobReturning)
+	{
+		HeadBobStartOffset = HeadBobOffset;
+		HeadBobElapsed = 0.0f;
+		bHeadBobReturning = true;
+	}
+	if (bHeadBobActive)
+	{
+		HeadBobElapsed += DeltaTime;
+		const float ReturnDuration = std::min(0.1f, Duration * 0.5f);
+		const float T = std::clamp(HeadBobElapsed / (bHeadBobReturning ? ReturnDuration : Duration), 0.0f, 1.0f);
+		const auto Smooth = [](float Value) { return Value * Value * (3.0f - 2.0f * Value); };
+		if (bHeadBobReturning)
+			HeadBobOffset = HeadBobStartOffset * (1.0f - Smooth(T));
+		else if (T < 0.25f)
+			HeadBobOffset = HeadBobStartOffset + (-HeadBobStepAmplitude - HeadBobStartOffset) * Smooth(T / 0.25f);
+		else
+			HeadBobOffset = -HeadBobStepAmplitude * (1.0f - Smooth((T - 0.25f) / 0.75f));
+		HeadBobOffset = std::clamp(HeadBobOffset, -MaxAmplitude, 0.0f);
+		if (T >= 1.0f)
+		{
+			HeadBobOffset = 0.0f;
+			bHeadBobActive = false;
+			bHeadBobReturning = false;
+		}
+	}
+	// Relative translation is in capsule space, independent of camera pitch.
+	if (UCameraComponent* Camera = GetCameraComponent())
+		Camera->SetRelativeLocation(HeadBobBaseLocation + FVector(0.0f, 0.0f, HeadBobOffset));
 }
 
 void APlayerPawn::AddControllerPitchInput(float Value)
@@ -160,6 +271,8 @@ void APlayerPawn::SetLife(int32 InLife)
 
 void APlayerPawn::RespawnAtPlayerStart()
 {
+	ResetWalkingEffects();
+	HeadBobBaseLocation = PlayerStartCameraLocation;
 	SetActorLocation(PlayerStartLocation);
 	SetActorRotation(PlayerStartRotation);
 	if (UCameraComponent* Camera = GetCameraComponent())
@@ -172,8 +285,9 @@ void APlayerPawn::RespawnAtPlayerStart()
 
 void APlayerPawn::EndPlay()
 {
-	FootstepCadence.Reset();
-	WalkDisplacement = FVector::ZeroVector;
+	ResetWalkingEffects();
+	bHeadBobSuspended = false;
+	HeadBobBaseLocation = FVector::ZeroVector;
 	if (FlashlightActor)
 	{
 		FlashlightActor->Destroy();
