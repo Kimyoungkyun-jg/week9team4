@@ -54,6 +54,7 @@ void UProjectileMovementComponent::InitializeComponent()
 
 void UProjectileMovementComponent::TickComponent(float DeltaTime)
 {		
+	if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending())) return;
 	PendingForceThisUpdate = PendingForce;
 	ClearPendingForce();
 
@@ -74,17 +75,19 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 	int32 Iterations = 0;
 	FHitResult Hit(1.0f);
 
-	while (bSimulationEnabled && RemainingTime >= MIN_TICK_TIME && Iterations < MaxSimulationIterations)
+	while (bSimulationEnabled && RemainingTime >= MIN_TICK_TIME && Iterations < MaxSimulationIterations && HasValidUpdatedComponent())
 	{
 		Iterations++;
 
 		const float TimeTick = GetSimulationTimeStep(RemainingTime, Iterations);
+		if (HasStoppedSimulation()) return;
 		RemainingTime -= TimeTick;
 
 		// Initial move state
 		Hit.Time = 1.0f;
 		const FVector OldVelocity = Velocity;
 		const FVector MoveDelta = ComputeMoveDelta(OldVelocity, TimeTick);
+		if (HasStoppedSimulation()) return;
 		FRotator NewRotation = UpdatedComponent->GetWorldRotation();
 		if (bRotationFollowsVelocity && OldVelocity.SizeSquared() > 0.0f)
 		{
@@ -96,6 +99,7 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 
 		// Move the component
 		MoveUpdatedComponent(MoveDelta, NewRotation, bSweepCollision, &Hit);
+		if (!IsValid(ActorOwner) || ActorOwner->IsActorBeingDestroyed() || HasStoppedSimulation()) return;
 
 		// Handle hit result after movement
 		if (!Hit.bBlockingHit)
@@ -105,19 +109,23 @@ void UProjectileMovementComponent::TickComponent(float DeltaTime)
 
 			if (Velocity == OldVelocity)
 			{
-				Velocity = ComputeVelocity(Velocity, TimeTick);
+				const FVector NewVelocity = ComputeVelocity(Velocity, TimeTick);
+				if (HasStoppedSimulation()) return;
+				Velocity = NewVelocity;
 			}
 		}
 		else
 		{
 			if (Velocity == OldVelocity)
 			{
-				Velocity = (Hit.Time > KINDA_SMALL_NUMBER ? ComputeVelocity(OldVelocity, TimeTick * Hit.Time) : OldVelocity);
+				const FVector NewVelocity = Hit.Time > KINDA_SMALL_NUMBER ? ComputeVelocity(OldVelocity, TimeTick * Hit.Time) : OldVelocity;
+				if (HasStoppedSimulation()) return;
+				Velocity = NewVelocity;
 			}
 
 			float SubTickTimeRemaining = TimeTick * (1.0f - Hit.Time);
 			HandleImpact(Hit, SubTickTimeRemaining, MoveDelta);
-			if (!bSimulationEnabled) break;
+			if (!IsValid(ActorOwner) || ActorOwner->IsActorBeingDestroyed() || HasStoppedSimulation()) return;
 			PreviousHitTime = Hit.Time;
 			PreviousHitNormal = ConstrainDirectionToPlane(Hit.Normal);
 
@@ -186,6 +194,10 @@ FVector UProjectileMovementComponent::ComputAcceleration(const FVector& InVeloci
 
 FVector UProjectileMovementComponent::ComputeHomingAcceleration(const FVector& InVelocity, float DeltaTime) const
 {
+	if (!HasValidUpdatedComponent() || GUObjectArray.Find(HomingTargetComponent) == INDEX_NONE ||
+		!IsValid(HomingTargetComponent) || HomingTargetComponent->IsBeingDestroyed() ||
+		(HomingTargetComponent->GetOwner() && HomingTargetComponent->GetOwner()->IsPendingKillPending()))
+		return FVector::ZeroVector;
 	FVector HomingAcceleration = (HomingTargetComponent->GetWorldLocation() - UpdatedComponent->GetWorldLocation()).Normalized();
 	return HomingAcceleration;
 }
@@ -219,10 +231,13 @@ FVector UProjectileMovementComponent::ComputeBounceResult(const FHitResult& Hit,
 
 void UProjectileMovementComponent::HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta)
 {	
+	if (HasStoppedSimulation()) return;
 	if (bShouldBounce)
 	{
 		const FVector OldVelocity = Velocity;
-		Velocity = ComputeBounceResult(Hit, TimeSlice, MoveDelta);
+		const FVector BounceVelocity = ComputeBounceResult(Hit, TimeSlice, MoveDelta);
+		if (HasStoppedSimulation()) return;
+		Velocity = BounceVelocity;
 
 		Velocity = LimitVelocity(Velocity);
 		if (Velocity.SizeSquared() < 0.01f)
@@ -272,10 +287,12 @@ bool UProjectileMovementComponent::HandleDeflection(FHitResult& Hit, const FVect
 
 bool UProjectileMovementComponent::HandleSliding(FHitResult& Hit, float& SubTickTimeRemaining)
 {
+	if (HasStoppedSimulation()) return false;
 	FHitResult InitailHit;
 	const FVector OldHitNormal = ConstrainDirectionToPlane(Hit.Normal);
 
 	MoveUpdatedComponent(Velocity * SubTickTimeRemaining, UpdatedComponent->GetWorldRotation(), bSweepCollision, &Hit);
+	if (HasStoppedSimulation()) return false;
 
 	if (Hit.bBlockingHit)
 	{
@@ -285,6 +302,7 @@ bool UProjectileMovementComponent::HandleSliding(FHitResult& Hit, float& SubTick
 	else
 	{
 		const FVector PostTickVelocity = ComputeVelocity(Velocity, SubTickTimeRemaining);
+		if (HasStoppedSimulation()) return false;
 
 		const FVector Force = (PostTickVelocity - Velocity);
 		const float ForceDotN = (Force | OldHitNormal);

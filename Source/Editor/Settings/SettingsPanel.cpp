@@ -15,6 +15,7 @@
 #include "Components/LuaScriptComponent.h"
 #include "UObject/UObjectIterator.h"
 #include "UObject/UObjectHash.h"
+#include <iomanip>
 
 // 설정 파일을 읽어 패널 상태를 초기화한다.
 bool FSettingsPanel::Init()
@@ -121,6 +122,7 @@ void FSettingsPanel::OnRender()
 
 	//////////////////////////////////////////////////////////
 	DrawShadowMapSettings();
+	DrawCollisionChannelSettings();
 	//////////////////////////////////////////////////////////
 
 	ImGui::Dummy(ImVec2(0.0f, SectionGap));
@@ -318,6 +320,10 @@ bool FSettingsPanel::SaveSettings() const
 	File << "CameraRotateSensitivity=" << Settings.MouseSensitivity << "\n";
 	File << "GridSpacing=" << Settings.GridSpacing << "\n";
 	File << "\n";
+	File << "[CollisionChannels]\n";
+	for (int32 Index = 0; Index < CollisionChannelCount; ++Index)
+		File << "ChannelName" << Index << '=' << std::quoted(Settings.CollisionChannelNames[Index]) << '\n';
+	File << '\n';
 	File << "[WorldSettings]\n";
 	File << "GameModeClass=" << Snapshot.GameModeClassName << "\n";
 	File << "DefaultPawnClass=" << Snapshot.DefaultPawnClassName << "\n";
@@ -382,6 +388,14 @@ bool FSettingsPanel::LoadSettings()
 			std::string ValueStr;
 			if (std::getline(Iss, ValueStr))
 			{
+				for (int32 Index = 0; Index < CollisionChannelCount; ++Index)
+				{
+					if (Key != "ChannelName" + std::to_string(Index)) continue;
+					FString Name;
+					std::istringstream NameStream(ValueStr);
+					if ((NameStream >> std::quoted(Name)) && Name.size() < FEditorSettings::CollisionChannelNameCapacity)
+						strcpy_s(Settings.CollisionChannelNames[Index], Name.c_str());
+				}
 				// 새 View 키는 NaN·잘못된 숫자·범위 밖 값을 무시한다.
                 for (int32 Index = 0; Index < 4; ++Index)
                 {
@@ -684,6 +698,23 @@ void FSettingsPanel::DrawTestPawnSettings()
         if (!Mesh) ImGui::TextDisabled("Select a projectile mesh to fire.");
     }
     ImGui::TextDisabled("Projectile settings apply to the next shot.");
+}
+
+void FSettingsPanel::DrawCollisionChannelSettings()
+{
+	ImGui::Dummy(ImVec2(0.0f, SectionGap));
+	ImGui::SeparatorText("Collision Channels");
+	ImGui::TextWrapped("Display names for all components. Leave a name empty to use its default.");
+	static const FEditorSettings Defaults;
+	for (int32 Index = 0; Index < CollisionChannelCount; ++Index)
+	{
+		ImGui::PushID(Index);
+		ImGui::SetNextItemWidth(200.0f);
+		const FString SlotName = "Channel" + std::to_string(Index);
+		ImGui::InputTextWithHint(SlotName.c_str(), Defaults.CollisionChannelNames[Index],
+			Settings.CollisionChannelNames[Index], FEditorSettings::CollisionChannelNameCapacity);
+		ImGui::PopID();
+	}
 }
 
 void FSettingsPanel::DrawShadowMapSettings()

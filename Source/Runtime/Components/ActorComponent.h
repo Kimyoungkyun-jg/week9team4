@@ -28,6 +28,8 @@ public:
 	void EndPlayComponent();
 	bool HasBegunPlay() const { return bHasBegunPlay; }
 	bool IsEndingPlay() const { return bIsEndingPlay; }
+	bool IsBeingDestroyed() const { return bIsBeingDestroyed; }
+	virtual void DestroyComponent();
 	virtual void TickComponent(float DeltaTime)
 	{
 	};
@@ -72,6 +74,7 @@ public:
 
 	UWorld* GetWorld() const { return WorldPrivate; }
 protected:
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) {}
 
 	virtual void OnRegister();
 	virtual void OnUnregister();
@@ -98,6 +101,7 @@ private:
 	bool bIsInitialized = false;
 	bool bHasBegunPlay = false;
 	bool bIsEndingPlay = false;
+	bool bIsBeingDestroyed = false;
 
 	UWorld* WorldPrivate = nullptr;
 	bool bRenderStateCreated = false;

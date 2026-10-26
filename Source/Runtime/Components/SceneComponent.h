@@ -6,6 +6,8 @@
 #include "Collision/HitResult.h"
 #include "Lua/LuaMacros.h"
 
+class UPrimitiveComponent;
+
 enum class EAttachmentRule
 {
 	KeepRelative,
@@ -49,36 +51,19 @@ public:
 
 	// Get & Set
 	const FVector& GetRelativeLocation() const { return Transform.Location; }
-	void SetRelativeLocation(const FVector& InLocation) 
-	{
-		Transform.Location = InLocation;
-		MarkTransformDirty();
-	}
-
+	void SetRelativeLocation(const FVector& InLocation) { SetRelativeLocationAndRotation(InLocation, Transform.Rotation); }
 
 	const FRotator& GetRelativeRotation() const { return Transform.Rotation; }
-	void SetRelativeRotation(const FRotator& InRotation) 
-	{
-		Transform.Rotation = InRotation; 
-		MarkTransformDirty();
-	}
+	void SetRelativeRotation(const FRotator& InRotation) { SetRelativeLocationAndRotation(Transform.Location, InRotation); }
 	void SetRelativeLocationAndRotation(const FVector& NewLocation, const FRotator& NewRotation);
 	const FVector& GetRelativeScale3D() const { return Transform.Scale; }
-	void SetRelativeScale3D(const FVector& InScale) 
-	{
-		Transform.Scale = InScale;
-		MarkTransformDirty();
-	}
+	void SetRelativeScale3D(const FVector& InScale);
 
 	// 쿼터니언 적용된 회전행렬
 	FQuat GetRelativeRotationQuat() const { return Transform.GetOrientation(); }
 
 	const FTransform& GetTransform() const { return Transform; }
-	void SetTransform(const FTransform& InTransform) 
-	{
-		Transform = InTransform;
-		MarkTransformDirty();
-	}
+	void SetTransform(const FTransform& InTransform);
 
 	// Attatch-To
 	USceneComponent* GetAttachParent() const { return AttachParent; }
@@ -101,6 +86,7 @@ public:
 	void SetWorldTransform(const FMatrix& InWorldMatrix, bool bSweep);
 
 	virtual bool MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit = nullptr);
+	virtual void UpdateOverlaps(const TArray<UPrimitiveComponent*>* PendingOverlaps = nullptr);
 
 	void MarkTransformDirty();
 	virtual void OnTransformDirty() {};
@@ -124,9 +110,11 @@ public:
 	FVector ComponentVelocity;
 
 protected:
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
+	void DetachOnDestruction();
 
-	// Direct transform write used by MoveComponent; never calls MoveComponent again.
 	void ApplyWorldLocationAndRotation(const FVector& Location, const FRotator& Rotation);
+	void ApplyWorldTransform(const FMatrix& WorldMatrix);
 	bool bTransformDirty = false;
 	FTransform Transform;
 

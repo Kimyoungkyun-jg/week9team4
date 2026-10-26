@@ -8,6 +8,15 @@
 #include "Engine/World.h"
 #include "GameFramework/TestGameMode.h"
 
+namespace
+{
+    template <typename T>
+    bool IsLiveOwnedComponent(const AActor& Owner, T* Component)
+    {
+        return Component && Owner.GetComponents().Find(Component) != INDEX_NONE && IsValid(Component) && !Component->IsBeingDestroyed();
+    }
+}
+
 AProjectileActor::AProjectileActor()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -56,13 +65,14 @@ AProjectileActor::AProjectileActor()
 void AProjectileActor::BeginPlay()
 {
 	Super::BeginPlay();
-	if (ProjectileMovementComponent)
+	if (IsPendingKillPending()) return;
+	if (IsLiveOwnedComponent(*this, ProjectileMovementComponent))
 		ProjectileMovementComponent->OnProjectileImpact.AddRaw(this, &AProjectileActor::HandleProjectileImpact);
 }
 
 void AProjectileActor::EndPlay()
 {
-	if (ProjectileMovementComponent)
+	if (IsLiveOwnedComponent(*this, ProjectileMovementComponent))
 		ProjectileMovementComponent->OnProjectileImpact.RemoveAll(this);
 	Super::EndPlay();
 }
@@ -76,7 +86,9 @@ void AProjectileActor::HandleProjectileImpact(const FHitResult& Hit)
 
 void AProjectileActor::Launch(const FVector& Position, const FVector& Direction, bool bUseStaticMesh)
 {
-    if (!GetWorld() || (GetWorld()->GetWorldType() != EWorldType::PIE && GetWorld()->GetWorldType() != EWorldType::Game) || Direction.Dot(Direction) <= 0.0001f)
+    if (IsPendingKillPending() || !GetWorld() || (GetWorld()->GetWorldType() != EWorldType::PIE && GetWorld()->GetWorldType() != EWorldType::Game) || Direction.Dot(Direction) <= 0.0001f ||
+        !IsLiveOwnedComponent(*this, ProjectileMovementComponent) || !IsLiveOwnedComponent(*this, StaticMeshComponent) ||
+        !IsLiveOwnedComponent(*this, FireBallComponent) || !IsLiveOwnedComponent(*this, FireBallMeshComponent))
         return;
     ReturnToPool();
     const FVector Forward = Direction.Normalized();
@@ -97,8 +109,6 @@ void AProjectileActor::Launch(const FVector& Position, const FVector& Direction,
         FireBallComponent->Activate();
         FireBallComponent->SetHiddenInGame(false);
     }
-    // The default fireball proxy is much larger than the plain mesh ball.
-    // Match the root sphere to the active visual, including pooled mode changes.
     const UStaticMeshComponent* Visual = bUseStaticMesh ? StaticMeshComponent : FireBallMeshComponent;
     float CollisionRadius = bUseStaticMesh ? 0.5f : FireBallComponent->GetRadius() * 0.5f;
     if (const FStaticMeshData* Mesh = Visual->GetMeshData(); Mesh && !Mesh->Vertices.IsEmpty())
@@ -122,28 +132,29 @@ void AProjectileActor::Launch(const FVector& Position, const FVector& Direction,
 
 void AProjectileActor::ReturnToPool()
 {
+    if (IsPendingKillPending()) return;
     bInFlight = false;
     CastChecked<UPrimitiveComponent>(GetRootComponent())->SetCollisionEnabled(false);
     RemainingLife = 0.0f;
-    if (ProjectileMovementComponent)
+    if (IsLiveOwnedComponent(*this, ProjectileMovementComponent))
     {
         ProjectileMovementComponent->Velocity = FVector::ZeroVector;
         ProjectileMovementComponent->bSimulationEnabled = false;
         ProjectileMovementComponent->Deactivate();
     }
-    if (StaticMeshComponent)
+    if (IsLiveOwnedComponent(*this, StaticMeshComponent))
     {
         StaticMeshComponent->Deactivate();
         StaticMeshComponent->SetHiddenInGame(true);
         StaticMeshComponent->SetVisible(false);
     }
-    if (FireBallComponent)
+    if (IsLiveOwnedComponent(*this, FireBallComponent))
     {
         FireBallComponent->Deactivate();
         FireBallComponent->SetHiddenInGame(true);
         FireBallComponent->SetVisibility(false);
     }
-    if (FireBallMeshComponent)
+    if (IsLiveOwnedComponent(*this, FireBallMeshComponent))
     {
         FireBallMeshComponent->Deactivate();
         FireBallMeshComponent->SetHiddenInGame(true);
@@ -155,7 +166,7 @@ void AProjectileActor::ReturnToPool()
 void AProjectileActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    if (!bInFlight) return;
+    if (IsPendingKillPending() || !bInFlight) return;
     RemainingLife -= DeltaTime;
-    if (RemainingLife <= 0.0f || !ProjectileMovementComponent->bSimulationEnabled) ReturnToPool();
+    if (RemainingLife <= 0.0f || !IsLiveOwnedComponent(*this, ProjectileMovementComponent) || !ProjectileMovementComponent->bSimulationEnabled) ReturnToPool();
 }

@@ -14,11 +14,15 @@ bool FOutlinerPanel::Init()
 
 void FOutlinerPanel::Tick(float DeltaTime)
 {
-	// 삭제된 객체가 선택되어 있으면 초기화
-	if (SelectedObject && GUObjectArray.Find(SelectedObject) == INDEX_NONE)
+	if (SelectedObject)
 	{
-		SelectActor(nullptr);
+		AActor* SelectedActor = GUObjectArray.Find(SelectedObject) != INDEX_NONE && IsValid(SelectedObject)
+			? Cast<AActor>(SelectedObject) : nullptr;
+		if (!SelectedActor || SelectedActor->IsActorBeingDestroyed()) SelectActor(nullptr);
 	}
+	if (PendingDeleteActor && (GUObjectArray.Find(PendingDeleteActor) == INDEX_NONE ||
+		!IsValid(PendingDeleteActor) || PendingDeleteActor->IsPendingKillPending()))
+		PendingDeleteActor = nullptr;
 }
 
 void FOutlinerPanel::OnRender()
@@ -40,7 +44,8 @@ void FOutlinerPanel::OnRender()
     ImGui::End();
 
     // Actors 순회가 완전히 끝난 뒤 삭제
-    if (PendingDeleteActor)
+    if (PendingDeleteActor && GUObjectArray.Find(PendingDeleteActor) != INDEX_NONE &&
+        IsValid(PendingDeleteActor) && !PendingDeleteActor->IsPendingKillPending())
     {
         if (DeleteCallback)
         {
@@ -86,7 +91,8 @@ void FOutlinerPanel::DrawActors(ULevel* Level)
 		}
     }
 
-    if (PendingDeleteActor)
+    if (PendingDeleteActor && GUObjectArray.Find(PendingDeleteActor) != INDEX_NONE &&
+        IsValid(PendingDeleteActor) && !PendingDeleteActor->IsPendingKillPending())
     {
         DeleteActorCallback(PendingDeleteActor);
         PendingDeleteActor = nullptr;
@@ -157,9 +163,8 @@ void FOutlinerPanel::SelectActor(AActor* Actor)
 
 AActor* FOutlinerPanel::GetSelectedActor() const
 {
-	// 해제된 객체 캐스팅 방지
-	if (!SelectedObject || GUObjectArray.Find(SelectedObject) == INDEX_NONE)
+	if (!SelectedObject || GUObjectArray.Find(SelectedObject) == INDEX_NONE || !IsValid(SelectedObject))
 		return nullptr;
-
-	return Cast<AActor>(SelectedObject);
+	AActor* Actor = Cast<AActor>(SelectedObject);
+	return Actor && !Actor->IsActorBeingDestroyed() ? Actor : nullptr;
 }

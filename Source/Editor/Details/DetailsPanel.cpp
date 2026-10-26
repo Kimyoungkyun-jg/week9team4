@@ -4,6 +4,7 @@
 #include "imgui_internal.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
 #include "Components/PrimitiveComponent.h"
+#include "Editor/Settings/SettingsPanel.h"
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -942,21 +943,31 @@ namespace
 		}
 	}
 
-    void DrawCollisionSettings(UPrimitiveComponent* Component)
+    void DrawCollisionSettings(UPrimitiveComponent* Component, const FEditorSettings* EditorSettings)
     {
         if (!Component || !ImGui::CollapsingHeader("Collision", ImGuiTreeNodeFlags_DefaultOpen)) return;
         const auto Settings = Component->GetCollisionSettings();
         bool Enabled = Settings.bEnabled, Events = Settings.bGenerateOverlapEvents;
         if (ImGui::Checkbox("Collision Enabled", &Enabled)) Component->SetCollisionEnabled(Enabled);
         if (ImGui::Checkbox("Generate Overlap Events", &Events)) Component->SetGenerateOverlapEvents(Events);
-        const char* Channels[] = { "WorldStatic", "WorldDynamic", "Pawn", "Projectile", "Visibility", "Camera" };
+        static const FEditorSettings Defaults;
+        const char* Channels[CollisionChannelCount];
+        for (int Index = 0; Index < CollisionChannelCount; ++Index)
+        {
+            const char* Name = EditorSettings ? EditorSettings->CollisionChannelNames[Index] : "";
+            Channels[Index] = Name[0] ? Name : Defaults.CollisionChannelNames[Index];
+        }
         const char* Responses[] = { "Ignore", "Overlap", "Block" };
         int Channel = static_cast<int>(Settings.ObjectChannel);
         if (ImGui::Combo("Object Channel", &Channel, Channels, CollisionChannelCount)) Component->SetCollisionObjectType(static_cast<ECollisionChannel>(Channel));
         for (int Index = 0; Index < CollisionChannelCount; ++Index)
         {
+            ImGui::PushID(Index);
             int Response = static_cast<int>(Settings.Responses[Index]);
-            if (ImGui::Combo(Channels[Index], &Response, Responses, 3)) Component->SetCollisionResponseToChannel(static_cast<ECollisionChannel>(Index), static_cast<ECollisionResponse>(Response));
+            // Display names can change without changing the widget identity.
+            const FString Label = FString(Channels[Index]) + "###CollisionResponse";
+            if (ImGui::Combo(Label.c_str(), &Response, Responses, 3)) Component->SetCollisionResponseToChannel(static_cast<ECollisionChannel>(Index), static_cast<ECollisionResponse>(Response));
+            ImGui::PopID();
         }
     }
 
@@ -1015,19 +1026,43 @@ bool FDetailsPanel::Init()
 
 void FDetailsPanel::Tick(float DeltaTime)
 {
+	const auto LiveComponent = [](UActorComponent* Component)
+	{
+		return Component && GUObjectArray.Find(Component) != INDEX_NONE &&
+			IsValid(Component) && !Component->IsBeingDestroyed();
+	};
+	if (TargetActor && (GUObjectArray.Find(TargetActor) == INDEX_NONE ||
+		!IsValid(TargetActor) || TargetActor->IsPendingKillPending()))
+	{
+		SetTarget(nullptr);
+		SelectComponent(nullptr);
+	}
+	else if (TargetComponent && !LiveComponent(TargetComponent)) SelectComponent(nullptr);
+	if (EditingNameComponent && !LiveComponent(EditingNameComponent))
+	{
+		EditingNameComponent = nullptr;
+		bIsEditingName = bFocusNameEdit = false;
+	}
+	if (PendingDeleteComponent && !LiveComponent(PendingDeleteComponent)) PendingDeleteComponent = nullptr;
+	if ((PendingDragComponent && !LiveComponent(PendingDragComponent)) ||
+		(PendingDroppedComponent && !LiveComponent(PendingDroppedComponent)))
+		PendingDragComponent = PendingDroppedComponent = nullptr;
 }
 
 const ULightComponent* FDetailsPanel::GetSelectedLight() const
 {
-	if (!TargetComponent || GUObjectArray.Find(TargetComponent) == INDEX_NONE)
-		return nullptr;
+	const auto LiveComponent = [](UActorComponent* Component)
+	{
+		return Component && GUObjectArray.Find(Component) != INDEX_NONE &&
+			IsValid(Component) && !Component->IsBeingDestroyed();
+	};
 	UActorComponent* Component = TargetComponent;
-	while (Component && GUObjectArray.Find(Component) != INDEX_NONE && Component->IsHiddenInDetails())
+	while (LiveComponent(Component) && Component->IsHiddenInDetails())
 	{
 		USceneComponent* SceneComponent = Cast<USceneComponent>(Component);
 		Component = SceneComponent ? SceneComponent->GetAttachParent() : nullptr;
 	}
-	return Cast<ULightComponent>(Component);
+	return LiveComponent(Component) ? Cast<ULightComponent>(Component) : nullptr;
 }
 
 void FDetailsPanel::DrawShadowPreview()
@@ -1186,11 +1221,13 @@ void FDetailsPanel::OnRender()
 	ImGui::Begin("Details");
 
 	// 해제된 액터 및 컴포넌트 참조 정리
-	if (TargetActor && GUObjectArray.Find(TargetActor) == INDEX_NONE)
+	if (TargetActor && (GUObjectArray.Find(TargetActor) == INDEX_NONE ||
+		!IsValid(TargetActor) || TargetActor->IsPendingKillPending()))
 	{
 		SetTarget(nullptr);
 	}
-	if (TargetComponent && (GUObjectArray.Find(TargetComponent) == INDEX_NONE || TargetComponent->GetOwner() != TargetActor))
+	if (TargetComponent && (GUObjectArray.Find(TargetComponent) == INDEX_NONE ||
+		!IsValid(TargetComponent) || TargetComponent->IsBeingDestroyed() || TargetComponent->GetOwner() != TargetActor))
 	{
 		TargetComponent = TargetActor ? TargetActor->GetRootComponent() : nullptr;
 	}
@@ -1231,7 +1268,7 @@ void FDetailsPanel::OnRender()
 			ImGui::PushID(TargetComponent);
 			ImGui::SeparatorText("Component Properties");
 			DrawProperties(TargetComponent, CustomFont);
-            DrawCollisionSettings(Cast<UPrimitiveComponent>(TargetComponent));
+            DrawCollisionSettings(Cast<UPrimitiveComponent>(TargetComponent), EditorSettings);
 			DrawShadowPreview();
 			if (ULuaScriptComponent* ScriptComponent = Cast<ULuaScriptComponent>(TargetComponent))
 			{
@@ -1281,6 +1318,9 @@ void FDetailsPanel::SelectComponent(UActorComponent* Component)
 		TargetComponent = nullptr;
 		EditingNameComponent = nullptr;
 		bFocusNameEdit = false;
+		bIsEditingName = false;
+		PendingDeleteComponent = nullptr;
+		PendingDragComponent = PendingDroppedComponent = nullptr;
 
 		if (Callback)
 			Callback(nullptr);

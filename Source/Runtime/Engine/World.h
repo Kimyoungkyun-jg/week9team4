@@ -86,26 +86,21 @@ public:
 	int32 GetActorNum();
 
 	bool DestroyActor(AActor* Actor);
+	void FlushPendingDestruction();
 
 	// View별 Billboard 행렬 공급자는 이 동기 호출 동안만 사용하며 저장하지 않는다.
 	using FBillboardTraceTransform = FMatrix(*)(const UBillboardComponent&, const void*);
 	// 현재 World의 Component에 Ray를 전달하고 가장 가까운 유효 교차를 반환한다.
 	bool LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 		FBillboardTraceTransform ResolveBillboard = nullptr, const void* ViewContext = nullptr);
-	bool SweepSingle(const UPrimitiveComponent& Moving, const FCollisionGeometry& Geometry, const FVector& Delta, FHitResult& OutHit,
-		TArray<UPrimitiveComponent*>* SweptOverlaps = nullptr);
+	bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation);
 	bool LineTraceByChannel(const FRay& Ray, float Distance, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
 	bool OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeometry& Geometry, TArray<UPrimitiveComponent*>& OutComponents);
 	void RegisterCollisionComponent(UPrimitiveComponent* Component);
 	void UnregisterCollisionComponent(UPrimitiveComponent* Component);
 	void MarkCollisionDirty(UPrimitiveComponent* Component);
-	void UpdateComponentOverlaps(UPrimitiveComponent* Component);
-	void NotifySweptOverlaps(UPrimitiveComponent* Component, const TArray<UPrimitiveComponent*>& Components);
-	void QueueHit(UPrimitiveComponent* Component, const FHitResult& Hit);
-	void DispatchCollisionEvents();
 	void RemoveCollisionListeners(const void* Listener);
 	const FCollisionQueryStats& GetCollisionQueryStats() const { return CollisionQueryStats; }
-	bool DeferComponentDestruction(AActor* Owner, UActorComponent* Component);
 
 	void BeginPlay();
 	void EndPlay();
@@ -158,21 +153,25 @@ private:
 	TArray<UPrimitiveComponent*> DirtyCollisionComponents;
 	FCollisionQueryStats CollisionQueryStats;
 	void UpdateCollisionIndex();
-	void SetOverlapPair(UPrimitiveComponent* A, UPrimitiveComponent* B, bool bOverlapping);
-	struct FCollisionEvent
+	friend class AActor;
+	friend class UActorComponent;
+	friend class USceneComponent;
+	friend class UPrimitiveComponent;
+	void QueueObjectDeletion(UObject* Object);
+	TArray<UObject*> PendingDeletion;
+	bool bIsTicking = false;
+	bool bIsClearingWorld = false;
+	bool bFlushingDestruction = false;
+	int32 ActiveObjectCalls = 0;
+	struct FScopedObjectExecution
 	{
-		int32 Type; // 0: hit, 1: begin overlap, 2: end overlap
-		UPrimitiveComponent* Component;
-		UPrimitiveComponent* Other;
-		uint32 ComponentID, OtherID;
-		FHitResult Hit;
+		explicit FScopedObjectExecution(UWorld* InWorld) : World(InWorld)
+		{ if (World) ++World->ActiveObjectCalls; }
+		~FScopedObjectExecution() { if (World) --World->ActiveObjectCalls; }
+		FScopedObjectExecution(const FScopedObjectExecution&) = delete;
+		FScopedObjectExecution& operator=(const FScopedObjectExecution&) = delete;
+		UWorld* World;
 	};
-	TArray<FCollisionEvent> CollisionEvents;
-	TArray<UPrimitiveComponent*> PendingOverlapUpdates;
-	bool bDispatchingCollisionEvents = false;
-	bool bInTick = false;
-	TArray<AActor*> DeferredActorDestruction;
-	TArray<std::pair<AActor*, UActorComponent*>> DeferredComponentDestruction;
 	EWorldType WorldType = EWorldType::None;
 
 	struct alignas(64) FGatherChunk

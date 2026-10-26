@@ -35,7 +35,7 @@ UObject* FindObjectWithOuter(const UObject* outer, const UClass* Class, FName Na
 {
 	for (UObject* Obj : GUObjectArray)
 	{
-		if (Obj && Obj->GetOuter() == outer && Obj->GetFName() == Name && Obj->GetClass() == Class)
+		if (IsValid(Obj) && Obj->GetOuter() == outer && Obj->GetFName() == Name && Obj->GetClass() == Class)
 			return Obj;
 	}
 	return nullptr;
@@ -51,7 +51,7 @@ void GetObjectsOfClass(const UClass* ClassToLookFor, TArray<UObject*>& Results, 
 	{
 		for (UObject* Obj : *Objects)
 		{
-			Results.Add(Obj);
+			if (IsValid(Obj)) Results.Add(Obj);
 		}
 	}
 

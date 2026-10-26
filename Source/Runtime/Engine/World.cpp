@@ -3,7 +3,6 @@
 #include "Serialization/StructuredArchive.h"
 #include "Serialization/StructuredArchiveSlots.h"
 #include "Level.h"
-#include "EngineClassRegistry.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -61,12 +60,12 @@ DECLARE_CYCLE_STAT("Gather - Submit", STAT_GatherSubmit);
 
 UWorld::~UWorld()
 {
-
+	FlushPendingDestruction();
 }
 
 bool UWorld::Init()
 {
-    RegisterEngineClasses();
+	// Spawn Actor로 카메라 생성하고 세팅하기
 	PersistentLevel = NewObject<ULevel>(this);
 
 	if (!PersistentLevel)
@@ -86,7 +85,7 @@ bool UWorld::Init()
 
 AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transform)
 {
-	if (!Class) return nullptr;
+	if (bIsClearingWorld || !Class) return nullptr;
 	if (!Class->IsChildOf(AActor::StaticClass())) return nullptr;
 
 	AActor* NewActor = NewObject<AActor>(PersistentLevel, Class, InName);
@@ -114,6 +113,7 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 	
 	PersistentLevel->AddActor(NewActor);
 	NewActor->RegisterAllComponents();
+	if (NewActor->IsPendingKillPending()) return nullptr;
 
 	if (bBegunPlay) BeginPlayList.Enqueue(NewActor);
 
@@ -122,7 +122,8 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 
 void UWorld::Tick(float DeltaTime)
 {
-	bInTick = true;
+	if (bIsTicking || bIsClearingWorld || ActiveObjectCalls) return;
+	bIsTicking = true;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UpdateAllTransforms);
 		Scene.UpdateAllTransforms();
@@ -134,7 +135,7 @@ void UWorld::Tick(float DeltaTime)
 		{
 			AActor* Actor = BeginPlayList.Peek();
 			BeginPlayList.Dequeue();
-			if (Actor) Actor->BeginPlay();
+			if (IsValid(Actor) && !Actor->IsActorBeingDestroyed()) Actor->BeginPlay();
 		}
 
 		if (!bIsPaused)
@@ -164,28 +165,13 @@ void UWorld::Tick(float DeltaTime)
 		}
 	}
 
-
-    const auto Pending = PendingOverlapUpdates; PendingOverlapUpdates.Reset();
-    for (UPrimitiveComponent* Component : Pending)
-        if (CollisionComponents.Find(Component) != INDEX_NONE) UpdateComponentOverlaps(Component);
-    DispatchCollisionEvents();
-
-	bInTick = false;
-
-	// 프레임 끝에서 지연된 액터 삭제 일괄 실행
-	const auto Actors = DeferredActorDestruction;
-	DeferredActorDestruction.Reset();
-	for (AActor* Actor : Actors)
-	{
-		if (GUObjectArray.Find(Actor) != INDEX_NONE)
-		{
-			DestroyActor(Actor);
-		}
-	}
+	bIsTicking = false;
 }
 
 void UWorld::ClearWorld()
 {
+	if (bIsClearingWorld) return;
+	bIsClearingWorld = true;
 	EndPlay();
 	while (!BeginPlayList.IsEmpty())
 	{
@@ -196,27 +182,16 @@ void UWorld::ClearWorld()
 	PathTracker.SetPathRenderingEnabled(false);
 	PathTracker.ClearPath();
 
-	
-	for (ULevel* Level : Levels)
-	{
-		for (AActor* Actor : Level->Actors)
-		{
-			if (!Actor) continue;
-			Actor->UnregisterAllComponents();
-			Actor->RegisterAllActorTickFunctions(false);
-		}
-	}
-	Scene.RemoveAllLights();
-	Scene.RemoveAllPrimitives();
 	for (ULevel* Level : Levels)
 		Level->ClearActors();
-    CollisionEvents.Reset();
-    PendingOverlapUpdates.Reset();
+	Scene.RemoveAllLights();
+	Scene.RemoveAllPrimitives();
     CollisionEntries.Reset();
     CollisionBVH.Clear();
     DirtyCollisionComponents.Reset();
     bCollisionTopologyDirty = true;
 	GameMode = nullptr;
+	bIsClearingWorld = false;
 	HUD = nullptr;
 	HUDClassOverride = nullptr;
 	HTR_LOG(Info, "{} : ", PersistentLevel->GetActorNum());
@@ -496,21 +471,19 @@ bool UWorld::DestroyActor(AActor* Actor)
 {
 	if (!Actor)
 		return false;
+	if (Actor->IsPendingKillPending()) return true;
 	if (Actor->bIsEndingPlay) return false;
-    if (bInTick || bDispatchingCollisionEvents)
-    {
-        if (DeferredActorDestruction.Find(Actor) == INDEX_NONE) DeferredActorDestruction.Add(Actor);
-        return true;
-    }
 
 	ULevel* Level = Actor->GetLevel();
 
-	if (!Level)
+	if (!Level || Actor->GetWorld() != this)
 		return false;
 	bool bOwnedByLevel = false;
 	for (AActor* Current : Level->Actors)
 		if (Current == Actor) { bOwnedByLevel = true; break; }
 	if (!bOwnedByLevel) return false;
+	FScopedObjectExecution ObjectScope(this);
+	Actor->bActorIsBeingDestroyed = true;
     RemoveCollisionListeners(Actor);
 
 	TQueue<AActor*> NewBeginPlayList;
@@ -530,23 +503,6 @@ bool UWorld::DestroyActor(AActor* Actor)
 
 	PathTracker.OnObjectDestroyed(Actor);
 
-	//for (UActorComponent* Component : Actor->Components)
-	//{
-	//	UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component);
-
-	//	if (!Primitive)
-	//		continue;
-
-	//	for (int32 i = PrimitiveComponents.Num() - 1; i >= 0; --i)
-	//	{
-	//		if (PrimitiveComponents[i] == Primitive)
-	//		{
-	//			PrimitiveComponents.RemoveAt(i, 1);
-	//			break;
-	//		}
-	//	}
-	//}
-
 	bool bRemovedFromLevel = false;
 	for (int32 i = Level->Actors.Num() - 1; i >= 0; --i)
 	{
@@ -563,16 +519,55 @@ bool UWorld::DestroyActor(AActor* Actor)
 	uint32 ActorUUID = Actor->GetUUID();
 
 	Actor->EndPlayActor();
+	const auto DestroyedComponents = Actor->GetComponents();
+	for (UActorComponent* Component : DestroyedComponents)
+		if (IsValid(Component)) Component->DestroyComponent();
 	Actor->UnregisterAllComponents();
 
 	Actor->RegisterAllActorTickFunctions(false);
 
+	if (APawn* Pawn = Cast<APawn>(Actor))
+		if (APlayerController* Controller = Pawn->GetController()) Controller->UnPossess();
+	if (APlayerController* Controller = Cast<APlayerController>(Actor)) Controller->UnPossess();
+	if (Actor == PlayerController) PlayerController = nullptr;
+	if (Actor == PlayerPawn) PlayerPawn = nullptr;
+	if (Actor == HUD)
+	{
+		if (PlayerController) PlayerController->SetHUD(nullptr);
+		HUD = nullptr;
+	}
 	if (Actor == GameMode) GameMode = nullptr;
-	delete Actor;
+	Actor->MarkAsGarbage();
+	QueueObjectDeletion(Actor);
 
 	HTR_LOG(Info, "Destroy Actor : {} UUID {}", ActorName, ActorUUID);
 
 	return true;
+}
+
+void UWorld::QueueObjectDeletion(UObject* Object)
+{
+	assert(Object && Object->IsGarbage());
+	PendingDeletion.Add(Object);
+}
+
+void UWorld::FlushPendingDestruction()
+{
+	if (bIsTicking || bIsClearingWorld || ActiveObjectCalls || bFlushingDestruction) return;
+	bFlushingDestruction = true;
+	while (!PendingDeletion.IsEmpty())
+	{
+		TArray<UObject*> Objects = std::move(PendingDeletion);
+		PendingDeletion.Reset();
+		TArray<UObject*> Actors;
+		for (UObject* Object : Objects)
+		{
+			if (Object->IsA<AActor>()) Actors.Add(Object);
+			else delete Object;
+		}
+		for (UObject* Actor : Actors) delete Actor;
+	}
+	bFlushingDestruction = false;
 }
 
 bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
@@ -712,13 +707,13 @@ void UWorld::BeginPlay()
 				if (Actor) InitialActors.Add(Actor);
 	bBegunPlay = true;
 	for (AActor* Actor : InitialActors)
-		Actor->BeginPlay();
+		if (IsValid(Actor) && !Actor->IsActorBeingDestroyed()) Actor->BeginPlay();
 
 	while (!BeginPlayList.IsEmpty())
 	{
 		AActor* Actor = BeginPlayList.Peek();
 		BeginPlayList.Dequeue();
-		if (Actor) Actor->BeginPlay();
+		if (IsValid(Actor) && !Actor->IsActorBeingDestroyed()) Actor->BeginPlay();
 	}
 }
 

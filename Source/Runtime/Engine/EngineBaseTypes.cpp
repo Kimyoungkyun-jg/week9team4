@@ -31,13 +31,14 @@ void FTickFunction::SetTickFunctionEnable(bool bEnable)
 
 void FActorTickFunction::ExecuteTick(float DeltaTime)
 {
-	if (Target)
+	if (IsValid(Target) && !Target->IsActorBeingDestroyed())
 		Target->TickActor(DeltaTime);
 }
 
 void FActorComponentTickFunction::ExecuteTick(float DeltaTime)
 {
-	if (Target)
+	if (IsValid(Target) && !Target->IsBeingDestroyed() && Target->IsRegistered() &&
+		(!Target->GetOwner() || !Target->GetOwner()->IsPendingKillPending()))
 		Target->TickComponent(DeltaTime);
 }
 

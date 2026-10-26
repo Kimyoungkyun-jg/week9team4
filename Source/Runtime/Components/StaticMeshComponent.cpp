@@ -47,8 +47,7 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InStaticMesh)
 
 	StaticMesh = InStaticMesh;
 	ClearOverrideMaterials();
-	MarkRenderStateDirty();
-	OnTransformDirty();
+	UpdateCollisionShape();
 }
 
 int32 UStaticMeshComponent::GetNumMaterials() const

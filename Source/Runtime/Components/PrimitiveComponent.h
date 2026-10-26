@@ -51,7 +51,8 @@ public:
 	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse Response);
 	void SetCollisionResponseToAllChannels(ECollisionResponse Response);
 	void SetGenerateOverlapEvents(bool bEnabled);
-	void UpdateOverlaps();
+	void OnComponentCollisionSettingsChanged(bool bUpdateOverlaps = true);
+	void UpdateOverlaps(const TArray<UPrimitiveComponent*>* PendingOverlaps = nullptr) override;
 	const TArray<UPrimitiveComponent*>& GetOverlappingComponents() const { return OverlappingComponents; }
 	TMulticastDelegate<UPrimitiveComponent*, UPrimitiveComponent*, const FHitResult&> OnComponentHit;
 	TMulticastDelegate<UPrimitiveComponent*, UPrimitiveComponent*> OnComponentBeginOverlap;
@@ -103,6 +104,7 @@ public:
 	bool bReceiveSpecular = true;
 
 protected:
+	void UpdateCollisionShape();
 	void OnRegister() override;
 	void OnUnregister() override;
 	FCollisionSettings CollisionSettings;
@@ -121,6 +123,10 @@ protected:
 private:
 	friend class FScene;
 	friend class UWorld;
+	void BeginComponentOverlap(UPrimitiveComponent* Other);
+	void EndComponentOverlap(UPrimitiveComponent* Other, bool bSkipNotifySelf = false);
+	void ClearComponentOverlaps(bool bSkipNotifySelf = false);
+	void DispatchBlockingHit(const FHitResult& Hit);
 	int32 CollisionEntryIndex = INDEX_NONE;
 	bool bCollisionUpdateQueued = false;
 	TArray<UPrimitiveComponent*> OverlappingComponents;

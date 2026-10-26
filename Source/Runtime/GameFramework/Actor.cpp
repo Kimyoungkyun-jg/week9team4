@@ -11,7 +11,6 @@
 
 enum class EAttachmentRule;
 
-
 AActor::AActor()
 {
 	PrimaryActorTick.Target = this;
@@ -20,6 +19,7 @@ AActor::AActor()
 
 AActor::~AActor()
 {
+	assert(!bActorIsBeingDestroyed || Components.IsEmpty());
 	TArray<UActorComponent*> ToDelete = Components;
 	Components.Reset();
 	RootComponent = nullptr;
@@ -32,11 +32,17 @@ AActor::~AActor()
 
 void AActor::BeginPlay()
 {
-	if (bHasBegunPlay || bHasEndedPlay || !World || !World->HasBegunPlay()) return;
+	if (IsPendingKillPending() || bHasBegunPlay || bHasEndedPlay || !World || !World->HasBegunPlay()) return;
 	RegisterAllComponents();
+	if (IsPendingKillPending()) return;
 	bHasBegunPlay = true;
-	for (UActorComponent* Component : Components)
-		if (Component) Component->BeginPlayComponent();
+	const auto BeginningComponents = Components;
+	for (UActorComponent* Component : BeginningComponents)
+	{
+		if (IsPendingKillPending()) return;
+		if (Components.Find(Component) != INDEX_NONE && IsValid(Component)) Component->BeginPlayComponent();
+	}
+	if (IsPendingKillPending()) return;
 	RegisterAllActorTickFunctions(true);
 }
 
@@ -48,10 +54,15 @@ void AActor::EndPlayActor()
 	bIsEndingPlay = true;
 	EndPlay();
     if (World) World->RemoveCollisionListeners(this);
+	OnActorHit.Clear();
+	OnActorBeginOverlap.Clear();
+	OnActorEndOverlap.Clear();
 
-	TArray<UActorComponent*> EndingComponents = Components;
+	TArray<UActorComponent*> EndingComponents;
+	if (!bActorIsBeingDestroyed) EndingComponents = Components;
 	for (UActorComponent* Component : EndingComponents)
 	{
+		if (!IsValid(Component)) continue;
 		for (UActorComponent* Current : Components)
 		{
 			if (Current != Component) continue;
@@ -64,7 +75,7 @@ void AActor::EndPlayActor()
 
 void AActor::RegisterAllActorTickFunctions(bool bRegister)
 {
-	if (bRegister && !World)
+	if (bRegister && (!World || IsPendingKillPending()))
 		return;
 
 	// bCanEverTick이 꺼진 함수는 등록하지 않으므로 정적 메시 액터는 매 프레임 순회 대상에서 빠진다.
@@ -209,7 +220,6 @@ void AActor::Serialize(FStructuredArchive::FRecord Record)
 
 }
 
-
 void AActor::RemoveOwnedComponent(UActorComponent* Component)
 {
 	for (uint32 i = 0; i < Components.Num(); ++i)
@@ -282,6 +292,7 @@ FTransform AActor::GetActorTransform() const
 
 bool AActor::Destroy()
 {
+	if (IsPendingKillPending()) return true;
 	if (!World)
 		return false;
 
@@ -290,11 +301,10 @@ bool AActor::Destroy()
 
 UActorComponent* AActor::AddComponent(UClass* ComponentClass, FName Name)
 {
-	if (!ComponentClass || !ComponentClass->IsChildOf(UActorComponent::StaticClass()))
+	if (IsPendingKillPending() || !ComponentClass || !ComponentClass->IsChildOf(UActorComponent::StaticClass()))
 	{
 		return nullptr;
 	}
-
 
 	if (FName(Name) == FName("None"))
 	{
@@ -313,42 +323,13 @@ UActorComponent* AActor::AddComponent(UClass* ComponentClass, FName Name)
 	Components.Add(NewComponent);
 	NewComponent->RegisterComponent();
 
-	return NewComponent;
+	return IsValid(NewComponent) && !NewComponent->IsBeingDestroyed() && !IsPendingKillPending() ? NewComponent : nullptr;
 }
 
 void AActor::DestroyComponent(UActorComponent* Component)
 {
-	if (!Component)
-		return;
-	if (Component->IsEndingPlay()) return;
-    if (World && World->DeferComponentDestruction(this, Component)) return;
-
-	if (Component == RootComponent)
-	{
-		HTR_LOG(Warning, "DefaultSceneRoot cannot be deleted.");
-		return;
-	}
-	const bool bWasEndingPlay = bIsEndingPlay;
-	bIsEndingPlay = true;
-	Component->EndPlayComponent();
-	bIsEndingPlay = bWasEndingPlay;
-
-	if (USceneComponent* Parent = Cast<USceneComponent>(Component))
-	{
-		TArray<USceneComponent*> Children = Parent->GetAttachChildren();
-		for (USceneComponent* Candidate : Children)
-		{
-			if (!Candidate) { continue; }
-
-			Candidate->DetachFromParent(EAttachmentRule::KeepWorld);
-			Candidate->SetupAttachment(Parent->GetAttachParent(), EAttachmentRule::KeepWorld);
-		}
-	}
-
-	Component->UnregisterComponent();
-	RemoveOwnedComponent(Component);
-	delete Component;
-	return;
+	if (Components.Find(Component) != INDEX_NONE && IsValid(Component) && Component->GetOwner() == this)
+		Component->DestroyComponent();
 }
 
 void AActor::OnDefaultSubobjectCreated(UObject* Subobject)
@@ -363,7 +344,7 @@ void AActor::OnDefaultSubobjectCreated(UObject* Subobject)
 UActorComponent* AActor::FindComponentByName(FName Name) const
 {
 	for (UActorComponent* Component : Components)
-		if (Component && Component->GetFName() == Name)
+		if (IsValid(Component) && !Component->IsBeingDestroyed() && Component->GetFName() == Name)
 			return Component;
 	return nullptr;
 }
@@ -399,20 +380,23 @@ TArray<UActorComponent*> AActor::GetComponentsByClass(const UClass* ComponentCla
 
 void AActor::RegisterAllComponents()
 {
-	if (!World) return;
+	if (!World || IsPendingKillPending()) return;
 
-	for (UActorComponent* Component : Components)
+	const auto RegisteringComponents = Components;
+	for (UActorComponent* Component : RegisteringComponents)
 	{
-		if (Component && !Component->IsRegistered())
+		if (IsPendingKillPending()) return;
+		if (Components.Find(Component) != INDEX_NONE && IsValid(Component) && !Component->IsBeingDestroyed() && !Component->IsRegistered())
 			Component->RegisterComponentWithWorld(World);
 	}
 }
 
 void AActor::UnregisterAllComponents()
 {
-	for (UActorComponent* Component : Components)
+	const auto UnregisteringComponents = Components;
+	for (UActorComponent* Component : UnregisteringComponents)
 	{
-		if (Component && Component->IsRegistered())
+		if (Components.Find(Component) != INDEX_NONE && IsValid(Component) && Component->IsRegistered())
 			Component->UnregisterComponent();
 	}
 }
@@ -442,9 +426,31 @@ bool AActor::TryGetActorBounds(FBox& OutBounds) const
 	return bHasBounds;
 }
 
+bool AActor::IsOverlappingActor(const AActor* Other) const
+{
+    if (!Other || Other == this) return false;
+    for (UActorComponent* Component : Components)
+    {
+        if (!IsValid(Component)) continue;
+        if (const auto* Primitive = Cast<UPrimitiveComponent>(Component))
+            for (UPrimitiveComponent* Overlap : Primitive->GetOverlappingComponents())
+                if (IsValid(Overlap) && Overlap->GetOwner() == Other) return true;
+    }
+    return false;
+}
+
 void AActor::SetActorEnableCollision(bool bEnabled)
 {
+    if (IsPendingKillPending() || bActorEnableCollision == bEnabled) return;
+    UWorld::FScopedObjectExecution ObjectScope(World);
     bActorEnableCollision = bEnabled;
-    if (World) for (UActorComponent* Component : Components)
-        if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) World->MarkCollisionDirty(Primitive);
+    const auto ChangedComponents = Components;
+    for (UActorComponent* Component : ChangedComponents)
+        if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->OnComponentCollisionSettingsChanged(false);
+    for (UActorComponent* Component : ChangedComponents)
+    {
+        if (IsPendingKillPending()) return;
+        if (Components.Find(Component) != INDEX_NONE && IsValid(Component))
+            if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->UpdateOverlaps();
+    }
 }

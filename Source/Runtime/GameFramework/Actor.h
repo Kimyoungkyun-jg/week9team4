@@ -80,6 +80,11 @@ public:
 	void SetRootComponent(USceneComponent* SceneComponent) { RootComponent = SceneComponent; }
 	void SetActorEnableCollision(bool bEnabled);
 	bool GetActorEnableCollision() const { return bActorEnableCollision; }
+	bool IsOverlappingActor(const AActor* Other) const;
+
+	TMulticastDelegate<AActor*, AActor*, const FHitResult&> OnActorHit;
+	TMulticastDelegate<AActor*, AActor*> OnActorBeginOverlap;
+	TMulticastDelegate<AActor*, AActor*> OnActorEndOverlap;
 
 	void RemoveOwnedComponent(UActorComponent* Component);
 	
@@ -119,6 +124,8 @@ public:
 	bool TryGetActorBounds(FBox& OutBounds) const;
 
 	bool Destroy();
+	bool IsActorBeingDestroyed() const { return bActorIsBeingDestroyed; }
+	bool IsPendingKillPending() const { return bActorIsBeingDestroyed || !IsValid(this); }
 	
 	//xx삭제 예정
 	friend class UWorld;
@@ -177,5 +184,6 @@ private:
 	bool bHasBegunPlay = false;
 	bool bHasEndedPlay = false;
 	bool bIsEndingPlay = false;
+	bool bActorIsBeingDestroyed = false;
 
 };
