@@ -9,17 +9,19 @@ struct FPerObjectConstants
 {
 	FMatrix World;
 	FMatrix NormalMatrix;
+	FVector4 LightingFlags; // x: specular enabled
 };
 
-inline FPerObjectConstants MakePerObjectConstants(const FMatrix& World)
+inline FPerObjectConstants MakePerObjectConstants(const FMatrix& World, bool bReceiveSpecular = true)
 {
 	FPerObjectConstants Result{};
 	Result.World = World;
 	Result.NormalMatrix = World.Inverse().GetTransposed();
+	Result.LightingFlags.X = bReceiveSpecular ? 1.0f : 0.0f;
 	return Result;
 }
 
-static_assert(sizeof(FPerObjectConstants) == sizeof(FMatrix) * 2);
+static_assert(sizeof(FPerObjectConstants) == sizeof(FMatrix) * 2 + sizeof(FVector4));
 static_assert(sizeof(FPerObjectConstants) <= ObjectSlotBytes);
 
 // UberLit.hlsl의 PerObject(b0)와 MaterialParams(b2)에 대응한다.
@@ -29,7 +31,7 @@ struct FForwardObjectConstants
 	FMatrix View;
 	FMatrix Projection;
 	FMatrix NormalMatrix;
-	FVector4 ShadowFlags;
+	FVector4 ShadowFlags; // x: receive shadow, y: specular enabled
 };
 
 struct FForwardMaterialConstants

@@ -4,6 +4,9 @@
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/CoinActor.h"
+#include "GameActor/GhostActor.h"
+#include "GameActor/MainMenuGameMode.h"
+#include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
 #include "GameActor/PacmanHUD.h"
 
@@ -18,6 +21,7 @@
 
 #include "Engine/World.h"
 #include "Engine/Level.h"
+#include "UObject/UObjectGlobals.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 
@@ -77,6 +81,9 @@ bool UEditorEngine::Init()
 	APlayerPawn::StaticClass();
 	AFlashlightActor::StaticClass();
 	ACoinActor::StaticClass();
+	AGhostActor::StaticClass();
+	AMainMenuGameMode::StaticClass();
+	AMainMenuHUD::StaticClass();
 	APacmanGameMode::StaticClass();
 	APacmanHUD::StaticClass();
 
@@ -146,6 +153,7 @@ bool UEditorEngine::Init()
 	ViewportsPanel = EditorUI->AddEditorPanel<FViewportsPanel>();
 	ContentDrawerPanel = EditorUI->AddEditorPanel<FContentDrawerPanel>();
 	WidgetEditorPanel = EditorUI->AddEditorPanel<FWidgetEditorPanel>();
+	WidgetEditorPanel->SetViewportsPanel(ViewportsPanel);
 	ContentDrawerPanel->SetOpenUIAssetCallback([this](const FString& Path)
 	{
 		if (!WidgetEditorPanel->RequestOpenAsset(Path))
@@ -252,6 +260,7 @@ bool UEditorEngine::Init()
 
 	EditorControlsPanel->SetWorld(EditorWorld);
 	EditorControlsPanel->SetIsPlayingQuery([this]() { return IsPlaying(); });
+	EditorControlsPanel->SetDuplicateActorCallback([this]() { DuplicateSelectedActor(); });
 	EditorControlsPanel->SetGizmo(Gizmo.get());
 	EditorControlsPanel->SetViewportsPanel(ViewportsPanel);
 	EditorControlsPanel->SetSettingsPanel(SettingsPanel);
@@ -955,6 +964,21 @@ void UEditorEngine::PreExit()
 	// PIE 창이 열린 채 종료하면 Device가 살아 있을 때 Swapchain과 타깃을 먼저 정리한다.
 	DestroyPIEWindow();
 	ImGuiRenderer->Shutdown();
+}
+
+void UEditorEngine::DuplicateSelectedActor()
+{
+	AActor* Source = OutlinerPanel ? OutlinerPanel->GetSelectedActor() : nullptr;
+	if (!Source || Source->GetWorld() != GetActiveWorld() ||
+		(IsPlaying() && !bIsPaused && !IsSimulatingInEditor())) return;
+
+	ULevel* Level = Source->GetLevel();
+	if (!Level) return;
+	AActor* Copy = Cast<AActor>(StaticDuplicateObject(Source, Level));
+	if (!Copy) return;
+	Level->AddActor(Copy);
+	Copy->RegisterAllComponents();
+	OutlinerPanel->SelectActor(Copy);
 }
 
 // 선택과 Gizmo 참조를 정리한 뒤 Actor를 삭제한다.

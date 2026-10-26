@@ -25,7 +25,7 @@ cbuffer PerObject : register(b0)
     matrix View;
     matrix Projection;
     matrix NormalMatrix; // World 행렬의 역행렬을 전치한 법선 변환 행렬
-    float4 ShadowFlags;
+    float4 ShadowFlags; // x: receive shadow, y: specular enabled
 };
 
 cbuffer Lighting : register(b1)
@@ -501,7 +501,7 @@ VS_OUT Uber_VS(VS_IN Input)
     float Handedness = Input.Tangent.w * (determinant((float3x3)World) < 0.0f ? -1.0f : 1.0f);
     Output.WorldTangent = float4(T, Handedness);
 #if LIGHTING_MODEL_GOURAUD
-    FLightResult Lit = CalculateLighting(float3(0.0f, 0.0f, 0.0f), WorldPosition.xyz, ViewPosition.x, N, true);
+    FLightResult Lit = CalculateLighting(float3(0.0f, 0.0f, 0.0f), WorldPosition.xyz, ViewPosition.x, N, ShadowFlags.y > 0.5f);
     Output.VertexDiffuse = Lit.Diffuse;
     Output.VertexSpecular = Lit.Specular;
 #elif !VIEW_MODE_WORLD_NORMAL
@@ -540,7 +540,7 @@ FUberOutput Uber_PS(VS_OUT Input)
     Diffuse = CalculateTiledLighting(Input.Position.xyz, Input.WorldPosition, Input.ViewDepth, ShadingNormal, false).Diffuse;
 #elif LIGHTING_MODEL_PHONG
     // 같은 목록 선택 경로에서 기존 Blinn-Phong 조명을 계산한다.
-    FLightResult Lit = CalculateTiledLighting(Input.Position.xyz, Input.WorldPosition, Input.ViewDepth, ShadingNormal, true);
+    FLightResult Lit = CalculateTiledLighting(Input.Position.xyz, Input.WorldPosition, Input.ViewDepth, ShadingNormal, ShadowFlags.y > 0.5f);
     Diffuse = Lit.Diffuse;
     Specular = Lit.Specular;
 #elif LIGHTING_MODEL_UNLIT

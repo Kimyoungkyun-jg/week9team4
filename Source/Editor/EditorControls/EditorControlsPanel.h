@@ -2,6 +2,7 @@
 #include "Editor/EditorUI/EditorPanel.h"
 
 #include "Editor/Gizmo/Gizmo.h"
+#include <utility>
 
 #include "GameFramework/Actor/ParticleActor.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
@@ -17,6 +18,7 @@
 #include "GameFramework/Actor/ProjectileActor.h"
 #include "GameFramework/Actor/PlayerStart.h"
 #include "GameActor/CoinActor.h"
+#include "GameActor/GhostActor.h"
 class FViewportsPanel;
 class FSettingsPanel;
 
@@ -33,6 +35,7 @@ public:
 	inline void SetViewportsPanel(FViewportsPanel* InPanel) { ViewportsPanel = InPanel; }
 	inline void SetSettingsPanel(FSettingsPanel* InPanel) { SettingsPanel = InPanel; }
 	inline void SetIsPlayingQuery(std::function<bool()> InQuery) { IsPlayingQuery = InQuery; }
+	void SetDuplicateActorCallback(std::function<void()> InCallback) { DuplicateActorCallback = std::move(InCallback); }
 
 	float DeltaTime = 1.0f;
 	UWorld* World = nullptr;
@@ -43,7 +46,7 @@ public:
 
 	int32 SelectedIndex = 0;
 
-	const char* Items[9] = {"StaticMesh", "Particle", "Text", "HeightFog", "FireBall", "Projectile", "PlayerStart", "MapActor", "Coin" };
+	const char* Items[10] = {"StaticMesh", "Particle", "Text", "HeightFog", "FireBall", "Projectile", "PlayerStart", "MapActor", "Coin", "Ghost" };
 
 	FGizmo* Gizmo = nullptr;
 	int32 GizmoSelectedIndex = 0;
@@ -63,6 +66,7 @@ public:
 		APlayerStart::StaticClass(),
 		AMapActor::StaticClass(),
 		ACoinActor::StaticClass(),
+		AGhostActor::StaticClass(),
 	};
 
 private:
@@ -71,5 +75,6 @@ private:
 
     void DrawCameraProperties();
 	std::function<bool()> IsPlayingQuery;
+	std::function<void()> DuplicateActorCallback;
 };
 

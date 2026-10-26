@@ -6,6 +6,7 @@
 #include "UObject/UObjectIterator.h"
 #include "Core/EngineLog.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
+#include "Editor/Viewports/ViewportsPanel.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -549,6 +550,18 @@ void FWidgetEditorPanel::DrawDetails()
 
 void FWidgetEditorPanel::OnRender()
 {
+	if (!bPreviewSizeInitialized && ViewportsPanel)
+	{
+		if (FEditorViewportClient* Viewport = ViewportsPanel->GetViewportClient(ViewportsPanel->GetActiveViewIndex()))
+		{
+			if (Viewport->GetWidth() > 1 && Viewport->GetHeight() > 1)
+			{
+				PreviewWidth = static_cast<float>(Viewport->GetWidth());
+				PreviewHeight = static_cast<float>(Viewport->GetHeight());
+				bPreviewSizeInitialized = true;
+			}
+		}
+	}
 	if (!Root) NewAsset();
 	if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{ bHistoryTransactionOpen = false; LastHistoryActiveID = 0; }
