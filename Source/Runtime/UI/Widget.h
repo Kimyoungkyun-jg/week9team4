@@ -124,7 +124,7 @@ public:
 
 private:
 	FString Text;
-	FString FontPath;
+	FString FontPath = "Assets/Fonts/Pretendard.json";
 	float FontSize = 16.0f;
 	FLinearColor Color{1.0f, 1.0f, 1.0f, 1.0f};
 };
@@ -164,7 +164,9 @@ class UButtonWidget : public UWidget
 		PROPERTY(FontPath)
 		PROPERTY(FontSize)
 		PROPERTY(BackgroundColor)
+		PROPERTY(HoverBackgroundColor)
 		PROPERTY(TextColor)
+		PROPERTY(HoverTextColor)
 	REFLECT_END()
 
 public:
@@ -172,25 +174,67 @@ public:
 	void SetFontPath(const FString& Value) { FontPath = Value; }
 	void SetFontSize(float Value) { FontSize = Value; }
 	void SetBackgroundColor(const FLinearColor& Value) { BackgroundColor = Value; }
+	void SetHoverBackgroundColor(const FLinearColor& Value) { HoverBackgroundColor = Value; }
 	void SetTextColor(const FLinearColor& Value) { TextColor = Value; }
+	void SetHoverTextColor(const FLinearColor& Value) { HoverTextColor = Value; }
 	void SetOnClicked(std::function<void()> Callback) { OnClicked = std::move(Callback); }
 	void Click() { auto Callback = OnClicked; if (Callback) Callback(); }
 	void SetPressed(bool Value) { bPressed = Value; }
+	void SetHovered(bool Value) { bHovered = Value; }
 	const FString& GetText() const { return Text; }
 	const FString& GetFontPath() const { return FontPath; }
 	float GetFontSize() const { return FontSize; }
 	const FLinearColor& GetBackgroundColor() const { return BackgroundColor; }
+	const FLinearColor& GetHoverBackgroundColor() const { return HoverBackgroundColor; }
 	const FLinearColor& GetTextColor() const { return TextColor; }
+	const FLinearColor& GetHoverTextColor() const { return HoverTextColor; }
 	bool IsPressed() const { return bPressed; }
+	bool IsHovered() const { return bHovered; }
 
 private:
 	FString Text = "Button";
 	FString FontPath = "Assets/Fonts/Pretendard.json";
 	float FontSize = 20.0f;
 	FLinearColor BackgroundColor{0.2f, 0.35f, 0.65f, 1.0f};
+	FLinearColor HoverBackgroundColor{0.3f, 0.5f, 0.8f, 1.0f};
 	FLinearColor TextColor{1.0f, 1.0f, 1.0f, 1.0f};
+	FLinearColor HoverTextColor{1.0f, 0.9f, 0.4f, 1.0f};
 	std::function<void()> OnClicked;
 	bool bPressed = false;
+	bool bHovered = false;
+};
+
+class UTextInputWidget : public UButtonWidget
+{
+	DECLARE_CLASS(UTextInputWidget, UButtonWidget)
+	REFLECT_START(UTextInputWidget)
+		PROPERTY(Placeholder)
+		PROPERTY(MaxLength)
+	REFLECT_END()
+
+public:
+	UTextInputWidget();
+	const FString& GetValue() const { return GetText(); }
+	void SetValue(const FString& Value) { SetText(Value); }
+	const FString& GetPlaceholder() const { return Placeholder; }
+	void SetPlaceholder(const FString& Value) { Placeholder = Value; }
+	int32 GetMaxLength() const { return MaxLength; }
+	void SetMaxLength(int32 Value) { MaxLength = std::max(1, Value); }
+	FString GetDisplayText() const;
+	void AppendText(const FString& Text);
+	void Backspace();
+	void SetFocused(bool Value) { bFocused = Value && !bReadOnly; }
+	bool IsFocused() const { return bFocused; }
+	void SetReadOnly(bool Value) { bReadOnly = Value; if (Value) bFocused = false; }
+	void SetOnSubmitted(std::function<void()> Callback) { OnSubmitted = std::move(Callback); }
+	void Submit() { auto Callback = OnSubmitted; if (Callback) Callback(); }
+
+private:
+	FString Placeholder = "Enter name";
+	int32 MaxLength = 16;
+	bool bFocused = false;
+	bool bReadOnly = false;
+	std::function<void()> OnSubmitted;
 };
 
 class UMinimapWidget : public UWidget

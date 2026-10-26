@@ -214,8 +214,9 @@ void FWidgetEditorPanel::AddWidget(int Type)
 		: Type == 2 ? static_cast<UWidget*>(NewObject<UTextWidget>())
 		: Type == 3 ? static_cast<UWidget*>(NewObject<UButtonWidget>())
 		: Type == 4 ? static_cast<UWidget*>(NewObject<UTimerWidget>())
+		: Type == 6 ? static_cast<UWidget*>(NewObject<UTextInputWidget>())
 		: static_cast<UWidget*>(NewObject<UMinimapWidget>());
-	const FString Name = (Type == 0 ? "Canvas" : Type == 1 ? "Image" : Type == 2 ? "Text" : Type == 3 ? "Button" : Type == 4 ? "Timer" : "Minimap") + std::to_string(NewWidgetIndex++);
+	const FString Name = (Type == 0 ? "Canvas" : Type == 1 ? "Image" : Type == 2 ? "Text" : Type == 3 ? "Button" : Type == 4 ? "Timer" : Type == 6 ? "Input" : "Minimap") + std::to_string(NewWidgetIndex++);
 	Widget->SetWidgetName(Name);
 	Widget->SetPosition({20.0f, 20.0f});
 	Widget->SetSize(Type == 0 ? FVector2{240.0f, 120.0f} : Type == 5 ? FVector2{192.0f, 192.0f} : FVector2{160.0f, 48.0f});
@@ -227,7 +228,7 @@ void FWidgetEditorPanel::AddWidget(int Type)
 		Text->SetFontPath("Assets/Fonts/Pretendard.json");
 		Text->SetFontSize(24.0f);
 	}
-	if (UButtonWidget* Button = Cast<UButtonWidget>(Widget)) Button->SetText("Button");
+	if (UButtonWidget* Button = Cast<UButtonWidget>(Widget)) Button->SetText(Type == 6 ? "" : "Button");
 	if (!Parent->AddChild(Widget)) { delete Widget; return; }
 	Select(Widget);
 	MarkDirty();
@@ -345,9 +346,11 @@ void FWidgetEditorPanel::DrawPreview(UWidget* Widget, ImDrawList* DrawList, ImVe
 			ToColor(Text->GetColor()), Text->GetDisplayText().c_str());
 	else if (UButtonWidget* Button = Cast<UButtonWidget>(Widget))
 	{
-		DrawList->AddRectFilled(Min, Max, ToColor(Button->GetBackgroundColor()));
+		UTextInputWidget* Input = Cast<UTextInputWidget>(Button);
+		const bool bHovered = bPreviewHover && Widget == Selected;
+		DrawList->AddRectFilled(Min, Max, ToColor(bHovered ? Button->GetHoverBackgroundColor() : Button->GetBackgroundColor()));
 		DrawList->AddText(nullptr, std::max(8.0f, Button->GetFontSize() * Scale),
-			{Min.x + 6.0f, Min.y + 4.0f}, ToColor(Button->GetTextColor()), Button->GetText().c_str());
+			{Min.x + 6.0f, Min.y + 4.0f}, ToColor(bHovered ? Button->GetHoverTextColor() : Button->GetTextColor()), Input ? Input->GetDisplayText().c_str() : Button->GetText().c_str());
 	}
 	if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
 		for (UWidget* Child : Canvas->GetChildrenInPaintOrder()) DrawPreview(Child, DrawList, Origin, Scale);
@@ -532,6 +535,15 @@ void FWidgetEditorPanel::DrawDetails()
 	}
 	else if (UButtonWidget* Button = Cast<UButtonWidget>(Selected))
 	{
+		if (UTextInputWidget* Input = Cast<UTextInputWidget>(Button))
+		{
+			char Placeholder[256];
+			std::snprintf(Placeholder, sizeof(Placeholder), "%s", Input->GetPlaceholder().c_str());
+			if (ImGui::InputText("Placeholder", Placeholder, sizeof(Placeholder))) { Input->SetPlaceholder(Placeholder); MarkDirty(); }
+			int MaxLength = Input->GetMaxLength();
+			if (ImGui::DragInt("Max Length", &MaxLength, 1.0f, 1, 128)) { Input->SetMaxLength(MaxLength); MarkDirty(); }
+		}
+		ImGui::Checkbox("Preview Hover", &bPreviewHover);
 		if (ImGui::InputText("Text", ValueBuffer, sizeof(ValueBuffer))) { Button->SetText(ValueBuffer); MarkDirty(); }
 		if (ImGui::InputText("Font", FontBuffer, sizeof(FontBuffer))) { Button->SetFontPath(FontBuffer); MarkDirty(); }
 		float FontSize = Button->GetFontSize();
@@ -541,10 +553,18 @@ void FWidgetEditorPanel::DrawDetails()
 			Button->GetBackgroundColor().B, Button->GetBackgroundColor().A};
 		if (ImGui::ColorEdit4("Background", Background))
 		{ Button->SetBackgroundColor({Background[0], Background[1], Background[2], Background[3]}); MarkDirty(); }
+		float HoverBackground[4] = {Button->GetHoverBackgroundColor().R, Button->GetHoverBackgroundColor().G,
+			Button->GetHoverBackgroundColor().B, Button->GetHoverBackgroundColor().A};
+		if (ImGui::ColorEdit4("Hover Background", HoverBackground))
+		{ Button->SetHoverBackgroundColor({HoverBackground[0], HoverBackground[1], HoverBackground[2], HoverBackground[3]}); MarkDirty(); }
 		float TextColor[4] = {Button->GetTextColor().R, Button->GetTextColor().G,
 			Button->GetTextColor().B, Button->GetTextColor().A};
 		if (ImGui::ColorEdit4("Text Color", TextColor))
 		{ Button->SetTextColor({TextColor[0], TextColor[1], TextColor[2], TextColor[3]}); MarkDirty(); }
+		float HoverText[4] = {Button->GetHoverTextColor().R, Button->GetHoverTextColor().G,
+			Button->GetHoverTextColor().B, Button->GetHoverTextColor().A};
+		if (ImGui::ColorEdit4("Hover Text Color", HoverText))
+		{ Button->SetHoverTextColor({HoverText[0], HoverText[1], HoverText[2], HoverText[3]}); MarkDirty(); }
 	}
 }
 
@@ -610,6 +630,8 @@ void FWidgetEditorPanel::OnRender()
 		if (ImGui::Button("Text")) AddWidget(2);
 		ImGui::SameLine();
 		if (ImGui::Button("Button")) AddWidget(3);
+		ImGui::SameLine();
+		if (ImGui::Button("Input")) AddWidget(6);
 		ImGui::SameLine();
 		if (ImGui::Button("Timer")) AddWidget(4);
 		ImGui::SameLine();

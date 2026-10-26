@@ -331,6 +331,8 @@ void UEditorEngine::Tick(const float DeltaTime)
 		RequestEndPlayMap();
 	if (bRequestEndPlayMapQueued) { bRequestEndPlayMapQueued = false; EndPlayMap(); }
 	if (bPlaySessionRequested) { bPlaySessionRequested = false; if (!PlayWorld) StartPlayInEditorSession(); }
+	if (FWorldContext* Context = GetPIEWorldContext(); Context && Context->GameViewport)
+		Context->GameViewport->ProcessPendingSceneChange();
 
 	BeginFrame(DeltaTime);
 	UpdateViewportState(DeltaTime);
@@ -721,17 +723,19 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		return;
 	}
 	constexpr EKeyCode Keys[] = { EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
-		EKeyCode::E, EKeyCode::Q, EKeyCode::Space, EKeyCode::Shift };
+		EKeyCode::E, EKeyCode::Q, EKeyCode::Space, EKeyCode::Shift,
+		EKeyCode::Backspace, EKeyCode::Enter };
 	for (EKeyCode Key : Keys)
 	{
+		const bool bTextEditKey = Key == EKeyCode::Backspace || Key == EKeyCode::Enter;
 		if (FInputSystem::IsKeyPressed(Key))
 		{
-			if (GameViewport.IsSIEMode()) GameViewport.GetKeyInputBySIEMode(static_cast<int32>(Key), true);
+			if (GameViewport.IsSIEMode() && !bTextEditKey) GameViewport.GetKeyInputBySIEMode(static_cast<int32>(Key), true);
 			else GameViewport.InputKey(nullptr, static_cast<int32>(Key), true);
 		}
 		if (FInputSystem::IsKeyReleased(Key))
 		{
-			if (GameViewport.IsSIEMode()) GameViewport.GetKeyInputBySIEMode(static_cast<int32>(Key), false);
+			if (GameViewport.IsSIEMode() && !bTextEditKey) GameViewport.GetKeyInputBySIEMode(static_cast<int32>(Key), false);
 			else GameViewport.InputKey(nullptr, static_cast<int32>(Key), false);
 		}
 	}

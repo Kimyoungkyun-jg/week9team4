@@ -61,6 +61,21 @@ void FInputSystem::OnKeyDown(int VirtualKey)
     }
 }
 
+void FInputSystem::OnChar(uint16 CodeUnit)
+{
+    if (CodeUnit >= 32 && CodeUnit != 127) TextInput.push_back(static_cast<wchar_t>(CodeUnit));
+}
+
+FString FInputSystem::ConsumeTextInput()
+{
+    if (TextInput.empty()) return {};
+    const int Size = WideCharToMultiByte(CP_UTF8, 0, TextInput.data(), static_cast<int>(TextInput.size()), nullptr, 0, nullptr, nullptr);
+    FString Result(Size, '\0');
+    if (Size) WideCharToMultiByte(CP_UTF8, 0, TextInput.data(), static_cast<int>(TextInput.size()), Result.data(), Size, nullptr, nullptr);
+    TextInput.clear();
+    return Result;
+}
+
 void FInputSystem::OnMouseDown(EMouseButton MouseButton)
 {
     unsigned int Index = static_cast<int>(MouseButton);
@@ -108,6 +123,7 @@ void FInputSystem::SyncMousePosition(int32 x, int32 y)
 
 void FInputSystem::ClearAllStates()
 {
+    TextInput.clear();
     // 포커스를 잃으면 WM_KEYUP / WM_*BUTTONUP 이 이 창으로 오지 않는다.
     // 현재 상태만 비워서 다음 UpdateInputStates 에서 Released 가 한 번 발생하도록 한다.
     std::memset(bKeyStates, 0, sizeof(bKeyStates));
@@ -120,6 +136,7 @@ void FInputSystem::ClearAllStates()
 
 void FInputSystem::UpdateInputStates()
 {
+    TextInput.clear();
     std::memcpy(bPrevKeyStates, bKeyStates, sizeof(bKeyStates));
     std::memcpy(bPrevMouseStates, bMouseStates, sizeof(bMouseStates));
 

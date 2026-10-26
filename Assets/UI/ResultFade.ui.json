@@ -1,0 +1,18 @@
+{
+    "Version": 1,
+    "Root": {
+        "Class": "UCanvasWidget",
+        "Properties": { "WidgetName": "ResultFadeRoot" },
+        "Children": [
+            {
+                "Class": "UImageWidget",
+                "Properties": {
+                    "WidgetName": "ResultFade",
+                    "TexturePath": "WhiteTexture",
+                    "Tint": [0.0, 0.0, 0.0, 0.0]
+                },
+                "Children": []
+            }
+        ]
+    }
+}

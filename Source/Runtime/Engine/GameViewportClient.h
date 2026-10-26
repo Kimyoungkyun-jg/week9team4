@@ -16,6 +16,7 @@ class UCameraComponent;
 class UCanvasWidget;
 class UWidget;
 class UButtonWidget;
+class UTextInputWidget;
 class FWidgetRenderer;
 
 struct FWorldContext;
@@ -73,6 +74,8 @@ public:
 	void RenderUI();
 	bool ProcessUIKey(int32 Key, bool bDown);
 	bool BindButtonAction(const FString& WidgetName, std::function<void()> Callback);
+	void RequestSceneChange(const FString& ScenePath, const FString& FallbackPath);
+	void ProcessPendingSceneChange();
 
 	void SetGameInstance(UGameInstance* InGameInstance) { GameInstance = InGameInstance; }
 	UGameInstance* GetGameInstance() const { return GameInstance; }
@@ -99,6 +102,9 @@ protected:
 
 private:
 	UCameraComponent* FindPlayerCamera() const;
+	UButtonWidget* HitTestButton(bool* bBlocked = nullptr) const;
+	void ClearHoveredButton();
+	void SetFocusedTextInput(UTextInputWidget* Input);
 
 	UWorld* World = nullptr;
 	UGameInstance* GameInstance = nullptr;
@@ -124,7 +130,11 @@ private:
 	uint64 NextWidgetOverlayHandle = 1;
 	TUniquePtr<FWidgetRenderer> WidgetRenderer;
 	UButtonWidget* PressedButton = nullptr;
+	UButtonWidget* HoveredButton = nullptr;
+	UTextInputWidget* FocusedTextInput = nullptr;
 	bool bUIBlockingClick = false;
+	FString PendingScenePath;
+	FString FallbackScenePath;
 	int32 UIMouseX = 0;
 	int32 UIMouseY = 0;
 };

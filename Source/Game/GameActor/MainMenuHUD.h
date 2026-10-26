@@ -8,4 +8,7 @@ class AMainMenuHUD : public AGameHUD
 
 public:
 	AMainMenuHUD();
+
+protected:
+	void OnWidgetShown(const FString& Path) override;
 };

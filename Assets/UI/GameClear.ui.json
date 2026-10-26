@@ -1,0 +1,113 @@
+{
+    "Root": {
+        "Children": [
+            {
+                "Children": [],
+                "Class": "UButtonWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "BackgroundColor": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 20.0,
+                    "HoverBackgroundColor": [
+                        0.30000001192092896,
+                        0.5,
+                        0.800000011920929,
+                        1.0
+                    ],
+                    "HoverTextColor": [
+                        1.0,
+                        0.8999999761581421,
+                        0.4000000059604645,
+                        1.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        0.9660897254943848,
+                        0.9660942554473877
+                    ],
+                    "Size": [
+                        2246.589111328125,
+                        1492.1981201171875
+                    ],
+                    "Text": "",
+                    "TextColor": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Button2",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        8.103815078735352,
+                        15.241521835327148
+                    ],
+                    "Size": [
+                        2222.79736328125,
+                        1454.129638671875
+                    ],
+                    "TexturePath": "Assets/Icons/Escape.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image3",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            }
+        ],
+        "Class": "UCanvasWidget",
+        "Properties": {
+            "Anchor": [
+                0.0,
+                0.0
+            ],
+            "Pivot": [
+                0.0,
+                0.0
+            ],
+            "Position": [
+                0.0,
+                0.0
+            ],
+            "Size": [
+                100.0,
+                100.0
+            ],
+            "WidgetName": "Root",
+            "ZOrder": 0,
+            "bVisible": true
+        }
+    },
+    "Version": 1
+}

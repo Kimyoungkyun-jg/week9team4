@@ -10,8 +10,31 @@ UGameInstance::~UGameInstance() = default;
 void UGameInstance::Init()
 {
 	bEndSessionRequested = false;
+	bRunTimerRunning = false;
+	LastRunSeconds = 0.0;
 	LuaManager = MakeUnique<FLuaManager>();
 	LuaManager->Init(*this);
+}
+
+void UGameInstance::StartRunTimer()
+{
+	RunStartedAt = std::chrono::steady_clock::now();
+	LastRunSeconds = 0.0;
+	bRunTimerRunning = true;
+}
+
+double UGameInstance::GetRunElapsedSeconds() const
+{
+	return bRunTimerRunning
+		? std::chrono::duration<double>(std::chrono::steady_clock::now() - RunStartedAt).count()
+		: LastRunSeconds;
+}
+
+double UGameInstance::StopRunTimer()
+{
+	if (bRunTimerRunning) LastRunSeconds = GetRunElapsedSeconds();
+	bRunTimerRunning = false;
+	return LastRunSeconds;
 }
 
 void UGameInstance::RequestEndSession()
