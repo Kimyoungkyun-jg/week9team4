@@ -4,8 +4,16 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/Level.h"
 #include "Camera/CameraActor.h"
+#include "Audio/SoundManager.h"
 
 UEngine* GEngine = nullptr;
+
+void UEngine::UpdateAudio()
+{
+	for (FWorldContext& Context : WorldContextlist)
+		if (Context.OwningGameInstance)
+			if (FSoundManager* Sound = Context.OwningGameInstance->GetSoundManager()) Sound->Update();
+}
 
 bool UEngine::Init()
 {

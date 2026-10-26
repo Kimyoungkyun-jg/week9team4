@@ -12,6 +12,8 @@
 #include "GameFramework/GameMode.h"
 #include "PacmanGameMode.h"
 #include "Engine/World.h"
+#include "Engine/GameInstance.h"
+#include "Audio/SoundManager.h"
 #include <cmath>
 #include <string>
 
@@ -86,6 +88,9 @@ void ACoinActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimi
 
 	AGameHUD* HUD = Controller->GetHUD();
 	UWorld* World = GetWorld();
+	if (World)
+		if (UGameInstance* Instance = World->GetGameInstance())
+			if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->PlaySFX("Assets/Sounds/coin.wav");
 	AGameMode* GameMode = World ? Cast<AGameMode>(World->GetGameMode()) : nullptr;
 
 	int32 TotalCoins = 0;
