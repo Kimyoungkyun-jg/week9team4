@@ -26,6 +26,7 @@
 namespace
 {
 	constexpr int32 TargetCoinCount = 100;
+	constexpr int32 ClearCoinCount = 50;
 	struct FCoinTile
 	{
 		int32 Column;
@@ -140,6 +141,7 @@ void APacmanGameMode::BeginPlay()
 		World->SpawnActor(AGhostActor::StaticClass(), NAME_None, &SpawnTransform);
 	}
 
+	MaxCoinCount = std::min(MaxCoinCount, ClearCoinCount);
 	if (AGameHUD* HUD = World->GetHUD())
 	{
 		HUD->SetText("Coins", "0 / " + std::to_string(MaxCoinCount));

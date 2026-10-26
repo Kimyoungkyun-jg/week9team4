@@ -1,6 +1,6 @@
 local Fog = {}
 
-Fog.Density = 0.2
+Fog.Density = 0.6
 
 Fog.HeightFalloff = 0.02
 
@@ -8,7 +8,7 @@ Fog.HeightFalloff = 0.02
 -- Mystic Blue:   { 0.2, 0.5, 0.9, 1.0 }
 -- Sunset Red:    { 0.9, 0.4, 0.2, 1.0 }
 -- Clean White:   { 0.8, 0.8, 0.8, 1.0 }
-Fog.Color = { 0.4, 0.1, 0.6, 1.0 }
+Fog.Color = { 0.1, 0.1, 0.1, 1.0 }
 
 Fog.StartDistance = 0.0
 

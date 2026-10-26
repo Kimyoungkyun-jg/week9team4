@@ -34,5 +34,5 @@ private:
 	USpotLightComponent* SpotLightComponent = nullptr;
 	float Gauge = MaxGauge;
 	float DrainRatePerSecond = 10.0f;
-	float MaxLightIntensity = 30.0f;
+	float MaxLightIntensity = 70.0f;
 };
