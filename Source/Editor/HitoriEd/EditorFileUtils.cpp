@@ -123,17 +123,17 @@ FString FEditorFileUtils::ChooseBoxColliderJsonPath(bool bSave)
 
 FString FEditorFileUtils::OpenSaveSceneDialog()
 {
-	char FilePath[MAX_PATH] = {};
-	const FString SceneDirectory = std::filesystem::absolute("Scenes").string();
+	wchar_t FilePath[4096] = {};
+	const std::wstring SceneDirectory = std::filesystem::absolute("Scenes").wstring();
 
-	OPENFILENAMEA ofn = {};
-	ofn.lStructSize = sizeof(OPENFILENAMEA);
-	ofn.hwndOwner = nullptr;
+	OPENFILENAMEW ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = GetActiveWindow();
 	ofn.lpstrFile = FilePath;
-	ofn.nMaxFile = MAX_PATH;
+	ofn.nMaxFile = _countof(FilePath);
 
-	ofn.lpstrFilter = "Scene Files (*.scene)\0*.scene\0";
-	ofn.lpstrDefExt = "scene";
+	ofn.lpstrFilter = L"Scene Files (*.scene)\0*.scene\0";
+	ofn.lpstrDefExt = L"scene";
 	ofn.lpstrInitialDir = SceneDirectory.c_str();
 
 	ofn.Flags =
@@ -141,9 +141,10 @@ FString FEditorFileUtils::OpenSaveSceneDialog()
 		OFN_OVERWRITEPROMPT |
 		OFN_NOCHANGEDIR;
 
-	if (GetSaveFileNameA(&ofn))
+	if (GetSaveFileNameW(&ofn))
 	{
-		return FString(FilePath);
+		const auto Utf8 = std::filesystem::path(FilePath).u8string();
+		return FString(Utf8.begin(), Utf8.end());
 	}
 
 	return FString();
@@ -151,21 +152,21 @@ FString FEditorFileUtils::OpenSaveSceneDialog()
 
 FString FEditorFileUtils::OpenLoadSceneDialog()
 {
-	char FilePath[MAX_PATH] = {};
-	const FString SceneDirectory = std::filesystem::absolute("Scenes").string();
+	wchar_t FilePath[4096] = {};
+	const std::wstring SceneDirectory = std::filesystem::absolute("Scenes").wstring();
 
-	OPENFILENAMEA ofn = {};
-	ofn.lStructSize = sizeof(OPENFILENAMEA);
-	ofn.hwndOwner = nullptr;
+	OPENFILENAMEW ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = GetActiveWindow();
 
 	ofn.lpstrFile = FilePath;
-	ofn.nMaxFile = MAX_PATH;
+	ofn.nMaxFile = _countof(FilePath);
 
 	ofn.lpstrFilter =
-		"Scene Files (*.scene)\0*.scene\0"
-		"All Files (*.*)\0*.*\0";
+		L"Scene Files (*.scene)\0*.scene\0"
+		L"All Files (*.*)\0*.*\0";
 
-	ofn.lpstrDefExt = "scene";
+	ofn.lpstrDefExt = L"scene";
 	ofn.lpstrInitialDir = SceneDirectory.c_str();
 
 	ofn.Flags =
@@ -173,9 +174,10 @@ FString FEditorFileUtils::OpenLoadSceneDialog()
 		OFN_PATHMUSTEXIST |
 		OFN_NOCHANGEDIR;
 
-	if (GetOpenFileNameA(&ofn))
+	if (GetOpenFileNameW(&ofn))
 	{
-		return FString(FilePath);
+		const auto Utf8 = std::filesystem::path(FilePath).u8string();
+		return FString(Utf8.begin(), Utf8.end());
 	}
 
 	return FString();

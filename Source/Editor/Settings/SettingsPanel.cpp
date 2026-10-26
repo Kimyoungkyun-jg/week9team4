@@ -164,7 +164,7 @@ void FSettingsPanel::OnRender()
 						std::filesystem::is_regular_file(Path, Error);
 					ImGui::PushID(Script);
 					ImGui::TextWrapped("%s: %s", Script->GetName().c_str(), Path.c_str());
-					ImGui::BeginDisabled(World->IsPlayInEditor() || !bValidScript);
+					ImGui::BeginDisabled(!bValidScript);
 					if (ImGui::Button("Edit Lua Script") && EditScriptCallback)
 						EditScriptCallback(Path);
 					ImGui::EndDisabled();

@@ -5526,7 +5526,7 @@
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": -0.012570858001708984
+                                        "Z": -0.13570356369018555
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -5674,6 +5674,263 @@
                         "bActorEnableCollision": false
                     },
                     "RootComponent": "CollisionCapsule"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 2.7173256874084473
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 51.977516174316406,
+                                        "Y": 44.42633819580078,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_1",
+                    "Properties": {
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AGhostActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 4.802724838256836,
+                                        "Y": 0.0,
+                                        "Z": -1.870315670967102
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "Name": "CapsuleComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.44999998807907104,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "BodyMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Body.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "EyesMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Eyes.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 0.4000000059604645
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AGhostActor_1",
+                    "Properties": {
+                        "BobbingHeight": 0.25,
+                        "BobbingSpeed": 2.0,
+                        "BodyRotationSpeed": 30.0,
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}

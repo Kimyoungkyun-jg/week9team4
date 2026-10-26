@@ -5,7 +5,7 @@ function PacmanGameMode:BeginPlay()
 end
 
 function PacmanGameMode:Tick()
-    if self.ResultShown or not self.Mode then return end
+    if self.ResultShown or not self.Mode or self.Mode:IsResolvingGhostHit() then return end
 
     if self.Mode:GetPlayerLife() <= 0 then
         self.Mode:ShowGameResult(false)
@@ -14,7 +14,7 @@ function PacmanGameMode:Tick()
     end
 
     
-	local maxCoins = 1
+	local maxCoins = 5
     if maxCoins > 0 and self.Mode:GetCollectedCoinCount() >= maxCoins then
         self.Mode:ShowGameResult(true)
         self.ResultShown = true

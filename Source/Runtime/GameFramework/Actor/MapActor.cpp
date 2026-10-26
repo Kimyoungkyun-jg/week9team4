@@ -160,7 +160,7 @@ namespace
 	// Approved target terrain: [Row][Column], Row 0 first, columns 0..55.
 	// 0 = Floor, 1 = Wall. Only 1 may change mesh-derived Floor to Wall;
 	// 0 preserves the mesh result, so newly detected mesh walls are never cleared.
-	constexpr uint8 InitialTerrain[][AMapActor::InitialColumns] =
+	constexpr uint8 InitialTerrain[AMapActor::InitialRows][AMapActor::InitialColumns] =
 	{
 		{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, // Row 0
 		{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, // Row 1
@@ -212,13 +212,14 @@ namespace
 		{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, // Row 47
 	};
 	static_assert(sizeof(InitialTerrain) / sizeof(InitialTerrain[0]) == AMapActor::InitialRows);
-	static_assert([]
+	constexpr bool ValidateInitialTerrain()
 	{
-		for (const auto& Row : InitialTerrain)
-			for (uint8 Terrain : Row)
-				if (Terrain > 1) return false;
+		for (int32 R = 0; R < AMapActor::InitialRows; ++R)
+			for (int32 C = 0; C < AMapActor::InitialColumns; ++C)
+				if (InitialTerrain[R][C] > 1) return false;
 		return true;
-	}(), "Initial terrain supports 0 = Floor and 1 = Wall only.");
+	}
+	static_assert(ValidateInitialTerrain(), "Initial terrain supports 0 = Floor and 1 = Wall only.");
 }
 
 AMapActor::AMapActor()

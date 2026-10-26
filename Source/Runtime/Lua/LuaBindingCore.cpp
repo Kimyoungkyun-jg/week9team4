@@ -4,6 +4,7 @@
 #include "UObject/Object.h"
 #include "Collision/HitResult.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/MovementComponent.h"
 #include "GameFramework/Actor.h"
 #include "Core/EngineLog.h"
 
@@ -23,6 +24,12 @@ namespace LuaBindings
 		});
 		Lua.set_function("EndGame", [&GameInstance]() {
 			GameInstance.RequestEndSession();
+		});
+		Lua.set_function("CastToMovementComponent", [](sol::object CompObj) -> UMovementComponent* {
+			if (!CompObj.valid() || CompObj.is<sol::nil_t>()) return nullptr;
+			if (CompObj.is<UMovementComponent*>()) return CompObj.as<UMovementComponent*>();
+			if (CompObj.is<UActorComponent*>()) return Cast<UMovementComponent>(CompObj.as<UActorComponent*>());
+			return nullptr;
 		});
 
 		// 2. UObject 기본 바인딩

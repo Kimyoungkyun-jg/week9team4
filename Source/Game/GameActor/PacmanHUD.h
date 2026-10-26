@@ -14,10 +14,9 @@ protected:
 
 private:
 	void ShowNameEntry();
+	void LayoutNameEntry();
 	void ShowScoreboard();
 	void SaveScore();
-	void UpdateScoreboard();
-	void LayoutScoreboard();
 	double ClearSeconds = 0.0;
 	bool bNameEntryOpen = false;
 	bool bScoreboardOpen = false;

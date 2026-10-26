@@ -26,6 +26,7 @@ public:
 	UCapsuleComponent* GetCollisionComponent() const { return CollisionComponent; }
 	int32 GetLife() const { return Life; }
 	void SetLife(int32 InLife);
+	void RespawnAtPlayerStart();
 
 private:
 	FFootstepCadence FootstepCadence;
@@ -34,4 +35,8 @@ private:
 	AFlashlightActor* FlashlightActor = nullptr;
 	UCapsuleComponent* CollisionComponent = nullptr;
 	int32 Life = 3;
+	FVector PlayerStartLocation = FVector::ZeroVector;
+	FRotator PlayerStartRotation;
+	FVector PlayerStartCameraLocation = FVector::ZeroVector;
+	FRotator PlayerStartCameraRotation;
 };

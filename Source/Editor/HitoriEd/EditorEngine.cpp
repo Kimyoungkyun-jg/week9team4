@@ -5,6 +5,7 @@
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/CoinActor.h"
 #include "GameActor/GhostActor.h"
+#include "GameActor/GhostAIComponent.h"
 #include "GameActor/MainMenuGameMode.h"
 #include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
@@ -81,6 +82,7 @@ bool UEditorEngine::Init()
 	AFlashlightActor::StaticClass();
 	ACoinActor::StaticClass();
 	AGhostActor::StaticClass();
+	UGhostAIComponent::StaticClass();
 	AMainMenuGameMode::StaticClass();
 	AMainMenuHUD::StaticClass();
 	APacmanGameMode::StaticClass();
@@ -98,10 +100,10 @@ bool UEditorEngine::Init()
 	EditorUI = MakeUnique<FEditorUI>();
 	EditorUI->Init();
 
-	EditorUI->SetNewSceneCallback([this]() { CreateNewScene(); });
-	EditorUI->SetOpenSceneCallback([this]() { OpenScene(); });
-	EditorUI->SetSaveSceneCallback([this]() { SaveCurrentScene(); });
-	EditorUI->SetSaveSceneAsCallback([this]() { SaveSceneAs(); });
+	EditorUI->SetNewSceneCallback([this]() { PendingSceneFileAction = ESceneFileAction::New; });
+	EditorUI->SetOpenSceneCallback([this]() { PendingSceneFileAction = ESceneFileAction::Open; });
+	EditorUI->SetSaveSceneCallback([this]() { PendingSceneFileAction = ESceneFileAction::Save; });
+	EditorUI->SetSaveSceneAsCallback([this]() { PendingSceneFileAction = ESceneFileAction::SaveAs; });
 
 	OutputLogPanel = EditorUI->AddEditorPanel<FOutputLogPanel>();
 	FLog::AddSink(OutputLogPanel);
@@ -320,13 +322,29 @@ bool UEditorEngine::Init()
 // 입력·창 메시지는 FEngineLoop가 먼저 처리하고 Present는 호출 직후에 한다.
 void UEditorEngine::Tick(const float DeltaTime)
 {
+	const ESceneFileAction SceneAction = PendingSceneFileAction;
+	PendingSceneFileAction = ESceneFileAction::None;
+	switch (SceneAction)
+	{
+	case ESceneFileAction::New: CreateNewScene(); break;
+	case ESceneFileAction::Open: OpenScene(); break;
+	case ESceneFileAction::Save: SaveCurrentScene(); break;
+	case ESceneFileAction::SaveAs: SaveSceneAs(); break;
+	default: break;
+	}
 	// PIE 창 닫기 요청 처리
 	if (PIEWindow && PIEWindow->ConsumeCloseRequest())
 		RequestEndPlayMap();
 	if (bRequestEndPlayMapQueued) { bRequestEndPlayMapQueued = false; EndPlayMap(); }
 	if (bPlaySessionRequested) { bPlaySessionRequested = false; if (!PlayWorld) StartPlayInEditorSession(); }
 	if (FWorldContext* Context = GetPIEWorldContext(); Context && Context->GameViewport)
+	{
 		Context->GameViewport->ProcessPendingSceneChange();
+		// 씬 전환으로 선택 액터가 해제된 경우 선택 초기화
+		if ((Gizmo && Gizmo->GetTarget() && GUObjectArray.Find(Gizmo->GetTarget()) == INDEX_NONE) ||
+			(Outline && Outline->GetTarget() && GUObjectArray.Find(Outline->GetTarget()) == INDEX_NONE))
+			ResetSceneSelection();
+	}
 
 	BeginFrame(DeltaTime);
 	UpdateViewportState(DeltaTime);
@@ -507,6 +525,10 @@ void UEditorEngine::TickWorldAndEditor(const float DeltaTime)
 	if (InvalidComponent(Gizmo->GetTarget())) Gizmo->SetTarget(nullptr, false);
 	if (InvalidComponent(Outline->GetTarget())) Outline->SetTarget(nullptr);
 	UpdateGizmoAndPicking();
+	// 월드 틱 중 선택 액터가 삭제된 경우 선택 초기화
+	if ((Gizmo && Gizmo->GetTarget() && GUObjectArray.Find(Gizmo->GetTarget()) == INDEX_NONE) ||
+		(Outline && Outline->GetTarget() && GUObjectArray.Find(Outline->GetTarget()) == INDEX_NONE))
+		ResetSceneSelection();
 	EditorWorld->GetScene().UpdateAllTransforms();
 	if (PlayWorld)
 		PlayWorld->GetScene().UpdateAllTransforms();
@@ -1226,11 +1248,10 @@ void UEditorEngine::CreateNewScene()
 		HTR_LOG(Warning, "Cannot create a new scene during PIE. Stop the play session first.");
 		return;
 	}
+	ResetSceneSelection();
 	if (!FEditorFileUtils::NewScene(EditorWorld))
 		return;
 	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
-
-	ResetSceneSelection();
 }
 
 // 씬 불러오기가 성공하면 에디터 선택 상태를 초기화한다.
@@ -1241,11 +1262,10 @@ void UEditorEngine::OpenScene()
 		HTR_LOG(Warning, "Cannot open a scene during PIE. Stop the play session first.");
 		return;
 	}
+	ResetSceneSelection();
 	if (!FEditorFileUtils::LoadScene(EditorWorld))
 		return;
 	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
-
-	ResetSceneSelection();
 }
 
 // 공통 파일 유틸리티로 현재 씬을 저장한다.
