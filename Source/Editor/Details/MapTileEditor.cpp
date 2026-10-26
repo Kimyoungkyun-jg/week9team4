@@ -2,6 +2,8 @@
 #include "MapTileEditor.h"
 #include "GameFramework/Actor/MapActor.h"
 #include "imgui.h"
+#include "Editor/HitoriEd/EditorFileUtils.h"
+#include "Engine/World.h"
 
 namespace
 {
@@ -46,9 +48,135 @@ bool FMapTileEditor::TryDisplayToTile(const AMapActor& Map, int32 DisplayColumn,
 	return true;
 }
 
-void FMapTileEditor::DrawDetails(AMapActor& Map)
+void FMapTileEditor::DrawBoxColliderDetails(AMapActor& Map, const std::function<void()>& BeforeBoxesRemoved)
+{
+	if (BoxActionActor != Map.GetUUID())
+	{
+		BoxActionActor = Map.GetUUID();
+		PendingBoxAction = EBoxAction::None;
+		PendingBoxes.Reset();
+		ColliderStatus.clear();
+	}
+	if (!ImGui::CollapsingHeader("Map BoxColliders", ImGuiTreeNodeFlags_DefaultOpen)) return;
+	const int32 Count = Map.GetBoxCollisionComponents().Num();
+	ImGui::Text("Current BoxColliders: %d", Count);
+	ImGui::InputText("Collider JSON Path", ColliderJsonPath, sizeof(ColliderJsonPath));
+	ImGui::TextWrapped("Relative paths use the project working directory. Path is editor session state only.");
+	if (ImGui::Button("Choose Save JSON Path"))
+	{
+		const FString Path = FEditorFileUtils::ChooseBoxColliderJsonPath(true);
+		if (!Path.empty()) strncpy_s(ColliderJsonPath, sizeof(ColliderJsonPath), Path.c_str(), _TRUNCATE);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Choose Open JSON Path"))
+	{
+		const FString Path = FEditorFileUtils::ChooseBoxColliderJsonPath(false);
+		if (!Path.empty()) strncpy_s(ColliderJsonPath, sizeof(ColliderJsonPath), Path.c_str(), _TRUNCATE);
+	}
+	if (ImGui::Button("Save BoxColliders To JSON"))
+	{
+		if (!Count)
+		{
+			PendingJsonPath = ColliderJsonPath;
+			PendingBoxAction = EBoxAction::SaveEmpty;
+			ImGui::OpenPopup("Confirm BoxCollider Operation");
+		}
+		else
+		{
+			FString Error;
+			ColliderStatus = Map.SaveBoxCollidersToJson(ColliderJsonPath, Error)
+				? "Saved current BoxColliders to JSON. Scene was not saved." : "Export failed: " + Error;
+		}
+	}
+	if (ImGui::IsItemHovered()) ImGui::SetTooltip("Export current Components to a separate JSON file. Does not modify Components, scene state or scene file.");
+	// Replacement and deletion are editor authoring operations; gameplay callbacks may defer destruction.
+	ImGui::BeginDisabled(Map.GetWorld() && Map.GetWorld()->HasBegunPlay());
+	if (ImGui::Button("Generate Wall Collision Boxes"))
+	{
+		PendingBoxAction = EBoxAction::GenerateTiles;
+		ImGui::OpenPopup("Confirm BoxCollider Operation");
+	}
+	if (ImGui::IsItemHovered()) ImGui::SetTooltip("Replace all BoxColliders on this MapActor using current tiles. Save Scene separately.");
+	if (ImGui::Button("Generate BoxCollider With JSON"))
+	{
+		FString Error;
+		if (AMapActor::ReadBoxCollidersFromJson(ColliderJsonPath, PendingBoxes, Error))
+		{
+			PendingJsonPath = ColliderJsonPath;
+			PendingBoxAction = EBoxAction::GenerateJson;
+			ImGui::OpenPopup("Confirm BoxCollider Operation");
+		}
+		else ColliderStatus = "JSON load failed: " + Error;
+	}
+	if (ImGui::IsItemHovered()) ImGui::SetTooltip("Validate JSON, then replace all BoxColliders on this MapActor. Save Scene separately.");
+	if (ImGui::Button("Clear Wall Collision Boxes"))
+	{
+		PendingBoxAction = EBoxAction::Clear;
+		ImGui::OpenPopup("Confirm BoxCollider Operation");
+	}
+	ImGui::EndDisabled();
+	if (Map.GetWorld() && Map.GetWorld()->HasBegunPlay()) ImGui::TextDisabled("Stop Play to generate or clear BoxColliders.");
+	if (ImGui::BeginPopupModal("Confirm BoxCollider Operation", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		if (PendingBoxAction == EBoxAction::SaveEmpty)
+			ImGui::TextWrapped("Export zero boxes to %s? An existing JSON file will be replaced by an empty array.", PendingJsonPath.c_str());
+		else
+		{
+			ImGui::Text("This MapActor currently owns %d BoxColliders.", Count);
+			ImGui::TextUnformatted(PendingBoxAction == EBoxAction::Clear ? "Delete all of them?" : "Replace all of them?");
+			if (PendingBoxAction == EBoxAction::GenerateJson)
+				ImGui::TextWrapped("Validated %d boxes from %s", PendingBoxes.Num(), PendingJsonPath.c_str());
+			ImGui::TextUnformatted("Scene saving is separate. JSON files will not be changed.");
+		}
+		const bool Playing = Map.GetWorld() && Map.GetWorld()->HasBegunPlay();
+		ImGui::BeginDisabled(Playing && PendingBoxAction != EBoxAction::SaveEmpty);
+		if (ImGui::Button("Confirm"))
+		{
+			FString Error;
+			bool Success = false;
+			switch (PendingBoxAction)
+			{
+			case EBoxAction::SaveEmpty:
+				Success = Map.SaveBoxCollidersToJson(PendingJsonPath, Error, true);
+				break;
+			case EBoxAction::GenerateTiles:
+				Success = Map.GenerateWallCollisionComponents(&Error, BeforeBoxesRemoved);
+				break;
+			case EBoxAction::GenerateJson:
+				Success = Map.ReplaceBoxColliders(PendingBoxes, Error, BeforeBoxesRemoved);
+				break;
+			case EBoxAction::Clear:
+				if (BeforeBoxesRemoved) BeforeBoxesRemoved();
+				Map.ClearWallCollisionComponents();
+				Success = !Map.HasExistingWallCollision();
+				if (!Success) Error = "A Box used as root cannot be deleted.";
+				break;
+			default: Error = "Operation expired. Try again."; break;
+			}
+			ColliderStatus = Success ? (PendingBoxAction == EBoxAction::SaveEmpty
+				? "Exported JSON. Scene was not saved."
+				: "Updated BoxColliders in the open scene. Save Scene separately.") : "Failed: " + Error;
+			PendingBoxAction = EBoxAction::None;
+			PendingBoxes.Reset();
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+		{
+			PendingBoxAction = EBoxAction::None;
+			PendingBoxes.Reset();
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+	if (!ColliderStatus.empty()) ImGui::TextWrapped("%s", ColliderStatus.c_str());
+}
+
+void FMapTileEditor::DrawDetails(AMapActor& Map, const std::function<void()>& BeforeBoxesRemoved)
 {
 	if (SelectedActor != Map.GetUUID()) { ClearSelection(); SelectedActor = Map.GetUUID(); }
+	DrawBoxColliderDetails(Map, BeforeBoxesRemoved);
 	if (!ImGui::CollapsingHeader("Map Tiles", ImGuiTreeNodeFlags_DefaultOpen)) return;
 	ImGui::PushID(&Map);
 	ImGui::TextWrapped("Authored terrain only. Agent clearance, occupancy and collision are separate.");
@@ -69,15 +197,6 @@ void FMapTileEditor::DrawDetails(AMapActor& Map)
 	if (ImGui::Button("Reset to Initial Grid"))
 	{
 		if (Map.ResetGridToInitial()) SelectedColumn = SelectedRow = -1;
-	}
-	if (ImGui::Button("Generate Wall Collision Boxes"))
-	{
-		Map.GenerateWallCollisionComponents();
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Clear Wall Collision Boxes"))
-	{
-		Map.ClearWallCollisionComponents();
 	}
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Restore 56 x 48 tiles, size 0.5, the current mesh's floor height and mesh-derived terrain with initial Wall overrides.\nMesh and Actor transform are preserved. Tile edits will be replaced.");
