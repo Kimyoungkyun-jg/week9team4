@@ -218,6 +218,9 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 	if (APlayerController* Controller = World->GetPlayerController()) Controller->ClearInputState();
 	GhostHitPhase = EGhostHitPhase::CloseUp;
 	GhostHitElapsed = 0.0f;
+	if (UGameInstance* Instance = World->GetGameInstance())
+		if (FSoundManager* Sound = Instance->GetSoundManager())
+			Sound->PlaySFX("Assets/Sounds/Damaged.wav");
 }
 
 void APacmanGameMode::ResolveGhostHit()
@@ -249,8 +252,7 @@ void APacmanGameMode::ResolveGhostHit()
 		AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 		if (HUD && HUD->ShowWidget("Assets/UI/GameOver.ui.json"))
 		{
-			if (UGameInstance* GameInstance = World->GetGameInstance()) GameInstance->StopRunTimer();
-			bResultShown = true;
+			CommitGameResult(false);
 			GhostHitPhase = EGhostHitPhase::FadeFromBlack;
 			GhostHitElapsed = 0.0f;
 		}
@@ -323,6 +325,16 @@ void APacmanGameMode::ShowGameResult(bool bCleared)
 	if (FGameViewportClient* Viewport = HUD->GetGameViewport())
 		FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 	bPendingClear = bCleared;
+	CommitGameResult(bCleared);
+	FadeElapsed = 0.0f;
+	FadePhase = EResultFadePhase::FadeOut;
+}
+
+void APacmanGameMode::CommitGameResult(bool bCleared)
+{
+	if (bResultShown) return;
+	UWorld* World = GetWorld();
+	if (!World) return;
 	if (UGameInstance* GameInstance = World->GetGameInstance())
 	{
 		const double Seconds = GameInstance->StopRunTimer();
@@ -334,8 +346,6 @@ void APacmanGameMode::ShowGameResult(bool bCleared)
 	if (UGameInstance* Instance = World->GetGameInstance())
 		if (FSoundManager* Sound = Instance->GetSoundManager())
 			Sound->PlaySFX(bCleared ? "Assets/Sounds/GameClear.wav" : "Assets/Sounds/GameOver.wav", 0.7f);
-	FadeElapsed = 0.0f;
-	FadePhase = EResultFadePhase::FadeOut;
 }
 
 void APacmanGameMode::Tick(float DeltaTime)

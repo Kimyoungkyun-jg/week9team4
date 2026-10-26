@@ -150,13 +150,9 @@ void APlayerPawn::AddControllerPitchInput(float Value)
 
 void APlayerPawn::SetLife(int32 InLife)
 {
-	const int32 PreviousLife = Life;
 	Life = std::max(0, InLife);
 	if (UWorld* PawnWorld = GetWorld())
 	{
-		if (Life < PreviousLife && HasBegunPlay() && !PawnWorld->IsPaused())
-			if (UGameInstance* Instance = PawnWorld->GetGameInstance())
-				if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->PlaySFX("Assets/Sounds/Damaged.wav");
 		if (AGameHUD* HUD = PawnWorld->GetHUD())
 			HUD->SetText("Life", std::to_string(Life));
 	}

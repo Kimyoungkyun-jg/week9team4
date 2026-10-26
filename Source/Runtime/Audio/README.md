@@ -35,8 +35,8 @@ SFX 기본 상한은 `SoundManager.cpp`의 `MaxSFXVoices = 32`이며 초과 시 
 | --- | --- |
 | `coin.wav` | CoinActor OnOverlapBegin, 플레이어/컨트롤러 확인 및 bCollected 설정 뒤, 점수·HUD·Destroy 전 단발 |
 | `footstep00.wav`~`footstep04.wav` | PlayerPawn, sweep 및 wall slide 이후 실제 XY 이동을 합산해 PostPhysics에서 프레임당 한 번 판정, 매 걸음 균등 선택(연속 선택 허용) |
-| `Damaged.wav` | PlayerPawn SetLife에서 생명 값이 실제 감소하고 BeginPlay한 경우. 현재 이 함수를 호출하는 피해 규칙은 발견되지 않았으며 새 피해 규칙은 추가하지 않음 |
-| `GameClear.wav`, `GameOver.wav` | PacmanGameMode ShowGameResult의 기존 bResultShown 확정 지점에서 한 번. 기존 Lua 승패 규칙 유지 |
+| `Damaged.wav` | PacmanGameMode StartGhostHit에서 피격 연출 시작 시 한 번. SetLife에서는 재생하지 않아 암전 후 생명 감소 시 중복 재생되지 않음 |
+| `GameClear.wav`, `GameOver.wav` | PacmanGameMode CommitGameResult에서 결과 확정 시 한 번. ShowGameResult와 고스트 피격 사망 경로가 공통으로 사용 |
 
 발걸음 간격은 `FootstepCadence.h`의 기본 `IntervalSeconds = 0.35f`, 또는 `Player->SetFootstepInterval(Seconds)`로 조절합니다. 입력 전후 위치가 아닌 **충돌 처리 전후 실제 위치 차이**를 수집하므로 완전한 벽 막힘/회전/프레임 사이 텔레포트는 걸음이 아닙니다. 이동 callback 중 요청 이동보다 큰 위치 변경도 제외합니다. 이동 입력이 여러 번 있어도 PostPhysics에서 합산한 XY 변위로 한 번 판단합니다. 정지하면 타이머를 리셋하며, 지연 프레임에서 최대 한 번 재생하고 누적된 걸음을 몰아서 재생하지 않습니다. 실제 유효 이동이 계속될 때 FPS에 관계없이 약 0.35초 간격입니다. 일시정지 시간은 타이머에 들어가지 않습니다.
 
@@ -56,7 +56,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tests\Test-AudioDependency.p
 
 먼저 해당 구성의 Editor/Game을 빌드하세요. 실제 DLL/WAV를 사용한 음원 로딩, 동일 효과음 중첩, 상한, 일시정지 중 Update, 완료 자원 회수, 오류 중복 로그, 세션 재초기화와 30/60/144 FPS 간격을 검사합니다. 테스트는 SFX 볼륨을 0으로 두며 음악은 Build 아래 테스트 전용 무음 WAV를 생성합니다. 의존성 테스트는 임시 fixture로 feature·구성·아키텍처 누락을 검사하며 공유 패키지를 변경하지 않습니다. 청취 검증과 구분하세요.
 
-수동 확인: Editor에서 Pacman 씬을 열고 Play, 코인을 연속 획득해 중첩 및 삭제 후 재생 지속을 듣습니다. 기본 Lua는 현재 1개 코인으로 클리어하므로 승패 규칙을 바꾸지 않고 연속 획득 확인이 제한될 수 있습니다. 이동/정지/벽 정면/벽을 따라 이동/회전, Pause→Resume, Play→Stop→Play를 반복하세요. 다섯 발걸음의 종류·음량·체감 간격은 청취로 최종 확인해야 합니다. 피해음은 실제 피해 규칙이 아직 없어 SetLife 감소 호출 시점에서 확인하세요. BGM은 실제 음악 WAV를 추가하고 위 API로 곡 교체/반복을 확인하세요.
+수동 확인: Editor에서 Pacman 씬을 열고 Play, 코인을 연속 획득해 중첩 및 삭제 후 재생 지속을 듣습니다. 이동/정지/벽 정면/벽을 따라 이동/회전, Pause→Resume, Play→Stop→Play를 반복하세요. 다섯 발걸음의 종류·음량·체감 간격은 청취로 최종 확인해야 합니다. 고스트 충돌 시 피격 연출 시작에 맞춰 피해음이 한 번 재생되고, 암전 후 중복 재생되지 않는지 확인하세요. 마지막 생명을 잃었을 때 게임 오버 화면과 효과음이 함께 나오는지 확인하세요. BGM은 실제 음악 WAV를 추가하고 위 API로 곡 교체/반복을 확인하세요.
 
 ### 2026-10-26 확인 결과
 
