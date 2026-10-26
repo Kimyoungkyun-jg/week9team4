@@ -4,10 +4,22 @@
 #include "Math/Vector2.h"
 #include "Serialization/StructuredArchive.h"
 #include "Serialization/StructuredArchiveSlots.h"
+#include <functional>
 
 // Authored terrain only: this is NOT an occupancy or agent-clearance test.
 enum class EMapTileTerrain : uint8 { Floor = 0, Wall = 1, Unused = 2 };
 class UBoxComponent;
+
+// Values relative to the MapActor root. Extent contains half lengths, never full size.
+struct FMapBoxColliderData
+{
+	FString Name;
+	FVector Location = FVector::ZeroVector;
+	FRotator Rotation;
+	FVector Scale = FVector::OneVector;
+	FVector Extent = FVector(0.5f);
+	FCollisionSettings Collision;
+};
 
 class AMapActor : public AStaticMeshActor
 {
@@ -30,8 +42,15 @@ public:
 	// Same local boxes used for runtime wall collision and editor debug preview.
 	TArray<FBox> GetWallCollisionLocalBoxes() const;
 	bool HasExistingWallCollision() const;
-	void GenerateWallCollisionComponents();
+	bool GenerateWallCollisionComponents(FString* OutError = nullptr, const std::function<void()>& BeforeReplace = {});
 	void ClearWallCollisionComponents();
+	TArray<UBoxComponent*> GetBoxCollisionComponents() const;
+	static constexpr int32 MaxBoxColliderCount = MaxTileCount;
+	bool CaptureBoxColliders(TArray<FMapBoxColliderData>& OutBoxes, FString& Error) const;
+	bool SaveBoxCollidersToJson(const FString& Path, FString& Error, bool bAllowEmpty = false) const;
+	static bool ReadBoxCollidersFromJson(const FString& Path, TArray<FMapBoxColliderData>& OutBoxes, FString& Error);
+	bool ReplaceBoxColliders(const TArray<FMapBoxColliderData>& Boxes, FString& Error,
+		const std::function<void()>& BeforeReplace = {});
 	bool IsValidTile(int32 Column, int32 Row) const;
 	bool TryGetTile(int32 Column, int32 Row, EMapTileTerrain& OutTerrain) const;
 	// Owning copy of current terrain, including edits/loaded data. Index = Row * Columns + Column.
@@ -74,5 +93,4 @@ private:
 	FVector GridOrigin = FVector(-14.0f, -12.0f, -0.978149f);
 	TArray<EMapTileTerrain> Tiles;
 	uint64 GridRevision = 0;
-	TArray<UBoxComponent*> WallCollisionComponents;
 };

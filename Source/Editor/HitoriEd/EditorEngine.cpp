@@ -236,6 +236,7 @@ bool UEditorEngine::Init()
 			else
 			{
 				Gizmo->SetTarget(nullptr);
+				if (!Component) Outline->SetTarget(nullptr);
 			}
 		}
 	);
