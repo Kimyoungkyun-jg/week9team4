@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "GhostAIComponent.h"
 #include "GhostActor.h"
+#include "PacmanGameMode.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor/MapActor.h"
 #include "GameFramework/Actor.h"
@@ -11,6 +12,7 @@
 #include "Engine/World.h"
 #include "Engine/Level.h"
 #include "Core/EngineLog.h"
+#include "Serialization/StructuredArchive.h"
 #include <queue>
 #include <algorithm>
 #include <cmath>
@@ -31,11 +33,6 @@ void UGhostAIComponent::BeginPlay()
 	}
 
 	GetCachedMap();
-
-	if (PatrolPoints.IsEmpty())
-	{
-		InitializeDefaultPatrolPoints();
-	}
 
 	UpdateDetectionBoxExtent();
 }
@@ -83,6 +80,7 @@ bool UGhostAIComponent::SnapOwnerToTile(int32 Col, int32 Row)
 		Center.Z = CurrentPos.Z; // 높이 유지
 		Owner->SetActorLocation(Center);
 		HomeLocation = Center;
+		InitializeDefaultPatrolPoints();
 		return true;
 	}
 	return false;
@@ -91,12 +89,23 @@ bool UGhostAIComponent::SnapOwnerToTile(int32 Col, int32 Row)
 void UGhostAIComponent::InitializeDefaultPatrolPoints()
 {
 	AMapActor* Map = GetCachedMap();
-	if (!Map || !GetOwner()) return;
+	AActor* Owner = GetOwner();
+	if (!Map || !Owner) return;
+
+	if (HomeLocation == FVector::ZeroVector)
+	{
+		HomeLocation = Owner->GetActorLocation();
+	}
 
 	int32 CenterCol = 0, CenterRow = 0;
 	if (!Map->TryWorldToTileXYProjected(HomeLocation, CenterCol, CenterRow))
-		return;
+	{
+		if (!Map->TryWorldToTileXYProjected(Owner->GetActorLocation(), CenterCol, CenterRow))
+			return;
+		HomeLocation = Owner->GetActorLocation();
+	}
 
+	PatrolPoints.Reset();
 	PatrolPoints.Add({CenterCol, CenterRow});
 
 	// 상, 우, 하, 좌 방향으로 바닥 타일 검색하여 기본 순찰 지점 설정
@@ -110,6 +119,20 @@ void UGhostAIComponent::InitializeDefaultPatrolPoints()
 		if (Map->TryGetTile(TargetCol, TargetRow, Terrain) && Terrain == EMapTileTerrain::Floor)
 		{
 			PatrolPoints.Add({TargetCol, TargetRow});
+		}
+	}
+}
+
+void UGhostAIComponent::ResetToHome()
+{
+	StopMovement();
+	SetChasing(false);
+	CurrentPatrolIndex = -1;
+	if (AActor* Owner = GetOwner())
+	{
+		if (HomeLocation != FVector::ZeroVector)
+		{
+			Owner->SetActorLocation(HomeLocation);
 		}
 	}
 }
@@ -335,6 +358,17 @@ void UGhostAIComponent::StopMovement()
 void UGhostAIComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
+
+	if (UWorld* World = GetWorld())
+	{
+		if (APacmanGameMode* Mode = Cast<APacmanGameMode>(World->GetGameMode()))
+		{
+			if (Mode->IsResolvingGhostHit())
+			{
+				return;
+			}
+		}
+	}
 
 	AMapActor* Map = GetCachedMap();
 	if (!bIsMoving || CurrentPath.IsEmpty() || !Map) return;
@@ -662,6 +696,56 @@ bool UGhostAIComponent::IsPlayerInDetectionRange(AActor* PlayerActor, bool bForc
 	}
 
 	return true;
+}
+
+void UGhostAIComponent::Serialize(FStructuredArchive::FRecord Record)
+{
+	Super::Serialize(Record);
+
+	FArchive& Ar = Record.GetUnderlyingArchive();
+
+	TOptional<FStructuredArchiveSlot> Slot = Record.TryEnterField("GhostAI", true);
+	if (!Slot.IsSet())
+	{
+		return;
+	}
+
+	FStructuredArchiveRecord AIRecord = Slot.GetValue().EnterRecord();
+
+	AIRecord << SA_VALUE("MoveSpeed", MoveSpeed)
+			 << SA_VALUE("ChaseSpeed", ChaseSpeed)
+			 << SA_VALUE("WaitTimeBeforeChase", WaitTimeBeforeChase)
+			 << SA_VALUE("MaxChaseDuration", MaxChaseDuration)
+			 << SA_VALUE("ForwardDetectionTiles", ForwardDetectionTiles)
+			 << SA_VALUE("BackwardDetectionTiles", BackwardDetectionTiles)
+			 << SA_VALUE("SideDetectionTiles", SideDetectionTiles)
+			 << SA_VALUE("ChaseForwardDetectionTiles", ChaseForwardDetectionTiles)
+			 << SA_VALUE("ChaseBackwardDetectionTiles", ChaseBackwardDetectionTiles)
+			 << SA_VALUE("ChaseSideDetectionTiles", ChaseSideDetectionTiles);
+
+	int32 PointCount = PatrolPoints.Num();
+	FStructuredArchiveArray PatrolArray = AIRecord.EnterArray("PatrolPoints", PointCount);
+	if (Ar.IsLoading())
+	{
+		PatrolPoints.Reset();
+		for (int32 i = 0; i < PointCount; ++i)
+		{
+			FStructuredArchiveRecord PtRecord = PatrolArray.EnterElement().EnterRecord();
+			int32 Col = 0, Row = 0;
+			PtRecord << SA_VALUE("Col", Col) << SA_VALUE("Row", Row);
+			PatrolPoints.Add({ Col, Row });
+		}
+	}
+	else
+	{
+		for (int32 i = 0; i < PointCount; ++i)
+		{
+			FStructuredArchiveRecord PtRecord = PatrolArray.EnterElement().EnterRecord();
+			int32 Col = PatrolPoints[i].Column;
+			int32 Row = PatrolPoints[i].Row;
+			PtRecord << SA_VALUE("Col", Col) << SA_VALUE("Row", Row);
+		}
+	}
 }
 
 void UGhostAIComponent::Serialize(nlohmann::json& Handle, bool bIsLoading)

@@ -223,6 +223,7 @@ void APacmanGameMode::ResolveGhostHit()
 	{
 		HitGhost->RestoreEye();
 		HitGhost->SetActorRotation(SavedGhostRotation, false);
+		HitGhost->ResetToHome();
 	}
 	if (HitCamera)
 	{
@@ -253,6 +254,24 @@ void APacmanGameMode::ResolveGhostHit()
 			bGhostHitPlaying = false;
 		}
 	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (ULevel* Level = World->GetPersistentLevel())
+		{
+			for (AActor* Actor : Level->GetActors())
+			{
+				if (AGhostActor* Ghost = Cast<AGhostActor>(Actor))
+				{
+					if (Ghost != HitGhost)
+					{
+						Ghost->ResetToHome();
+					}
+				}
+			}
+		}
+	}
+
 	HitGhost = nullptr;
 	HitPlayer = nullptr;
 	HitCamera = nullptr;

@@ -237,3 +237,49 @@ void AGhostActor::RestoreEye()
 	EyeSlot = PupilSlot = -1;
 	bEyeChanged = false;
 }
+
+void AGhostActor::ResetToHome()
+{
+	RestoreEye();
+	if (AIComponent)
+	{
+		AIComponent->ResetToHome();
+	}
+	else if (InitialLocation != FVector::ZeroVector)
+	{
+		SetActorLocation(InitialLocation);
+	}
+
+	if (LuaScriptComponent)
+	{
+		sol::table SelfTable = LuaScriptComponent->GetScriptInstance();
+		if (SelfTable.valid())
+		{
+			sol::protected_function ResetFunc = SelfTable["ResetToHome"];
+			if (ResetFunc.valid())
+			{
+				sol::protected_function_result CallResult = ResetFunc(SelfTable);
+				if (!CallResult.valid())
+				{
+					sol::error Err = CallResult;
+					HTR_LOG(Error, "[GhostAI] ResetToHome error: {}", Err.what());
+				}
+			}
+			else
+			{
+				SelfTable["State"] = "Patrol";
+				SelfTable["AlertTimer"] = 0.0;
+				SelfTable["ChaseTimer"] = 0.0;
+				SelfTable["RepathTimer"] = 0.0;
+				if (AIComponent)
+				{
+					AIComponent->MoveToNextPatrol();
+				}
+			}
+		}
+	}
+	else if (AIComponent)
+	{
+		AIComponent->MoveToNextPatrol();
+	}
+}

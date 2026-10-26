@@ -1,6 +1,7 @@
 #pragma once
 #include "SceneComponent.h"
 #include "Math/Vector4.h"
+#include "Lua/LuaMacros.h"
 
 class UExponentialHeightFogComponent final : public USceneComponent
 {
@@ -13,6 +14,31 @@ class UExponentialHeightFogComponent final : public USceneComponent
 		PROPERTY(FogMaxOpacity)
 		PROPERTY(FogCutoffDistance)
 	REFLECT_END()
+
+	LUA_BIND_START(UExponentialHeightFogComponent)
+		LUA_FUNC(GetFogDensity)
+		LUA_FUNC(SetFogDensity)
+		LUA_FUNC(GetFogHeightFalloff)
+		LUA_FUNC(SetFogHeightFalloff)
+		LUA_FUNC(GetStartDistance)
+		LUA_FUNC(SetStartDistance)
+		LUA_FUNC(GetFogMaxOpacity)
+		LUA_FUNC(SetFogMaxOpacity)
+		LUA_FUNC(GetFogCutoffDistance)
+		LUA_FUNC(SetFogCutoffDistance)
+		LUA_FUNC(GetFogHeight)
+		UserType["GetFogColor"] = [](const UExponentialHeightFogComponent& Self) -> FVector4 {
+			return Self.GetFogColor();
+		};
+		UserType["SetFogColor"] = sol::overload(
+			[](UExponentialHeightFogComponent& Self, const FVector4& InColor) {
+				Self.SetFogColor(InColor);
+			},
+			[](UExponentialHeightFogComponent& Self, float R, float G, float B, sol::optional<float> A) {
+				Self.SetFogColor(FVector4(R, G, B, A.value_or(1.0f)));
+			}
+		);
+	LUA_BIND_END()
 
 public:
 	UExponentialHeightFogComponent() = default;

@@ -38,6 +38,7 @@ class UGhostAIComponent : public UActorComponent
 		LUA_FUNC(SetDestination)
 		LUA_FUNC(ChasePlayer)
 		LUA_FUNC(ReturnToHome)
+		LUA_FUNC(ResetToHome)
 		LUA_FUNC(MoveToNextPatrol)
 		LUA_FUNC(StopMovement)
 		LUA_FUNC(HasReachedDestination)
@@ -85,16 +86,19 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime) override;
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 	virtual void Serialize(nlohmann::json& Handle, bool bIsLoading) override;
 
 	bool SetDestination(const FVector& TargetWorldPos);
 	bool ChasePlayer();
 	bool ReturnToHome();
+	void ResetToHome();
 	void MoveToNextPatrol();
 	void StopMovement();
 	bool HasReachedDestination() const { return !bIsMoving || CurrentPath.IsEmpty(); }
 
 	// Patrol Management
+	void InitializeDefaultPatrolPoints();
 	void AddPatrolPoint(int32 Column, int32 Row);
 	void AddPatrolWorldLocation(const FVector& WorldLocation);
 	void RemovePatrolPoint(int32 Index);
@@ -161,7 +165,6 @@ public:
 
 private:
 	bool FindPathBFS(const FGhostTileCoord& StartTile, const FGhostTileCoord& GoalTile, TArray<FGhostTileCoord>& OutPath);
-	void InitializeDefaultPatrolPoints();
 
 	AMapActor* CachedMap = nullptr;
 	FVector HomeLocation = FVector::ZeroVector;

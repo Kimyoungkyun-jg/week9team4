@@ -32,13 +32,39 @@ function GhostAI:BeginPlay()
     self.AI:MoveToNextPatrol()
 end
 
+function GhostAI:ResetToHome()
+    Log("[GhostAI] Resetting to home state: " .. self.Owner:GetName())
+    if self.Owner.RestoreEye then
+        self.Owner:RestoreEye()
+    end
+    self.State = "Patrol"
+    self.AlertTimer = 0.0
+    self.ChaseTimer = 0.0
+    self.RepathTimer = 0.0
+    if self.AI then
+        self.AI:ResetToHome()
+        self.AI:MoveToNextPatrol()
+    end
+end
+
 function GhostAI:Tick(dt)
     if not self.AI then return end
+
+    -- 연출(CloseUp, Fade) 진행 중일 때는 AI 업데이트 일시 중지
+    if self.Owner.GetWorld then
+        local world = self.Owner:GetWorld()
+        if world and world.GetGameMode then
+            local gm = world:GetGameMode()
+            if gm and gm.IsResolvingGhostHit and gm:IsResolvingGhostHit() then
+                return
+            end
+        end
+    end
 
     -- 1. [순찰 모드 (Patrol)]
     if self.State == "Patrol" then
         if self.Owner:IsPlayerInDetectionRange() then
-            -- 플레이어 감지! 대기(Alert) 상태로 전환하고 멈춤
+            -- 플레이어 감지 시 대기(Alert) 상태로 전환하고 멈춤
             Log("[GhostAI] Player detected! Waiting before chase...")
             self.State = "Alert"
             self.AlertTimer = 0.0
@@ -53,7 +79,7 @@ function GhostAI:Tick(dt)
         self.AlertTimer = self.AlertTimer + dt
         if self.AlertTimer >= self.WaitTimeBeforeChase then
             Log("[GhostAI] Alert wait finished! Changing eye to red and starting chase.")
-            -- Ghost 눈 색 변경!
+            -- Ghost 눈 색 변경
             self.Owner:ChangeEye()
 
             -- Chase 상태로 전환 및 즉시 플레이어 추격 시작
