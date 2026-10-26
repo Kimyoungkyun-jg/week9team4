@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "World.h"
+#include "Serialization/StructuredArchive.h"
+#include "Serialization/StructuredArchiveSlots.h"
 #include "Level.h"
 
 #include "Engine/Engine.h"
@@ -46,8 +48,8 @@ namespace
 	}
 }
 
-DECLARE_CYCLE_STAT("Actor Tick", STAT_ActorTick); // Actor 틱 측정
-DECLARE_CYCLE_STAT("Update All Transforms", STAT_UpdateAllTransforms); // 각 Transform의 Update 시간 측정
+DECLARE_CYCLE_STAT("Actor Tick", STAT_ActorTick);
+DECLARE_CYCLE_STAT("Update All Transforms", STAT_UpdateAllTransforms);
 DECLARE_CYCLE_STAT("Gather Render Packets", STAT_GatherRenderPackets);
 DECLARE_CYCLE_STAT("Frustum Cull", STAT_FrustumCull);
 DECLARE_CYCLE_STAT("Gather Elements", STAT_GatherElements);
@@ -70,12 +72,10 @@ bool UWorld::Init()
 		return false;
 	}
 
-	//레벨 연결
 	PersistentLevel->SetWorld(this);
 	Levels.Add(PersistentLevel);
 	CurrentLevel = PersistentLevel;
 
-	//카메라 생성
 	CreateMainCamera();
 
 	return true;
@@ -86,7 +86,6 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 	if (bIsClearingWorld || !Class) return nullptr;
 	if (!Class->IsChildOf(AActor::StaticClass())) return nullptr;
 
-	// 1. ObjectFactory로 Actor 생성
 	AActor* NewActor = NewObject<AActor>(PersistentLevel, Class, InName);
 
 	if (!NewActor)
@@ -95,24 +94,25 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 		return nullptr;
 	}
 
-	// 2. Actor에 World/Level 연결
 	NewActor->World = this;
 	NewActor->Level = PersistentLevel;
 
-	// 3. Transform 적용
-	const FTransform SpawnTransform = Transform ? *Transform : FTransform::Identity;
+	FTransform SpawnTransform = Transform ? *Transform : FTransform::Identity;
 
 	if (NewActor->GetRootComponent())
 	{
+		const FVector ExistingScale = NewActor->GetRootComponent()->GetRelativeScale3D();
+		if (ExistingScale != FVector::OneVector && (!Transform || SpawnTransform.Scale == FVector::OneVector))
+		{
+			SpawnTransform.Scale = ExistingScale;
+		}
 		NewActor->GetRootComponent()->SetTransform(SpawnTransform);
 	}
 	
-	// 4. Level->Actors에 등록한 뒤 컴포넌트를 월드에 연결한다.
 	PersistentLevel->AddActor(NewActor);
 	NewActor->RegisterAllComponents();
 	if (NewActor->IsPendingKillPending()) return nullptr;
 
-	// 월드가 재생 중일 때 생성된 액터만 별도 BeginPlay 대기열에 넣는다.
 	if (bBegunPlay) BeginPlayList.Enqueue(NewActor);
 
 	return NewActor;
@@ -127,7 +127,6 @@ void UWorld::Tick(float DeltaTime)
 		Scene.UpdateAllTransforms();
 	}
 
-	// 에디터 월드가 아니면 액터 틱을 돌린다
 	if (WorldType != EWorldType::Editor)
 	{
 		while (!BeginPlayList.IsEmpty())
@@ -140,7 +139,6 @@ void UWorld::Tick(float DeltaTime)
 		if (!bIsPaused)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ActorTick);
-			// 모든 Actor를 도는 대신 등록된 Tick 함수만 실행한다
 			TickTaskManager.RunAllTickGroups(DeltaTime);
 
 			for (ULevel* Level : Levels)
@@ -151,7 +149,6 @@ void UWorld::Tick(float DeltaTime)
 	}
 	else
 	{
-		// 에디터 월드에서도 파티클 시뮬레이션은 틱이 돌아야 한다
 		for (TObjectIterator<UParticleSubUVComponent> Comp; Comp; ++Comp)
 		{
 			if (!Comp || !Comp->IsRegistered() || Comp->GetWorld() != this)
@@ -178,7 +175,6 @@ void UWorld::ClearWorld()
 	if (bIsClearingWorld) return;
 	bIsClearingWorld = true;
 	EndPlay();
-	// BeginPlay 대기 중인 Actor 제거
 	while (!BeginPlayList.IsEmpty())
 	{
 		BeginPlayList.Dequeue();
@@ -199,18 +195,18 @@ void UWorld::ClearWorld()
     bCollisionTopologyDirty = true;
 	GameMode = nullptr;
 	bIsClearingWorld = false;
+	HUD = nullptr;
+	HUDClassOverride = nullptr;
 	HTR_LOG(Info, "{} : ", PersistentLevel->GetActorNum());
 }
 
 void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* LODView, const FFrustumPlanes* Frustum, FRenderer* Renderer)
 {
-	// 멤버로 두어 매 프레임 용량을 재사용한다.
 	RenderStats.Reset();
 	VisibleProxies.Reset();
 
 	{
 		SCOPE_CYCLE_COUNTER(STAT_FrustumCull);
-		// 컬링 단계에서는 프록시 포인터만 모으고, 컴포넌트 역참조(가시성 확인)는 어차피 컴포넌트를 읽는 Gather로 미룬다.
 		const auto Visit = [&](FPrimitiveSceneProxy* Proxy) { VisibleProxies.Add(Proxy); };
 
 		if (Frustum)
@@ -231,9 +227,6 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 
 	RenderStats.TotalPrimitives = Scene.PrimitiveSceneProxies.Num();
 
-	// GPU 오클루전: 프러스텀을 통과한 물체를 GPU에서 가림 판정하고 결과를 이번 프레임에 받아 온다.
-	// Cull이 켜져 있으면 가려진 물체를 목록에서 빼서 이후 Gather·정렬·드로우를 모두 건너뛴다.
-	// 꺼져 있으면(검증 모드) 목록은 그대로 두고 패킷에 판정만 표시한다.
 	const uint8* OccludedMask = nullptr;
 	if (Renderer && LODView && Renderer->GetGPUOcclusion().GetSettings().bEnabled)
 	{
@@ -264,17 +257,16 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 	uint8* SlotDest = Renderer ? Renderer->BeginObjectConstants(MaxSlots) : nullptr;
 	uint32 NextExtraSlot = VisibleCount;
 
-	// 조각 수 = 스레드 수 × 4. 잘게 나눠야 먼저 끝난 스레드가 남은 조각을 가져가서 부하가 고르게 된다.
 	FTaskPool& Pool = FTaskPool::Get();
 	const uint32 ChunkCount = FMath::Clamp(VisibleCount, 1u, Pool.GetNumThreads() * 4);
 
 	if (GatherChunks.Num() < ChunkCount)
-		GatherChunks.SetNum(ChunkCount);     // 늘릴 때만. 줄이지 않아야 배열 용량이 계속 재사용된다.
+		GatherChunks.SetNum(ChunkCount);
 
-	for (uint32 c = 0; c < GatherChunks.Num(); ++c)   // 이번에 안 쓰는 조각의 묶음도 비워 둔다 (Renderer에 넘기지 않도록)
+	for (uint32 c = 0; c < GatherChunks.Num(); ++c)
 	{
 		FGatherChunk& Chunk = GatherChunks[c];
-		Chunk.Packets.Reset();               // 용량은 유지, 개수만 0
+		Chunk.Packets.Reset();
 		Chunk.SlowPathIndices.Reset();
 		std::fill(std::begin(Chunk.LODCounts), std::end(Chunk.LODCounts), 0u);
 		std::fill(std::begin(Chunk.LODTriangles), std::end(Chunk.LODTriangles), 0ull);
@@ -300,11 +292,10 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 		for (uint32 c = 0; c < ChunkCount; ++c)
 			TotalPackets += GatherChunks[c].Packets.Num();
 
-		RenderQueue.Reserve(TotalPackets + 256);             // 느린 경로 몫 약간 여유
+		RenderQueue.Reserve(TotalPackets + 256);
 		for (uint32 c = 0; c < ChunkCount; ++c)
 			if (GatherChunks[c].Packets.Num() > 0)
-				RenderQueue.Append(GatherChunks[c].Packets);  // 조각 순서대로 이어 붙이기
-
+				RenderQueue.Append(GatherChunks[c].Packets);
 		for (uint32 c = 0; c < ChunkCount; ++c)
 		{
 			for (uint32 VisibleIndex : GatherChunks[c].SlowPathIndices)
@@ -316,7 +307,6 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 
 				const uint32 FirstNew = RenderQueue.Num();
 
-				// 프록시 캐시가 없는 스태틱 메시는 기존처럼 LOD를 골라 제출하고, 그 외는 컴포넌트에 맡긴다.
 				UStaticMeshComponent* StaticMeshComponent = LODView ? Cast<UStaticMeshComponent>(Primitive) : nullptr;
 				if (StaticMeshComponent && StaticMeshComponent->GetStaticMesh())
 				{
@@ -328,7 +318,6 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 					Primitive->SubmitToRenderQueue(RenderQueue, LODView ? *LODView : FViewContext{});
 				}
 
-				// continue 없이 항상 여기까지 와서 새 패킷에 여유 칸을 배정한다.
 				for (uint32 p = FirstNew; p < RenderQueue.Num(); ++p)
 				{
 					if (!SlotDest || NextExtraSlot >= MaxSlots) break;
@@ -438,7 +427,6 @@ void UWorld::GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
 //	}
 //}
 
-// 메인 카메라 생성
 void UWorld::CreateMainCamera()
 {
 	if (MainCamera)
@@ -456,7 +444,6 @@ void UWorld::CreateMainCamera()
 	MainCamera->Level = nullptr;
 	MainCamera->GetCameraComponent()->SetRelativeLocation(FVector(-5.0f, -5.0f, 5.0f));
 
-	// 메인 카메라는 Level에 속하지 않아 BeginPlay를 거치지 않으므로 여기서 등록한다.
 	MainCamera->RegisterAllActorTickFunctions(true);
 }
 
@@ -501,7 +488,6 @@ bool UWorld::DestroyActor(AActor* Actor)
 	Actor->bActorIsBeingDestroyed = true;
     RemoveCollisionListeners(Actor);
 
-	// 1. BeginPlay 대기열에서 제거
 	TQueue<AActor*> NewBeginPlayList;
 
 	while (!BeginPlayList.IsEmpty())
@@ -517,10 +503,8 @@ bool UWorld::DestroyActor(AActor* Actor)
 
 	BeginPlayList = std::move(NewBeginPlayList);
 
-	// 2. PathTracker에서 제거
 	PathTracker.OnObjectDestroyed(Actor);
 
-	//// 3. PrimitiveComponents에서 제거
 	//for (UActorComponent* Component : Actor->Components)
 	//{
 	//	UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component);
@@ -538,7 +522,6 @@ bool UWorld::DestroyActor(AActor* Actor)
 	//	}
 	//}
 
-	// 4. Level의 Actors에서 제거
 	bool bRemovedFromLevel = false;
 	for (int32 i = Level->Actors.Num() - 1; i >= 0; --i)
 	{
@@ -554,7 +537,6 @@ bool UWorld::DestroyActor(AActor* Actor)
 	FString ActorName = Actor->GetName();
 	uint32 ActorUUID = Actor->GetUUID();
 
-	// 5. 프록시 제거
 	Actor->EndPlayActor();
 	const auto DestroyedComponents = Actor->GetComponents();
 	for (UActorComponent* Component : DestroyedComponents)
@@ -568,6 +550,11 @@ bool UWorld::DestroyActor(AActor* Actor)
 	if (APlayerController* Controller = Cast<APlayerController>(Actor)) Controller->UnPossess();
 	if (Actor == PlayerController) PlayerController = nullptr;
 	if (Actor == PlayerPawn) PlayerPawn = nullptr;
+	if (Actor == HUD)
+	{
+		if (PlayerController) PlayerController->SetHUD(nullptr);
+		HUD = nullptr;
+	}
 	if (Actor == GameMode) GameMode = nullptr;
 	Actor->MarkAsGarbage();
 	QueueObjectDeletion(Actor);
@@ -714,8 +701,24 @@ void UWorld::BeginPlay()
 	if (DefaultPawnClass) GameMode->SetDefaultPawnClass(DefaultPawnClass);
 	if (PlayerControllerClass) GameMode->SetPlayerControllerClass(PlayerControllerClass);
 	GameMode->SpawnPlayer(PlayerPawn, PlayerController);
+	if (PlayerController)
+	{
+		UClass* Class = GetHUDClass();
+		if (Class && Class->IsChildOf(AGameHUD::StaticClass()) && Class->Constructor)
+		{
+			HUD = Cast<AGameHUD>(SpawnActor(Class));
+			FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(this) : nullptr;
+			if (HUD)
+			{
+				if (!InitialUIOverride.empty()) HUD->SetWidgetAssetPath(InitialUIOverride);
+				PlayerController->SetHUD(HUD);
+				if (!HUD->Initialize(PlayerController, Context ? Context->GameViewport.get() : nullptr))
+					HTR_LOG(Warning, "Failed to initialize HUD {}", Class->Name);
+			}
+		}
+		else HTR_LOG(Warning, "Invalid HUD class for world");
+	}
 
-	// 기존 액터 목록을 고정한 후 시작한다. BeginPlay 중 생성된 액터는 대기열로 간다.
 	TArray<AActor*> InitialActors;
 	for (ULevel* Level : Levels)
 		if (Level)
@@ -725,7 +728,6 @@ void UWorld::BeginPlay()
 	for (AActor* Actor : InitialActors)
 		if (IsValid(Actor) && !Actor->IsActorBeingDestroyed()) Actor->BeginPlay();
 
-	// PIE 입력 전에 DefaultPawn의 투사체 풀까지 시작한다.
 	while (!BeginPlayList.IsEmpty())
 	{
 		AActor* Actor = BeginPlayList.Peek();
@@ -740,6 +742,24 @@ bool UWorld::SetGameModeClass(UClass* Class)
 	GameModeClass = Class;
 	DefaultPawnClass = nullptr;
 	PlayerControllerClass = nullptr;
+	return true;
+}
+
+UClass* UWorld::GetHUDClass() const
+{
+	if (HUDClassOverride) return HUDClassOverride;
+	if (GameMode) return GameMode->GetHUDClass();
+	UClass* ModeClass = GameModeClass;
+	if (!ModeClass || !ModeClass->IsChildOf(AGameMode::StaticClass()) || !ModeClass->Constructor)
+		return AGameHUD::StaticClass();
+	AGameMode* DefaultMode = static_cast<AGameMode*>(ModeClass->GetDefaultObject());
+	return DefaultMode->GetHUDClass();
+}
+
+bool UWorld::SetHUDClassOverride(UClass* Class)
+{
+	if (Class && (!Class->IsChildOf(AGameHUD::StaticClass()) || !Class->Constructor)) return false;
+	HUDClassOverride = Class;
 	return true;
 }
 
@@ -781,7 +801,6 @@ void UWorld::EndPlay()
 
 	for (AActor* Actor : EndingActors)
 	{
-		// EndPlay 콜백에서 다른 액터가 파괴될 수 있으므로 아직 월드에 있는지 확인한다.
 		bool bStillInWorld = false;
 		for (ULevel* Level : Levels)
 		{
@@ -794,12 +813,14 @@ void UWorld::EndPlay()
 	}
 	if (PlayerController)
 	{
+		PlayerController->SetHUD(nullptr);
 		PlayerController->ClearInputState();
 		PlayerController->UnPossess();
 	}
 	PlayerController = nullptr;
 	PlayerPawn = nullptr;
 	GameMode = nullptr;
+	HUD = nullptr;
 	bIsPaused = false;
 }
 
@@ -835,7 +856,6 @@ void UWorld::PostDuplicate(bool bDuplicateForPIE)
 {
 	Super::PostDuplicate(bDuplicateForPIE);
 
-	// 아직 필요 없는애들
 	//TArray<UObject*> ObjectsToFixReferences;
 	//TMap<UObject*, UObject*> ReplacementMap;
 
@@ -880,6 +900,5 @@ void UWorld::Serialize(FStructuredArchive::FRecord Record)
 	FArchive& Ar = Record.GetUnderlyingArchive();
 	PersistentLevel->Serialize(Record.EnterRecord("PersistentLevel"));
 
-	// (선택) 메인 카메라는 레벨에 속하지 않아 따로 쓴다. PIE 시작 시점이나 에디터 시점을 복원할 때 쓸 수 있다.
 	// MainCamera->GetCameraComponent()->Serialize(Record.EnterRecord("MainCamera"));
 }

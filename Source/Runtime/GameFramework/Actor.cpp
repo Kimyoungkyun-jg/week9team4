@@ -252,6 +252,8 @@ FRotator AActor::GetActorRotation() const
 	return FRotator();
 }
 
+
+
 FVector AActor::GetActorScale3D() const
 {
 	if (RootComponent)

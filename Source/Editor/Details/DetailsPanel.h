@@ -2,6 +2,7 @@
 
 #include <format>
 #include "Editor/EditorUI/EditorPanel.h"
+#include "Editor/Details/MapTileEditor.h"
 
 #include "Engine/World.h"
 
@@ -30,6 +31,7 @@ public:
 
 	void SetTarget(AActor* InTargetActor) 
 	{ 
+		if (TargetActor != InTargetActor) MapTileEditor.ClearSelection();
 		TargetActor = InTargetActor;
 		TargetComponent = InTargetActor ? InTargetActor->GetRootComponent() : nullptr;
 	}
@@ -44,8 +46,10 @@ public:
 	void SetImGuiRenderer(FImGuiRenderer* InRenderer) { ImGuiRenderer = InRenderer; }
 
 	ImFont* GetCustomFont() { return CustomFont; }
+	const FMapTileEditor& GetMapTileEditor() const { return MapTileEditor; }
 
 private:
+	FMapTileEditor MapTileEditor;
 	void DrawShadowPreview();
 	void DrawScriptEditor();
 	FShadowPreviewQuery QueryShadowPreview;

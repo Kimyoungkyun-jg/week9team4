@@ -1,5 +1,16 @@
 #pragma once
 
+inline void to_json(json& J, const FVector2& V)
+{
+	J = json::array({ V.X, V.Y });
+}
+
+inline void from_json(const json& J, FVector2& V)
+{
+	for (int32 i = 0; i < 2; i++)
+		V[i] = J[i].get<float>();
+}
+
 inline void to_json(json& J, const FVector& V)
 {
 	J = json::array({ V.X, V.Y, V.Z });

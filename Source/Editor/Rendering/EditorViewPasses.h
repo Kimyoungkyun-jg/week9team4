@@ -6,6 +6,8 @@ class FSceneDepthRenderer;
 class FCascadeFloorRenderer;
 class FEditorViewportClient;
 class FGridRenderer;
+class FMapTileRenderer;
+class FMapTileEditor;
 class FGizmoRenderer;
 class FLineBatcher;
 class FOutline;
@@ -30,12 +32,15 @@ struct FEditorOverlayResources
 	UWorld* EditorWorld = nullptr;
 	UWorld* ActiveWorld = nullptr;
 	const FEditorSettings* Settings = nullptr;
+	FMapTileRenderer* MapTiles = nullptr;
+	const FMapTileEditor* MapTileEditor = nullptr;
 };
 
 struct FSceneOverlayCallbacks
 {
 	std::function<void()> EditorLines;
 	std::function<void()> EditorGrid;
+	std::function<void()> EditorMapTiles;
 	std::function<void()> EditorOutline;
 	std::function<void()> EditorGizmo;
 	std::function<void()> SIEOutline;

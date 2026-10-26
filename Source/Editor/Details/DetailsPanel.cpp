@@ -8,6 +8,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/Actor/MapActor.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/ParticleSubUVComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -736,6 +737,12 @@ namespace
 			bChanged = ImGui::DragFloat3(Label.c_str(), Value->V, 0.1f);
 			break;
 		}
+		case EPropertyType::Vector2:
+		{
+			FVector2* Value = static_cast<FVector2*>(ValuePtr);
+			bChanged = ImGui::DragFloat2(Label.c_str(), Value->V, 0.1f);
+			break;
+		}
 		case EPropertyType::Rotator:
 		{
 			FRotator* Value = static_cast<FRotator*>(ValuePtr);
@@ -1209,6 +1216,7 @@ void FDetailsPanel::OnRender()
 		// 액터 -> 컴포넌트 순으로, 클래스별 프로퍼티 표시
 		ImGui::PushID(TargetActor);
 		DrawProperties(TargetActor, CustomFont);
+		if (AMapActor* Map = Cast<AMapActor>(TargetActor)) MapTileEditor.DrawDetails(*Map);
 		ImGui::PopID();
 
 		if (TargetComponent)
@@ -1360,6 +1368,10 @@ void FDetailsPanel::DrawSceneComponentNode(USceneComponent* Component, USceneCom
 	}
 
 	const bool bIsLeaf = Children.IsEmpty();
+	// Scene loading matches constructor subobjects by name. Keep the map's required
+	// mesh identity stable; optional wall components retain normal editing behavior.
+	const AMapActor* MapOwner = Cast<AMapActor>(Component->GetOwner());
+	const bool bRequiredMapMesh = MapOwner && Component == MapOwner->GetStaticMeshComponent();
 	bIsEditingName = (EditingNameComponent == Component);
 
 	ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow;
@@ -1406,7 +1418,7 @@ void FDetailsPanel::DrawSceneComponentNode(USceneComponent* Component, USceneCom
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 			OutSelectedComponent = Component;
 
-		if (Component != Root && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+		if (Component != Root && !bRequiredMapMesh && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 		{
 			EditingNameComponent = Component;
 			strncpy_s(ComponentNameEditBuffer, sizeof(ComponentNameEditBuffer), Component->GetName().c_str(), _TRUNCATE);
@@ -1415,7 +1427,7 @@ void FDetailsPanel::DrawSceneComponentNode(USceneComponent* Component, USceneCom
 
 		if (ImGui::BeginPopupContextItem("Component Context"))
 		{
-			if (ImGui::MenuItem("Delete", nullptr, false, Component != Root))
+			if (ImGui::MenuItem("Delete", nullptr, false, Component != Root && !bRequiredMapMesh))
 				PendingDeleteComponent = Component;
 			ImGui::EndPopup();
 		}

@@ -164,6 +164,10 @@ void FContentDrawerPanel::OnRender()
 					{
 						CurrentPath /= Path.filename(); // 하위 폴더로 이동
 					}
+					else if (PathString.ends_with(".ui.json") && OnOpenUIAsset)
+					{
+						OnOpenUIAsset(PathString);
+					}
 				}
 				// 파일 이름 표시
 				ImGui::TextWrapped("%s", FilenameString.c_str());

@@ -109,6 +109,7 @@ bool FEditorFileUtils::LoadScene(UWorld* World)
 FString FEditorFileUtils::OpenSaveSceneDialog()
 {
 	char FilePath[MAX_PATH] = {};
+	const FString SceneDirectory = std::filesystem::absolute("Scenes").string();
 
 	OPENFILENAMEA ofn = {};
 	ofn.lStructSize = sizeof(OPENFILENAMEA);
@@ -118,7 +119,7 @@ FString FEditorFileUtils::OpenSaveSceneDialog()
 
 	ofn.lpstrFilter = "Scene Files (*.scene)\0*.scene\0";
 	ofn.lpstrDefExt = "scene";
-	ofn.lpstrInitialDir = "Scene/";
+	ofn.lpstrInitialDir = SceneDirectory.c_str();
 
 	ofn.Flags =
 		OFN_PATHMUSTEXIST |
@@ -136,6 +137,7 @@ FString FEditorFileUtils::OpenSaveSceneDialog()
 FString FEditorFileUtils::OpenLoadSceneDialog()
 {
 	char FilePath[MAX_PATH] = {};
+	const FString SceneDirectory = std::filesystem::absolute("Scenes").string();
 
 	OPENFILENAMEA ofn = {};
 	ofn.lStructSize = sizeof(OPENFILENAMEA);
@@ -149,7 +151,7 @@ FString FEditorFileUtils::OpenLoadSceneDialog()
 		"All Files (*.*)\0*.*\0";
 
 	ofn.lpstrDefExt = "scene";
-	ofn.lpstrInitialDir = "Scene/";
+	ofn.lpstrInitialDir = SceneDirectory.c_str();
 
 	ofn.Flags =
 		OFN_FILEMUSTEXIST |

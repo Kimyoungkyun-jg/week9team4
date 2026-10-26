@@ -1,6 +1,9 @@
 #include "EnginePCH.h"
 
 #include "Editor/HitoriEd/EditorEngine.h"
+#include "GameActor/PlayerPawn.h"
+#include "GameActor/FlashlightActor.h"
+#include "GameActor/CoinActor.h"
 
 #include "Core/EngineStatics.h"
 #include "Core/EngineTimer.h"
@@ -28,6 +31,7 @@
 #include "Render/RenderCommand.h"
 #include "Editor/Outliner/OutlinerPanel.h"
 #include "Editor/HitoriEd/EditorFileUtils.h"
+#include "Editor/UIEditor/WidgetEditorPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
 #include "Core/EngineLog.h"
@@ -67,6 +71,9 @@ bool UEditorEngine::Init()
 {
 	if (!Super::Init())
 		return false;
+	APlayerPawn::StaticClass();
+	AFlashlightActor::StaticClass();
+	ACoinActor::StaticClass();
 
 	FWorldContext& InitialWorldContext = CreateNewWorldContext(EWorldType::Editor);
 	InitialWorldContext.SetCurrentWorld(UWorld::CreateWorld(EWorldType::Editor, true));
@@ -99,6 +106,8 @@ bool UEditorEngine::Init()
 
 	GridRenderer = MakeUnique<FGridRenderer>();
 	GridRenderer->Init(Renderer);
+	MapTileRenderer = MakeUnique<FMapTileRenderer>();
+	MapTileRenderer->Init();
 
 	GizmoRenderer = MakeUnique<FGizmoRenderer>();
 	GizmoRenderer->Init(Renderer);
@@ -130,6 +139,12 @@ bool UEditorEngine::Init()
 	EditorControlsPanel = EditorUI->AddEditorPanel<FEditorControlsPanel>();
 	ViewportsPanel = EditorUI->AddEditorPanel<FViewportsPanel>();
 	ContentDrawerPanel = EditorUI->AddEditorPanel<FContentDrawerPanel>();
+	WidgetEditorPanel = EditorUI->AddEditorPanel<FWidgetEditorPanel>();
+	ContentDrawerPanel->SetOpenUIAssetCallback([this](const FString& Path)
+	{
+		if (!WidgetEditorPanel->RequestOpenAsset(Path))
+			HTR_LOG(Error, "Failed to open UI asset: {}", Path);
+	});
 
 	// OutLine
 	OutlineRenderer = MakeUnique<FOutlineRenderer>();
@@ -229,6 +244,7 @@ bool UEditorEngine::Init()
 	EditorControlsPanel->SetIsPlayingQuery([this]() { return IsPlaying(); });
 	EditorControlsPanel->SetGizmo(Gizmo.get());
 	EditorControlsPanel->SetViewportsPanel(ViewportsPanel);
+	EditorControlsPanel->SetSettingsPanel(SettingsPanel);
 
 	SettingsPanel->SetWorld(EditorWorld);
 	SettingsPanel->SetViewportsPanel(ViewportsPanel);
@@ -414,7 +430,7 @@ void UEditorEngine::UpdateViewportState(const float DeltaTime)
 	for (int32 i = 0; i < 4; ++i)
 	{
 		FEditorViewportClient* Client = ViewportsPanel->GetViewportClient(i);
-		if (!Client || !Client->IsActive())
+		if (!Client || !Client->IsActive() || (PlayWorld && i == PIEViewIndex))
 			continue;
 
 		Client->TickInput(DeltaTime, i == CapturedViewportIndex,
@@ -423,17 +439,20 @@ void UEditorEngine::UpdateViewportState(const float DeltaTime)
 
 	// 활성 뷰포트 시점 동기화
 	const int32 ActiveIndex = ViewportsPanel->GetActiveViewIndex();
-	if (FEditorViewportClient* ActiveClient = ViewportsPanel->GetViewportClient(ActiveIndex))
+	if (!PlayWorld)
 	{
-		if (ACameraActor* MainCam = GetActiveWorld()->GetMainCamera())
+		if (FEditorViewportClient* ActiveClient = ViewportsPanel->GetViewportClient(ActiveIndex))
 		{
-			if (UCameraComponent* CamCom = MainCam->GetCameraComponent())
+			if (ACameraActor* MainCam = EditorWorld->GetMainCamera())
 			{
-				CamCom->SetRelativeLocation(ActiveClient->GetViewLocation());
-				CamCom->SetRelativeRotation(ActiveClient->GetViewRotation());
-				CamCom->SetFieldOfView(ActiveClient->GetViewFOV());
-				CamCom->SetOrthoWidth(ActiveClient->GetOrthoWidth());
-				CamCom->SetIsOrthogonal(!ActiveClient->IsPerspective());
+				if (UCameraComponent* CamCom = MainCam->GetCameraComponent())
+				{
+					CamCom->SetRelativeLocation(ActiveClient->GetViewLocation());
+					CamCom->SetRelativeRotation(ActiveClient->GetViewRotation());
+					CamCom->SetFieldOfView(ActiveClient->GetViewFOV());
+					CamCom->SetOrthoWidth(ActiveClient->GetOrthoWidth());
+					CamCom->SetIsOrthogonal(!ActiveClient->IsPerspective());
+				}
 			}
 		}
 	}
@@ -461,6 +480,7 @@ void UEditorEngine::TickWorldAndEditor(const float DeltaTime)
 			GetActiveWorld()->Tick(DeltaTime);
 
 	}
+	UpdatePIEViewCamera();
 	{
 		SCOPE_CYCLE_COUNTER(STAT_EditorTick);
 		EditorUI->Tick(DeltaTime);
@@ -471,7 +491,7 @@ void UEditorEngine::TickWorldAndEditor(const float DeltaTime)
 	if (InvalidComponent(Outline->GetTarget())) Outline->SetTarget(nullptr);
 	UpdateGizmoAndPicking();
 	EditorWorld->GetScene().UpdateAllTransforms();
-	if (PlayWorld && bIsPaused)
+	if (PlayWorld)
 		PlayWorld->GetScene().UpdateAllTransforms();
 }
 
@@ -545,7 +565,7 @@ void UEditorEngine::RenderViewports()
 					FSceneRenderer SceneRenderer(CurrentWorld, SceneView, GameClient->GetRenderData());
 					SceneRenderer.InitViews(Renderer, Options);
 
-					RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, bIsSIEMode);
+					RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode());
 
 					break;
 				}
@@ -585,7 +605,7 @@ void UEditorEngine::RenderViewports()
 				FSceneRenderer SceneRenderer(Context->World(), SceneView, GameClient->GetRenderData());
 				SceneRenderer.InitViews(Renderer, Options);
 
-				RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, bIsSIEMode);
+				RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode());
 
 				CopyPIEWindowToBackbuffer();
 			}
@@ -640,13 +660,14 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	const int32 ActiveViewIdx = ViewportsPanel ? ViewportsPanel->GetActiveViewIndex() : -1;
 	const bool bEditorSIEFocus = IsPIEInWindow() && GameViewport.IsSIEMode() &&
 		::GetForegroundWindow() == MainWindow->GetHandle() &&
-		ActiveViewIdx == PIEStartEditorViewIndex && ViewportsPanel->IsHovered() &&
+		ActiveViewIdx == PIEStartEditorViewIndex &&
+		(ViewportsPanel->IsHovered() || FInputSystem::IsMouseDown(EMouseButton::Right)) &&
 		!ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
 	const bool bFocused = IsPIEInWindow()
 		? ::GetForegroundWindow() == PIEWindow->GetHandle() || bEditorSIEFocus
 		: ::GetForegroundWindow() == MainWindow->GetHandle() &&
 			ActiveViewIdx == InputViewIndex &&
-			ViewportsPanel->IsHovered() &&
+			(ViewportsPanel->IsHovered() || (GameViewport.IsSIEMode() && FInputSystem::IsMouseDown(EMouseButton::Right))) &&
 			!ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
 	if (!bFocused) { GameViewport.LostFocus(); return; }
 	if (!IsPIEInWindow() &&
@@ -656,6 +677,16 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		GameViewport.LostFocus();
 		return;
 	}
+	if (IsPIEInWindow() && !bEditorSIEFocus)
+	{
+		POINT Cursor{};
+		::GetCursorPos(&Cursor);
+		::ScreenToClient(PIEWindow->GetHandle(), &Cursor);
+		GameViewport.MouseMove(nullptr, Cursor.x, Cursor.y);
+	}
+	else
+		GameViewport.MouseMove(nullptr, static_cast<int32>(Mouse.X - PIEViewRect.X),
+			static_cast<int32>(Mouse.Y - PIEViewRect.Y));
 
 	if (FInputSystem::IsKeyPressed(EKeyCode::F8))
 		GameViewport.InputKey(nullptr, static_cast<int32>(EKeyCode::F8), true);
@@ -673,7 +704,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		return;
 	}
 	constexpr EKeyCode Keys[] = { EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
-		EKeyCode::Space, EKeyCode::Shift };
+		EKeyCode::E, EKeyCode::Q, EKeyCode::Space, EKeyCode::Shift };
 	for (EKeyCode Key : Keys)
 	{
 		if (FInputSystem::IsKeyPressed(Key))
@@ -693,23 +724,31 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		const int32 Key = Button == EMouseButton::Left ? static_cast<int32>(EKeyCode::LButton) : static_cast<int32>(EKeyCode::RButton);
 		if (FInputSystem::IsMousePressed(Button))
 		{
-			if (GameViewport.IsSIEMode()) GameViewport.GetKeyInputBySIEMode(Key, true);
+			if (GameViewport.IsSIEMode())
+			{
+				if (!GameViewport.ProcessUIKey(Key, true)) GameViewport.GetKeyInputBySIEMode(Key, true);
+			}
 			else GameViewport.InputKey(nullptr, Key, true);
 		}
 		if (FInputSystem::IsMouseReleased(Button))
 		{
-			if (GameViewport.IsSIEMode()) GameViewport.GetKeyInputBySIEMode(Key, false);
+			if (GameViewport.IsSIEMode())
+			{
+				if (!GameViewport.ProcessUIKey(Key, false)) GameViewport.GetKeyInputBySIEMode(Key, false);
+			}
 			else GameViewport.InputKey(nullptr, Key, false);
 		}
 	}
 	const float MouseX = static_cast<float>(FInputSystem::GetMouseDeltaX());
 	const float MouseY = static_cast<float>(FInputSystem::GetMouseDeltaY());
+	const float Wheel = static_cast<float>(FInputSystem::GetWheelDelta());
 	if (GameViewport.IsSIEMode())
 	{
 		GameViewport.GetAxisInputBySIEMode(EGameInputAxis::MouseX, MouseX);
 		GameViewport.GetAxisInputBySIEMode(EGameInputAxis::MouseY, MouseY);
-		GameViewport.TickSIEInput(DeltaTime, SettingsPanel->GetSettings().CameraSpeed,
-			SettingsPanel->GetSettings().MouseSensitivity);
+		GameViewport.GetAxisInputBySIEMode(EGameInputAxis::MouseWheel, Wheel);
+		GameViewport.TickSIEInput(DeltaTime, 10.0f * SettingsPanel->GetSettings().CameraSpeed,
+			0.2f * SettingsPanel->GetSettings().MouseSensitivity);
 	}
 	else
 	{
@@ -826,10 +865,10 @@ void UEditorEngine::RenderGameFrame(FGameViewportClient* GameClient, const FScen
 
 	FSceneViewTargets& Targets = GameClient->GetViewTargets();
 	if (!Targets.SceneColor || !Targets.Depth) return;
-	if (bIsSIEMode)
-		RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions, nullptr, false, true);
-	else
-		ViewPipeline.Render(SceneRenderer, Renderer, Targets, GameClient->GetWorld(), SceneView, RenderOptions);
+	const bool bSceneRendered = bIsSIEMode
+		? RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions, nullptr, false, true)
+		: ViewPipeline.Render(SceneRenderer, Renderer, Targets, GameClient->GetWorld(), SceneView, RenderOptions);
+	if (bSceneRendered) GameClient->RenderUI();
 }
 
 bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& SceneView,
@@ -839,7 +878,8 @@ bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& Sc
 	FEditorViewPasses EditorPasses(Options, SceneView, Targets.SceneColor.get(), Targets.Depth.get(), SceneDepthRenderer.get(), CascadeFloorRenderer.get());
 	const FEditorOverlayResources OverlayResources{ GridRenderer.get(), GizmoRenderer.get(), LineBatcher.get(),
 		Outline.get(), OutlineRenderer.get(), Gizmo.get(), TextRenderer.get(), SystemFont,
-		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr };
+		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr,
+		MapTileRenderer.get(), DetailsPanel ? &DetailsPanel->GetMapTileEditor() : nullptr };
 	if (ViewClient)
 		EditorPasses.ConfigureViewportOverlays(OverlayResources, ViewClient, bIsPIE,
 			ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex());
@@ -898,6 +938,7 @@ void UEditorEngine::DrawPIEWindows()
 void UEditorEngine::PreExit()
 {
 	EndPlayMap();
+	if (WidgetEditorPanel) WidgetEditorPanel->ReleaseAsset();
 	if (SettingsPanel) SettingsPanel->SaveSettings();
 	EditorWorld->ClearWorld();
 	// PIE 창이 열린 채 종료하면 Device가 살아 있을 때 Swapchain과 타깃을 먼저 정리한다.
@@ -990,6 +1031,7 @@ UWorld* UEditorEngine::CreatePIEWorldByDuplication(FWorldContext& PIEContext, UW
 		Camera->SetFieldOfView(Source->GetViewFOV());
 		Camera->SetOrthoWidth(Source->GetOrthoWidth());
 		Camera->SetIsOrthogonal(!Source->IsPerspective());
+		Camera->SetExternalInputManaged(true);
 	}
 	PIEContext.SetCurrentWorld(NewPIEWorld);
 	return NewPIEWorld;
@@ -1005,6 +1047,8 @@ void UEditorEngine::OnActiveWorldChanged()
 	if (DetailsPanel) DetailsPanel->SetWorld(UIWorld);
 	if (EditorControlsPanel) EditorControlsPanel->SetWorld(UIWorld);
 	if (SettingsPanel) SettingsPanel->SetWorld(UIWorld);
+	for (FEditorViewportClient* Client : AllViewportClients)
+		if (Client) Client->SetWorld(UIWorld);
 }
 
 void UEditorEngine::EndPlayMap()
@@ -1149,6 +1193,7 @@ void UEditorEngine::CreateNewScene()
 	}
 	if (!FEditorFileUtils::NewScene(EditorWorld))
 		return;
+	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
 
 	ResetSceneSelection();
 }
@@ -1163,6 +1208,7 @@ void UEditorEngine::OpenScene()
 	}
 	if (!FEditorFileUtils::LoadScene(EditorWorld))
 		return;
+	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
 
 	ResetSceneSelection();
 }
@@ -1175,7 +1221,7 @@ void UEditorEngine::SaveCurrentScene()
 		HTR_LOG(Warning, "Cannot save during PIE. Stop the play session first.");
 		return;
 	}
-	FEditorFileUtils::SaveScene(EditorWorld);
+	if (FEditorFileUtils::SaveScene(EditorWorld) && SettingsPanel) SettingsPanel->MarkSceneSaved();
 }
 
 // 공통 파일 유틸리티로 새 경로에 씬을 저장한다.
@@ -1186,5 +1232,5 @@ void UEditorEngine::SaveSceneAs()
 		HTR_LOG(Warning, "Cannot save during PIE. Stop the play session first.");
 		return;
 	}
-	FEditorFileUtils::SaveSceneAs(EditorWorld);
+	if (FEditorFileUtils::SaveSceneAs(EditorWorld) && SettingsPanel) SettingsPanel->MarkSceneSaved();
 }

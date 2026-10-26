@@ -1,0 +1,161 @@
+{
+	"Root": {
+		"Children": [
+			{
+				"Children": [],
+				"Class": "UImageWidget",
+				"Properties": {
+					"Anchor": [
+						0.0,
+						0.0
+					],
+					"Pivot": [
+						0.0,
+						0.0
+					],
+					"Position": [
+						32.0,
+						24.0
+					],
+					"Size": [
+						48.0,
+						48.0
+					],
+					"TexturePath": "Assets/Icons/heart.png",
+					"Tint": [
+						1.0,
+						1.0,
+						1.0,
+						1.0
+					],
+					"WidgetName": "Heart",
+					"ZOrder": 0,
+					"bVisible": true
+				}
+			},
+			{
+				"Children": [],
+				"Class": "UTextWidget",
+				"Properties": {
+					"Anchor": [
+						0.0,
+						0.0
+					],
+					"Color": [
+						1.0,
+						1.0,
+						1.0,
+						1.0
+					],
+					"FontPath": "Assets/Fonts/Pretendard.json",
+					"FontSize": 40.0,
+					"Pivot": [
+						0.0,
+						0.0
+					],
+					"Position": [
+						88.0,
+						26.0
+					],
+					"Size": [
+						50.0,
+						48.0
+					],
+					"Text": "3",
+					"WidgetName": "Life",
+					"ZOrder": 0,
+					"bVisible": true
+				}
+			},
+			{
+				"Children": [],
+				"Class": "UImageWidget",
+				"Properties": {
+					"Anchor": [
+						0.0,
+						0.0
+					],
+					"Pivot": [
+						0.0,
+						0.0
+					],
+					"Position": [
+						170.0,
+						24.0
+					],
+					"Size": [
+						48.0,
+						48.0
+					],
+					"TexturePath": "Assets/Icons/coin.png",
+					"Tint": [
+						1.0,
+						1.0,
+						1.0,
+						1.0
+					],
+					"WidgetName": "Coin",
+					"ZOrder": 0,
+					"bVisible": true
+				}
+			},
+			{
+				"Children": [],
+				"Class": "UTextWidget",
+				"Properties": {
+					"Anchor": [
+						0.0,
+						0.0
+					],
+					"Color": [
+						1.0,
+						1.0,
+						1.0,
+						1.0
+					],
+					"FontPath": "Assets/Fonts/Pretendard.json",
+					"FontSize": 40.0,
+					"Pivot": [
+						0.0,
+						0.0
+					],
+					"Position": [
+						226.0,
+						26.0
+					],
+					"Size": [
+						70.0,
+						48.0
+					],
+					"Text": "0",
+					"WidgetName": "Coins",
+					"ZOrder": 0,
+					"bVisible": true
+				}
+			}
+		],
+		"Class": "UCanvasWidget",
+		"Properties": {
+			"Anchor": [
+				0.0,
+				0.0
+			],
+			"Pivot": [
+				0.0,
+				0.0
+			],
+			"Position": [
+				0.0,
+				0.0
+			],
+			"Size": [
+				100.0,
+				100.0
+			],
+			"WidgetName": "Root",
+			"ZOrder": 0,
+			"bVisible": true
+		}
+	},
+	"Version": 1
+}

@@ -4,6 +4,7 @@
 #include "Editor/Rendering/SceneDepthRenderer.h"
 #include "Editor/Rendering/CascadeFloorRenderer.h"
 #include "Editor/Rendering/GridRenderer.h"
+#include "Editor/Rendering/MapTileRenderer.h"
 #include "Editor/Rendering/Outline.h"
 #include "Editor/Rendering/OutLineRenderer.h"
 #include "Editor/Gizmo/Gizmo.h"
@@ -50,6 +51,11 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 {
 	if (bIsPIE || !ViewClient || !Resources.Settings) return;
 	OverlayResources = Resources;
+	if (Resources.MapTiles && Resources.MapTileEditor && Resources.EditorWorld)
+		Overlays.EditorMapTiles = [this]
+		{
+			OverlayResources.MapTiles->OnRender(*OverlayResources.EditorWorld, View.ViewProjectionMatrix, *OverlayResources.MapTileEditor);
+		};
 	const FEditorSettings& Settings = *Resources.Settings;
 	const FViewportSettings ViewportSetting{ 0, 0, Color->GetWidth(), Color->GetHeight(), 0.0f, 1.0f };
 	const bool bDrawSelectedLight = bIsActiveViewport && Resources.Gizmo->GetTarget() &&
@@ -57,7 +63,8 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 		 Cast<APointLightActor>(Resources.Gizmo->GetTarget()->GetOwner()) ||
 		 Cast<ARectLightActor>(Resources.Gizmo->GetTarget()->GetOwner()));
 	const bool bDrawCascadeBounds = Settings.bDrawCascadeBounds;
-	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds)
+	const bool bDrawAllCollision = Settings.bDrawAllCollision;
+	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds || bDrawAllCollision)
 		Overlays.EditorLines = [this, ViewClient, bDrawSelectedLight, bDrawCascadeBounds]
 		{
 			RenderEditorLines(ViewClient, bDrawSelectedLight, bDrawCascadeBounds);
@@ -150,6 +157,23 @@ void FEditorViewPasses::RenderEditorLines(FEditorViewportClient* ViewClient,
             if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component); Primitive && Primitive->IsCollisionEnabled())
                 Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
     }
+	if (Settings.bDrawAllCollision && OverlayResources.ActiveWorld && OverlayResources.ActiveWorld->GetPersistentLevel())
+	{
+		for (AActor* Actor : OverlayResources.ActiveWorld->GetPersistentLevel()->GetActors())
+		{
+			if (!Actor) continue;
+			for (UActorComponent* Component : Actor->GetComponents())
+			{
+				if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component))
+				{
+					if (Primitive->IsCollisionEnabled())
+					{
+						Primitive->DrawCollision(*Lines, FVector4(0.0f, 1.0f, 1.0f, 1.0f));
+					}
+				}
+			}
+		}
+	}
     Lines->OnRender(View.ViewProjectionMatrix);
 }
 
@@ -235,6 +259,7 @@ bool FEditorViewPasses::AddPasses(FRenderGraphBuilder& Graph, FSceneRenderer& Sc
 	}
 
 	if (!AddOverlay(Graph, FinalColor, DepthRef, "EditorLines", Overlays.EditorLines) ||
+		!AddOverlay(Graph, FinalColor, DepthRef, "EditorMapTiles", Overlays.EditorMapTiles) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGrid", Overlays.EditorGrid) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorOutline", Overlays.EditorOutline) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGizmo", Overlays.EditorGizmo, ERenderGraphLoadAction::Clear) ||

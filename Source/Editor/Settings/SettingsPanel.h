@@ -22,6 +22,7 @@ struct FEditorSettings
 	bool bCacheShadows = true; // r.Shadow.CacheWholeSceneShadows
 	EPcfMode PcfMode = EPcfMode::Sample8;
 	bool bDrawBoundingBox = false;
+	bool bDrawAllCollision = false;
 	bool bShowUUID = false;
 	bool bDrawBatchLine = true;
 	bool bDrawCascadeBounds = false;
@@ -94,6 +95,7 @@ public:
     // 종료 저장은 마지막 프레임의 복사본을 사용해 저장 설정을 유지한다.
     void CaptureViewportSettings();
     void ApplyViewportSettings();
+	void MarkSceneSaved() { bHUDClassDirty = false; }
 
 private:
 	static constexpr float SectionGap = 10.0f;
@@ -104,7 +106,7 @@ private:
 	void ReadWorldSettings(FEditorSettings& Out) const;
 	void ApplyWorldSettings();
 	void ApplySceneDepthRange();
-	void DrawDefaultPawnSettings();
+	void DrawTestPawnSettings();
 	void DrawShadowMapSettings();
 
 	UWorld* World = nullptr;
@@ -112,4 +114,5 @@ private:
 	FViewportsPanel* ViewportsPanel = nullptr;
 	std::function<void(const FString&)> EditScriptCallback;
 	FEditorSettings Settings;
+	bool bHUDClassDirty = false;
 };
