@@ -395,6 +395,7 @@ void UGhostAIComponent::TickComponent(float DeltaTime)
 	if (Dist <= Step || Dist < 0.05f)
 	{
 		Owner->SetActorLocation(TargetWorldPos);
+		if (AGhostActor* Ghost = Cast<AGhostActor>(Owner); Ghost && Ghost->IsHitFrozen()) return;
 		CurrentPath.RemoveAt(0);
 		if (CurrentPath.IsEmpty())
 		{
@@ -405,6 +406,7 @@ void UGhostAIComponent::TickComponent(float DeltaTime)
 	{
 		FVector Dir = ToTarget / Dist;
 		Owner->SetActorLocation(CurrentPos + Dir * Step);
+		if (AGhostActor* Ghost = Cast<AGhostActor>(Owner); Ghost && Ghost->IsHitFrozen()) return;
 		const float TargetYaw = FMath::RadiansToDegrees(std::atan2(Dir.Y, Dir.X));
 		Owner->SetActorRotation(FRotator(0.0f, TargetYaw, 0.0f));
 	}

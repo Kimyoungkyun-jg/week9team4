@@ -14,5 +14,6 @@ protected:
 	void OnWidgetShown(const FString& Path) override;
 
 private:
+	void LayoutMainMenu();
 	bool bScoreboardOpen = false;
 };

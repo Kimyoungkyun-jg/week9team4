@@ -121,7 +121,7 @@ public:
 	bool SetDefaultPawnClass(UClass* Class);
 	bool SetPlayerControllerClass(UClass* Class);
 	bool IsPaused() const { return bIsPaused; }
-	void SetPaused(bool bPaused) { bIsPaused = bPaused; }
+	void SetPaused(bool bPaused);
 
 	FScene& GetScene() { return Scene; }
 	FTickTaskManager& GetTickTaskManager() { return TickTaskManager; }

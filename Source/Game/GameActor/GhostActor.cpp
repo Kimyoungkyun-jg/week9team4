@@ -157,6 +157,7 @@ void AGhostActor::OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, UPr
 void AGhostActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (bHitFrozen) return;
 
 	// 이동(Root 위치)을 방해하지 않도록 메쉬에만 로컬 Z Bobbing 애니메이션 적용
 	RunningTime += DeltaTime;
@@ -167,6 +168,19 @@ void AGhostActor::Tick(float DeltaTime)
 	FRotator BodyRotation = BodyMesh->GetRelativeRotation();
 	BodyRotation.Yaw += BodyRotationSpeed * DeltaTime;
 	BodyMesh->SetRelativeRotation(BodyRotation);
+}
+
+void AGhostActor::SetHitFrozen(bool bFrozen)
+{
+	if (bHitFrozen == bFrozen) return;
+	bHitFrozen = bFrozen;
+	if (bFrozen)
+	{
+		bAITickBeforeHit = AIComponent && AIComponent->IsComponentTickEnabled();
+		bLuaTickBeforeHit = LuaScriptComponent && LuaScriptComponent->IsComponentTickEnabled();
+	}
+	if (AIComponent) AIComponent->SetComponentTickEnabled(bFrozen ? false : bAITickBeforeHit);
+	if (LuaScriptComponent) LuaScriptComponent->SetComponentTickEnabled(bFrozen ? false : bLuaTickBeforeHit);
 }
 
 bool AGhostActor::IsPlayerInDetectionRange(bool bForceChaseRange) const

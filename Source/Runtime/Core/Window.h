@@ -22,6 +22,11 @@ public:
 	void ProcessMessage(bool& bIsRunning);
 	// 메인 창이 아닌 창(PIE 창 등)을 직접 닫는다. 메인 창은 OS 종료 흐름을 따른다.
 	void Destroy();
+	// 화면 좌표의 영역에 커서를 가두고 숨긴다. 영역을 생략하면 창의 클라이언트 영역을 사용한다.
+	void CaptureCursor(const RECT* ScreenRect = nullptr);
+	void RecenterCursor();
+	void ReleaseCursor();
+	bool IsCursorCaptured() const { return bCursorCaptured; }
 
 	// false면 닫기 버튼이 앱을 끝내지 않고 ConsumeCloseRequest로 요청만 남긴다.
 	void SetQuitOnClose(bool bValue) { bQuitOnClose = bValue; }
@@ -58,6 +63,8 @@ private:
 	bool bQuitOnClose = true;
 	bool bCloseRequested = false;
 	bool bReceivesWndProcHook = true;
+	bool bCursorCaptured = false;
+	RECT CursorCaptureRect{};
 
 	HWND hWnd = nullptr;
 

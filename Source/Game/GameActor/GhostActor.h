@@ -80,6 +80,8 @@ public:
 	void RestoreEye();
 	void ResetToHome();
 	const FVector& GetInitialLocation() const { return InitialLocation; }
+	void SetHitFrozen(bool bFrozen);
+	bool IsHitFrozen() const { return bHitFrozen; }
 
 	void OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, UPrimitiveComponent* OtherComp);
 	bool IsPlayerInDetectionRange(bool bForceChaseRange = false) const;
@@ -109,6 +111,9 @@ private:
 	int32 EyeSlot = -1;
 	int32 PupilSlot = -1;
 	bool bEyeChanged = false;
+	bool bHitFrozen = false;
+	bool bAITickBeforeHit = false;
+	bool bLuaTickBeforeHit = false;
 	FVector InitialLocation = FVector::ZeroVector;
 	float RunningTime = 0.0f;
 	float BobbingSpeed = 2.0f;

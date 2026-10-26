@@ -9,6 +9,7 @@
                 "Properties": {
                     "WidgetName": "GhostHitFlash",
                     "TexturePath": "WhiteTexture",
+                    "Size": [1280, 720],
                     "Tint": [0.0, 0.0, 0.0, 0.0]
                 },
                 "Children": []

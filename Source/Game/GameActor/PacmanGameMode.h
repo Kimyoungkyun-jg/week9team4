@@ -22,6 +22,7 @@ public:
 	void BeginPlay() override;
 	void Tick(float DeltaTime) override;
 	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying; }
+	bool WantsMouseCapture() const { return !bResultShown; }
 	int32 GetCollectedCoinCount() const { return GetCoinCount(); }
 	int32 GetMaxCoinCount() const { return MaxCoinCount; }
 	int32 GetPlayerLife() const;
@@ -42,7 +43,7 @@ private:
 	enum class EResultFadePhase { None, FadeOut, FadeIn, Complete };
 	EResultFadePhase FadePhase = EResultFadePhase::None;
 	bool bResultShown = false;
-	enum class EGhostHitPhase { None, CloseUp, FadeToBlack, FadeFromBlack, WaitForGameOverFade };
+	enum class EGhostHitPhase { None, CloseUp, FadeToBlack, FadeFromBlack };
 	EGhostHitPhase GhostHitPhase = EGhostHitPhase::None;
 	float GhostHitElapsed = 0.0f;
 	float GhostHitCooldown = 0.0f;
@@ -57,6 +58,7 @@ private:
 	class UImageWidget* HitImage = nullptr;
 	uint64 HitOverlayHandle = 0;
 	bool bGhostHitPlaying = false;
+	void CommitGameResult(bool bCleared);
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 };

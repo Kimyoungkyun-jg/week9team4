@@ -9,6 +9,7 @@
 
 class UWorld;
 class UEngine;
+class FSoundManager;
 struct FWorldContext;
 
 class UGameInstance : public UObject
@@ -34,7 +35,9 @@ public:
 	
 	UEngine* GetEngine() const;
 	FLuaManager* GetLuaManager() { return LuaManager.get(); }
+	FSoundManager* GetSoundManager() { return SoundManager.get(); }
 private:
+	TUniquePtr<FSoundManager> SoundManager;
 	FWorldContext* WorldContext = nullptr;
 	TUniquePtr<FLuaManager> LuaManager;
 	std::function<void()> EndSessionHandler;
