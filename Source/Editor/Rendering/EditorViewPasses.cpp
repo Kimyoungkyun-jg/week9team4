@@ -21,6 +21,7 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/RectLightComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/BoxComponent.h"
 #include "Render/LineBatcher.h"
 #include "Text/TextRenderer.h"
 #include "Text/Font.h"
@@ -123,12 +124,18 @@ void FEditorViewPasses::RenderCollisionLines()
 	if (!Lines || !World || !World->GetPersistentLevel()) return;
 	Lines->BeginFrame();
 	const FVector4 Color(0.0f, 1.0f, 1.0f, 1.0f);
+	const FVector4 SelectedColor(1.0f, 0.75f, 0.1f, 1.0f);
+	const USceneComponent* Selected = OverlayResources.Gizmo ? OverlayResources.Gizmo->GetTarget() : nullptr;
 	for (AActor* Actor : World->GetPersistentLevel()->GetActors())
 	{
 		if (!Actor || !Actor->GetActorEnableCollision()) continue;
 		for (UActorComponent* Component : Actor->GetComponents())
 			if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component))
-				if (Primitive->IsCollisionEnabled()) Primitive->DrawCollision(*Lines, Color);
+				if (Primitive->IsCollisionEnabled())
+				{
+					const bool bSelectedMapBox = Primitive == Selected && Cast<UBoxComponent>(Primitive) && Cast<AMapActor>(Actor);
+					Primitive->DrawCollision(*Lines, bSelectedMapBox ? SelectedColor : Color);
+				}
 		if (!Actor->HasBegunPlay())
 			if (AMapActor* Map = Cast<AMapActor>(Actor))
 				if (!Map->HasExistingWallCollision())
