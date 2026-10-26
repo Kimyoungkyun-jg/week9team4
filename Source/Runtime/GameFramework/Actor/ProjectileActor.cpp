@@ -65,13 +65,14 @@ AProjectileActor::AProjectileActor()
 void AProjectileActor::BeginPlay()
 {
 	Super::BeginPlay();
-	if (ProjectileMovementComponent)
+	if (IsPendingKillPending()) return;
+	if (IsLiveOwnedComponent(*this, ProjectileMovementComponent))
 		ProjectileMovementComponent->OnProjectileImpact.AddRaw(this, &AProjectileActor::HandleProjectileImpact);
 }
 
 void AProjectileActor::EndPlay()
 {
-	if (ProjectileMovementComponent)
+	if (IsLiveOwnedComponent(*this, ProjectileMovementComponent))
 		ProjectileMovementComponent->OnProjectileImpact.RemoveAll(this);
 	Super::EndPlay();
 }
