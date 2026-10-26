@@ -5,6 +5,7 @@
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/CoinActor.h"
 #include "GameActor/GhostActor.h"
+#include "GameActor/GhostAIComponent.h"
 #include "GameActor/MainMenuGameMode.h"
 #include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
@@ -81,6 +82,7 @@ bool UEditorEngine::Init()
 	AFlashlightActor::StaticClass();
 	ACoinActor::StaticClass();
 	AGhostActor::StaticClass();
+	UGhostAIComponent::StaticClass();
 	AMainMenuGameMode::StaticClass();
 	AMainMenuHUD::StaticClass();
 	APacmanGameMode::StaticClass();

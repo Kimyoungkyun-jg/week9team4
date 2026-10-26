@@ -2,6 +2,30 @@
 #include <sol/sol.hpp>
 #include "Core/Delegates/Delegate.h"
 #include "Core/EngineLog.h"
+#include "UObject/Object.h"
+
+inline const void* GetLuaDelegateOwnerPointer(const sol::object& OwnerObj, const void* FallbackPtr = nullptr)
+{
+	if (!OwnerObj.valid() || OwnerObj.is<sol::nil_t>())
+	{
+		return FallbackPtr;
+	}
+
+	// 1. UObject 기반 클래스 (AActor, UActorComponent 등)의 실제 C++ 인스턴스 포인터 추출
+	if (OwnerObj.is<UObject*>())
+	{
+		return static_cast<const void*>(OwnerObj.as<UObject*>());
+	}
+
+	// 2. 일반 C++ 포인터
+	if (OwnerObj.is<void*>())
+	{
+		return OwnerObj.as<void*>();
+	}
+
+	// 3. Fallback: 순수 Lua 테이블 등인 경우 Lua 포인터
+	return OwnerObj.pointer();
+}
 
 inline void BindDelegateHandle(sol::state& Lua)
 {
@@ -29,7 +53,7 @@ void BindMulticastDelegateType(sol::state& Lua, const char* TypeName)
 			[](DelegateType& Self, sol::protected_function LuaFunc, sol::object OwnerObj) -> FDelegateHandle
 			{
 				if (!LuaFunc.valid()) return {};
-				const void* OwnerPtr = OwnerObj.valid() ? OwnerObj.pointer() : &Self;
+				const void* OwnerPtr = OwnerObj.valid() ? GetLuaDelegateOwnerPointer(OwnerObj, &Self) : &Self;
 
 				return Self.Add([LuaFunc](Args... CallbackArgs) {
 					sol::protected_function_result Result = LuaFunc(CallbackArgs...);
@@ -57,7 +81,24 @@ void BindMulticastDelegateType(sol::state& Lua, const char* TypeName)
 			[](DelegateType& Self, sol::table SelfTable, sol::protected_function LuaFunc) -> FDelegateHandle
 			{
 				if (!LuaFunc.valid() || !SelfTable.valid()) return {};
-				const void* OwnerPtr = SelfTable.pointer();
+				const void* OwnerPtr = nullptr;
+				sol::object ActorField = SelfTable["Actor"];
+				if (ActorField.valid() && !ActorField.is<sol::nil_t>())
+				{
+					OwnerPtr = GetLuaDelegateOwnerPointer(ActorField);
+				}
+				else
+				{
+					sol::object OwnerField = SelfTable["Owner"];
+					if (OwnerField.valid() && !OwnerField.is<sol::nil_t>())
+					{
+						OwnerPtr = GetLuaDelegateOwnerPointer(OwnerField);
+					}
+				}
+				if (!OwnerPtr)
+				{
+					OwnerPtr = SelfTable.pointer();
+				}
 
 				return Self.Add([LuaFunc, SelfTable](Args... CallbackArgs) {
 					sol::protected_function_result Result = LuaFunc(SelfTable, CallbackArgs...);
@@ -75,7 +116,8 @@ void BindMulticastDelegateType(sol::state& Lua, const char* TypeName)
 		"IsBound", &DelegateType::IsBound,
 		"RemoveAll", [](DelegateType& Self, sol::object OwnerObj) -> int32 {
 			if (!OwnerObj.valid()) return 0;
-			return Self.RemoveAll(OwnerObj.pointer());
+			const void* OwnerPtr = GetLuaDelegateOwnerPointer(OwnerObj);
+			return OwnerPtr ? Self.RemoveAll(OwnerPtr) : 0;
 		},
 		"Broadcast", &DelegateType::Broadcast
 	);

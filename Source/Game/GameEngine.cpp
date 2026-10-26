@@ -3,6 +3,7 @@
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/GhostActor.h"
+#include "GameActor/GhostAIComponent.h"
 #include "GameActor/MainMenuGameMode.h"
 #include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
@@ -42,6 +43,7 @@ namespace
 		(void)APlayerPawn::StaticClass();
 		(void)AFlashlightActor::StaticClass();
 		(void)AGhostActor::StaticClass();
+		(void)UGhostAIComponent::StaticClass();
 		(void)AMainMenuGameMode::StaticClass();
 		(void)AMainMenuHUD::StaticClass();
 		(void)APacmanGameMode::StaticClass();
