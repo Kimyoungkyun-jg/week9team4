@@ -24,4 +24,7 @@ AExponentialHeightFogActor::AExponentialHeightFogActor()
         IconMat->Textures[0] = Icon;                 
         BillboardComponent->SetMaterial(0, IconMat);
     }
+
+	LuaScriptComponent = CreateDefaultSubobject<ULuaScriptComponent>("LuaScriptComponent");
+	LuaScriptComponent->SetScriptPath("Assets/Scripts/Fog.lua");
 }
