@@ -33,13 +33,17 @@ bool Weights(const TSimplex& S, int Mask, double* W, FVector& Point)
     int Id[4], N = 0;
     for (int I = 0; I < static_cast<int>(S.size()); ++I) if (Mask & (1 << I)) Id[N++] = I;
     double M[3][4] = {};
-    FVector E[3];
+    double E[3][3] = {};
     const FVector Base = S[Id[0]].P;
-    for (int I = 0; I < N - 1; ++I) E[I] = S[Id[I + 1]].P - Base;
+    for (int I = 0; I < N - 1; ++I)
+        for (int Axis = 0; Axis < 3; ++Axis) E[I][Axis] = static_cast<double>(S[Id[I + 1]].P[Axis]) - Base[Axis];
     for (int I = 0; I < N - 1; ++I)
     {
-        for (int J = 0; J < N - 1; ++J) M[I][J] = E[I].Dot(E[J]);
-        M[I][N - 1] = -E[I].Dot(Base);
+        // FVector의 뺄셈/내적으로 먼저 계산하면 float 오차가 double 행렬에도 그대로 남는다.
+        // 큰 바닥/작은 캡슐 조합에서는 원점을 포함하는 사면체조차 양의 거리로 오판한다.
+        for (int J = 0; J < N - 1; ++J)
+            for (int Axis = 0; Axis < 3; ++Axis) M[I][J] += E[I][Axis] * E[J][Axis];
+        for (int Axis = 0; Axis < 3; ++Axis) M[I][N - 1] -= E[I][Axis] * Base[Axis];
     }
     for (int I = 0; I < N - 1; ++I)
     {
@@ -58,12 +62,13 @@ bool Weights(const TSimplex& S, int Mask, double* W, FVector& Point)
     std::fill(W, W + 4, 0.0);
     W[Id[0]] = 1.0;
     for (int I = 1; I < N; ++I) { W[Id[I]] = M[I - 1][N - 1]; W[Id[0]] -= W[Id[I]]; }
-    Point = FVector::ZeroVector;
+    double Coordinates[3] = {};
     for (int I = 0; I < static_cast<int>(S.size()); ++I)
     {
         if (W[I] < -1.e-6) return false;
-        Point += S[I].P * static_cast<float>(W[I]);
+        for (int Axis = 0; Axis < 3; ++Axis) Coordinates[Axis] += static_cast<double>(S[I].P[Axis]) * W[I];
     }
+    Point = FVector(static_cast<float>(Coordinates[0]), static_cast<float>(Coordinates[1]), static_cast<float>(Coordinates[2]));
     return true;
 }
 
@@ -335,7 +340,7 @@ bool OverlapCollisionGeometry(const FCollisionGeometry& A, const FCollisionGeome
     return true;
 }
 
-bool SweepCollisionGeometry(const FCollisionGeometry& Moving, const FVector& Delta, const FCollisionGeometry& Target, FHitResult& Hit)
+bool SweepCollisionGeometry(const FCollisionGeometry& Moving, const FVector& Delta, const FCollisionGeometry& Target, FHitResult& Hit, bool bReportInitialPenetration)
 {
     Hit = FHitResult(1.f);
     if (!Moving.IsValid() || !Target.IsValid() || !Finite(Delta)) return false;
@@ -350,6 +355,7 @@ bool SweepCollisionGeometry(const FCollisionGeometry& Moving, const FVector& Del
             Hit.Time = Time; Hit.Distance = Delta.Size() * Time; Hit.Location = Current.Center;
             Hit.ImpactPoint = D.PointB; Hit.Normal = Hit.ImpactNormal = Time > 0.f ? SeparatingNormal : D.Normal;
             if (Time == 0.f) Penetration(Moving, Target, D, Hit);
+            if (Time == 0.f && bReportInitialPenetration && Hit.bStartPenetrating) return true;
             // A touching pair may move apart or tangentially. An initial penetration
             // also permits movement out of the surface, leaving resolution to movement.
             if (Time == 0.f && Delta.Dot(Hit.Normal) >= -1.e-7f) return false;

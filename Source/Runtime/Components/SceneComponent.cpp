@@ -302,7 +302,7 @@ void USceneComponent::SetWorldScale3D(FVector NewScale)
     SetRelativeScale3D(RelativeScale);
 }
 
-bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
+bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit, EMoveComponentFlags /*MoveFlags*/)
 {
 	if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending()))
 	{

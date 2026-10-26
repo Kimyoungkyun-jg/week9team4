@@ -93,7 +93,8 @@ public:
 	// 현재 World의 Component에 Ray를 전달하고 가장 가까운 유효 교차를 반환한다.
 	bool LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 		FBillboardTraceTransform ResolveBillboard = nullptr, const void* ViewContext = nullptr);
-	bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation);
+	// bReportInitialPenetration=true: 초기 침투를 모두 보존하고, 이후 Hit도 첫 비침투 블록까지 수집한다.
+	bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation, bool bReportInitialPenetration = false);
 	bool LineTraceByChannel(const FRay& Ray, float Distance, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
 	bool OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeometry& Geometry, TArray<UPrimitiveComponent*>& OutComponents);
 	void RegisterCollisionComponent(UPrimitiveComponent* Component);
@@ -157,6 +158,7 @@ private:
 	friend class UActorComponent;
 	friend class USceneComponent;
 	friend class UPrimitiveComponent;
+	friend class UMovementComponent;
 	void QueueObjectDeletion(UObject* Object);
 	TArray<UObject*> PendingDeletion;
 	bool bIsTicking = false;

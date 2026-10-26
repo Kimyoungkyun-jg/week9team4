@@ -100,7 +100,7 @@ void UPrimitiveComponent::OnTransformDirty()
     if (GetWorld()) GetWorld()->MarkCollisionDirty(this);
 }
 
-bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
+bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit, EMoveComponentFlags MoveFlags)
 {
 	if (!IsValid(this) || IsBeingDestroyed() || (GetOwner() && GetOwner()->IsPendingKillPending()))
 	{
@@ -128,16 +128,24 @@ bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& Ne
     if (bSweep && World && IsCollisionEnabled() && LengthSquared > MinMovementDistSq)
     {
         TArray<FHitResult> Hits;
-        World->ComponentSweepMulti(Hits, this, Start, Start + Delta, PreviousRotation.Quaternion());
+        // 초기 침투를 쿼리 단계에서 버리지 않고, 아래에서 MoveFlags에 따라 판정한다.
+        World->ComponentSweepMulti(Hits, this, Start, Start + Delta, PreviousRotation.Quaternion(), true);
         const float Length = std::sqrt(LengthSquared);
+        const FVector MoveDirection = Delta / Length;
         float BlockingNormalDotDelta = FLT_MAX;
         for (FHitResult& TestHit : Hits)
         {
             TestHit.Time = std::max(0.f, TestHit.Time - 0.001f / Length);
+            // 초기 침투로 막혔다면 이동하지 못한 구간의 오버랩은 알리지 않는다.
+            if (Result.bBlockingHit && TestHit.Time > Result.Time) break;
             if (TestHit.bBlockingHit)
             {
                 if (TestHit.bStartPenetrating)
                 {
+                    // NoFlags: 끝까지 탈출했는지가 아니라 법선에 대한 이동 방향으로 판단한다.
+                    // 내적이 0인 평행 이동은 초기 침투를 무시할 조건을 만족하지 않는다.
+                    if (!HasFlag(MoveFlags, MOVECOMP_NeverIgnoreBlockingOverlaps) &&
+                        TestHit.ImpactNormal.Dot(MoveDirection) > 0.f) continue;
                     const float NormalDotDelta = TestHit.ImpactNormal.Dot(Delta);
                     if (!Result.bBlockingHit || NormalDotDelta < BlockingNormalDotDelta)
                     {
@@ -171,7 +179,9 @@ bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& Ne
     Result.Location = Destination;
     Result.Distance = (Destination - Start).Size();
     if (bMoved) UpdateOverlaps(&SweptOverlaps);
-    if (Result.bBlockingHit && CanNotifyCollision(this)) DispatchBlockingHit(Result);
+    // 초기 침투의 Hit 알림만 억제한다. BlockingHit 반환과 오버랩 갱신에는 영향이 없다.
+    const bool bAllowHitDispatch = !Result.bStartPenetrating || !HasFlag(MoveFlags, MOVECOMP_DisableBlockingOverlapDispatch);
+    if (Result.bBlockingHit && bAllowHitDispatch && CanNotifyCollision(this)) DispatchBlockingHit(Result);
     if (Result.HitComponent && !IsValid(Result.HitComponent)) Result.HitComponent = nullptr;
     if (Hit) *Hit = Result;
     return bMoved;

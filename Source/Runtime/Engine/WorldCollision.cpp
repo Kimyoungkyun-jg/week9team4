@@ -81,7 +81,7 @@ void UWorld::UpdateCollisionIndex()
     bCollisionTopologyDirty = false;
 }
 
-bool UWorld::ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation)
+bool UWorld::ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation, bool bReportInitialPenetration)
 {
     ++CollisionQueryStats.SweepQueries;
     OutHits.Reset();
@@ -108,7 +108,7 @@ bool UWorld::ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponen
             if (Response == ECollisionResponse::Ignore) return;
             FHitResult Hit;
             ++CollisionQueryStats.NarrowPhaseTests;
-            if (!SweepCollisionGeometry(Geometry, Delta, Entry.Geometry, Hit)) return;
+            if (!SweepCollisionGeometry(Geometry, Delta, Entry.Geometry, Hit, bReportInitialPenetration)) return;
             Hit.bBlockingHit = Response == ECollisionResponse::Block;
             Hit.HitComponent = Other;
             Hit.TraceStart = Start; Hit.TraceEnd = End;
@@ -117,7 +117,9 @@ bool UWorld::ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponen
             if (Hit.bBlockingHit)
             {
                 bBlockingHit = true;
-                BlockingTime = std::min(BlockingTime, Hit.Time);
+                // MoveComponent가 초기 침투를 무시할 수 있으므로 그 뒤의 충돌을 미리 자르지 않는다.
+                if (!bReportInitialPenetration || !Hit.bStartPenetrating)
+                    BlockingTime = std::min(BlockingTime, Hit.Time);
             }
         });
     std::sort(OutHits.begin(), OutHits.end(), [](const FHitResult& A, const FHitResult& B)

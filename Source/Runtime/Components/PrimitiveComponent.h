@@ -91,7 +91,7 @@ public:
 
 	virtual void OnTransformDirty() override;
 
-	virtual bool MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit = nullptr) override;
+	virtual bool MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit = nullptr, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags) override;
 
 	virtual void PostEditChangeProperty(const FProperty& Property) override;
 
