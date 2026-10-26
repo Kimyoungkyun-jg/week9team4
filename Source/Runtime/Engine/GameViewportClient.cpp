@@ -6,6 +6,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/GameMode.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/ViewportCameraMovement.h"
@@ -15,6 +16,8 @@
 #include "UI/Widget.h"
 #include "UI/WidgetAsset.h"
 #include "UI/WidgetRenderer.h"
+#include "Serialization/JsonArchive.h"
+#include "Input/InputSystem.h"
 
 namespace
 {
@@ -45,6 +48,8 @@ void FGameViewportClient::SetWidgetRoot(TUniquePtr<UCanvasWidget> InRoot)
 {
 	if (PressedButton) { PressedButton->SetPressed(false); bUIBlockingClick = true; }
 	PressedButton = nullptr;
+	ClearHoveredButton();
+	SetFocusedTextInput(nullptr);
 	WidgetRoot = std::move(InRoot);
 	if (WidgetRoot) StartAutoTimers(WidgetRoot.get());
 }
@@ -53,6 +58,8 @@ void FGameViewportClient::ClearWidgetRoot()
 {
 	if (PressedButton) { PressedButton->SetPressed(false); bUIBlockingClick = true; }
 	PressedButton = nullptr;
+	ClearHoveredButton();
+	SetFocusedTextInput(nullptr);
 	WidgetRoot.reset();
 }
 
@@ -60,6 +67,7 @@ uint64 FGameViewportClient::AddWidgetOverlay(const FString& AssetPath, bool bMod
 {
 	TUniquePtr<UCanvasWidget> Overlay = FWidgetAsset::Load(AssetPath);
 	if (!Overlay) return 0;
+	ClearHoveredButton();
 	StartAutoTimers(Overlay.get());
 	const uint64 Handle = NextWidgetOverlayHandle++;
 	WidgetOverlays.Add({Handle, std::move(Overlay), bModal});
@@ -72,6 +80,8 @@ bool FGameViewportClient::RemoveWidgetOverlay(uint64 Handle)
 	{
 		if (WidgetOverlays[Index].Handle != Handle) continue;
 		if (PressedButton) { PressedButton->SetPressed(false); PressedButton = nullptr; bUIBlockingClick = true; }
+		ClearHoveredButton();
+		SetFocusedTextInput(nullptr);
 		WidgetOverlays.RemoveAt(Index);
 		return true;
 	}
@@ -81,12 +91,15 @@ bool FGameViewportClient::RemoveWidgetOverlay(uint64 Handle)
 void FGameViewportClient::ClearWidgetOverlays()
 {
 	if (PressedButton) { PressedButton->SetPressed(false); PressedButton = nullptr; }
+	ClearHoveredButton();
+	SetFocusedTextInput(nullptr);
 	WidgetOverlays.Empty();
 	bUIBlockingClick = false;
 }
 
 void FGameViewportClient::RenderUI()
 {
+	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
 	if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
 	if (!WidgetRenderer)
 	{
@@ -115,6 +128,13 @@ void FGameViewportClient::MouseMove(FViewport* Viewport, int32 X, int32 Y)
 	UIMouseX = X;
 	UIMouseY = Y;
 	HandleUIMouseMove(X, Y);
+	UButtonWidget* Button = HitTestButton();
+	if (Button != HoveredButton)
+	{
+		ClearHoveredButton();
+		HoveredButton = Button;
+		if (HoveredButton) HoveredButton->SetHovered(true);
+	}
 }
 
 namespace
@@ -161,42 +181,84 @@ bool FGameViewportClient::BindButtonAction(const FString& WidgetName, std::funct
 	return false;
 }
 
+void FGameViewportClient::RequestSceneChange(const FString& ScenePath, const FString& FallbackPath)
+{
+	if (ScenePath.empty() || !PendingScenePath.empty()) return;
+	PendingScenePath = ScenePath;
+	FallbackScenePath = FallbackPath;
+}
+
+void FGameViewportClient::ProcessPendingSceneChange()
+{
+	if (!World || PendingScenePath.empty()) return;
+	FString ScenePath = std::move(PendingScenePath);
+	FString FallbackPath = std::move(FallbackScenePath);
+	PendingScenePath.clear();
+	FallbackScenePath.clear();
+	if (!FJsonArchive::LoadWorld(World, ScenePath))
+	{
+		HTR_LOG(Error, "Failed to load scene: {}", ScenePath);
+		if (FallbackPath.empty() || !FJsonArchive::LoadWorld(World, FallbackPath)) return;
+	}
+	UWorld* LoadedWorld = World;
+	SetWorld(nullptr);
+	SetWorld(LoadedWorld);
+	LoadedWorld->BeginPlay();
+}
+
+void FGameViewportClient::ClearHoveredButton()
+{
+	if (HoveredButton) HoveredButton->SetHovered(false);
+	HoveredButton = nullptr;
+}
+
+void FGameViewportClient::SetFocusedTextInput(UTextInputWidget* Input)
+{
+	if (FocusedTextInput == Input) return;
+	if (FocusedTextInput) FocusedTextInput->SetFocused(false);
+	FocusedTextInput = Input;
+	if (FocusedTextInput) FocusedTextInput->SetFocused(true);
+}
+
+UButtonWidget* FGameViewportClient::HitTestButton(bool* bBlocked) const
+{
+	if (bBlocked) *bBlocked = false;
+	if (!Width || !Height || UIMouseX < 0 || UIMouseY < 0 ||
+		static_cast<uint32>(UIMouseX) >= Width || static_cast<uint32>(UIMouseY) >= Height) return nullptr;
+	const FRect Rect{0, 0, static_cast<float>(Width), static_cast<float>(Height)};
+	for (int32 Index = static_cast<int32>(WidgetOverlays.Num()) - 1; Index >= 0; --Index)
+	{
+		const FWidgetOverlay& Overlay = WidgetOverlays[Index];
+		UCanvasWidget* Root = Overlay.Root.get();
+		if (!Root->IsVisible()) continue;
+		Root->Layout(Rect);
+		if (UButtonWidget* Button = HitButton(Root, static_cast<float>(UIMouseX), static_cast<float>(UIMouseY)))
+			return Button;
+		if (Overlay.bModal) { if (bBlocked) *bBlocked = true; return nullptr; }
+	}
+	if (!WidgetRoot) return nullptr;
+	WidgetRoot->Layout(Rect);
+	return HitButton(WidgetRoot.get(), static_cast<float>(UIMouseX), static_cast<float>(UIMouseY));
+}
+
 bool FGameViewportClient::ProcessUIKey(int32 Key, bool bDown)
 {
 	if (Key != static_cast<int32>(EKeyCode::LButton)) return false;
 	bool bBlocked = false;
-	const auto Hit = [this, &bBlocked]() -> UButtonWidget*
-	{
-		if (!Width || !Height || UIMouseX < 0 || UIMouseY < 0 ||
-			static_cast<uint32>(UIMouseX) >= Width || static_cast<uint32>(UIMouseY) >= Height) return nullptr;
-		const FRect Rect{0, 0, static_cast<float>(Width), static_cast<float>(Height)};
-		for (int32 Index = static_cast<int32>(WidgetOverlays.Num()) - 1; Index >= 0; --Index)
-		{
-			const FWidgetOverlay& Overlay = WidgetOverlays[Index];
-			UCanvasWidget* Root = Overlay.Root.get();
-			if (!Root->IsVisible()) continue;
-			Root->Layout(Rect);
-			if (UButtonWidget* Button = HitButton(Root, static_cast<float>(UIMouseX), static_cast<float>(UIMouseY)))
-				return Button;
-			if (Overlay.bModal) { bBlocked = true; return nullptr; }
-		}
-		if (!WidgetRoot) return nullptr;
-		WidgetRoot->Layout(Rect);
-		return HitButton(WidgetRoot.get(), static_cast<float>(UIMouseX), static_cast<float>(UIMouseY));
-	};
 	if (!bDown && PressedButton)
 	{
 		UButtonWidget* Button = PressedButton;
 		PressedButton = nullptr;
 		bUIBlockingClick = false;
 		Button->SetPressed(false);
-		if (Hit() == Button) Button->Click();
+		if (HitTestButton() == Button) Button->Click();
 		return true;
 	}
 	if (!bDown && bUIBlockingClick) { bUIBlockingClick = false; return true; }
 	if (!bDown) return false;
 	bUIBlockingClick = false;
-	PressedButton = Hit();
+	PressedButton = HitTestButton(&bBlocked);
+	SetFocusedTextInput(Cast<UTextInputWidget>(PressedButton));
 	if (!PressedButton)
 	{
 		bUIBlockingClick = bBlocked;
@@ -208,8 +270,14 @@ bool FGameViewportClient::ProcessUIKey(int32 Key, bool bDown)
 
 bool FGameViewportClient::InputKey(FViewport* Viewport, int32 Key, bool bDown)
 {
+	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
 	if (ProcessUIKey(Key, bDown) || HandleUIKey(Key, bDown))
 		return true;
+	if (FocusedTextInput && bDown)
+	{
+		if (Key == static_cast<int32>(EKeyCode::Backspace)) { FocusedTextInput->Backspace(); return true; }
+		if (Key == static_cast<int32>(EKeyCode::Enter)) { FocusedTextInput->Submit(); return true; }
+	}
 	if (bDown && Key == static_cast<int32>(EKeyCode::Escape))
 	{
 		bExitRequested = true;
@@ -223,6 +291,7 @@ bool FGameViewportClient::InputKey(FViewport* Viewport, int32 Key, bool bDown)
 	}
 
 	if (bSIEMode && Key == static_cast<int32>(EKeyCode::LButton)) return true;
+	if (World && World->GetGameMode() && !World->GetGameMode()->AllowsPlayerControllerInput()) return true;
 
 	if (World)
 	{
@@ -239,6 +308,7 @@ bool FGameViewportClient::InputAxis(FViewport* Viewport, int32 ControllerId, EGa
 {
 	if (HandleUIAxis(AxisKey, Delta))
 		return true;
+	if (World && World->GetGameMode() && !World->GetGameMode()->AllowsPlayerControllerInput()) return true;
 
 	if (World)
 	{
@@ -254,6 +324,8 @@ bool FGameViewportClient::InputAxis(FViewport* Viewport, int32 ControllerId, EGa
 void FGameViewportClient::LostFocus()
 {
 	if (PressedButton) { PressedButton->SetPressed(false); PressedButton = nullptr; }
+	ClearHoveredButton();
+	SetFocusedTextInput(nullptr);
 	bUIBlockingClick = false;
 	std::fill(std::begin(bSIEKeyDown), std::end(bSIEKeyDown), false);
 	SIEMouseDeltaX = SIEMouseDeltaY = SIEWheelDelta = 0.0f;
@@ -482,6 +554,8 @@ void FGameViewportClient::Resize(uint32 InWidth, uint32 InHeight)
 
 void FGameViewportClient::Reset()
 {
+	PendingScenePath.clear();
+	FallbackScenePath.clear();
 	ClearWidgetRoot();
 	ClearWidgetOverlays();
 	WidgetRenderer.reset();

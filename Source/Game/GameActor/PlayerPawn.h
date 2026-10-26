@@ -8,6 +8,9 @@ class UCapsuleComponent;
 class APlayerPawn : public ADefaultPawn
 {
 	DECLARE_CLASS(APlayerPawn, ADefaultPawn)
+	REFLECT_START(APlayerPawn)
+		PROPERTY(Life)
+	REFLECT_END()
 
 public:
 	APlayerPawn();
@@ -17,8 +20,11 @@ public:
 	void AddControllerPitchInput(float Value) override;
 	AFlashlightActor* GetFlashlightActor() const { return FlashlightActor; }
 	UCapsuleComponent* GetCollisionComponent() const { return CollisionComponent; }
+	int32 GetLife() const { return Life; }
+	void SetLife(int32 InLife);
 
 private:
 	AFlashlightActor* FlashlightActor = nullptr;
 	UCapsuleComponent* CollisionComponent = nullptr;
+	int32 Life = 3;
 };

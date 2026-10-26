@@ -3,6 +3,8 @@
 #include "KeyCode.h"
 #include "MouseButton.h"
 #include "Core/Types.h"
+#include "Core/EngineString.h"
+#include <string>
 
 enum class EGameInputAxis : uint8 { MouseX, MouseY, MouseWheel };
 
@@ -23,6 +25,8 @@ public:
     static void OnKeyUp(int VirtualKey);
     static void OnMouseUp(EMouseButton MouseButton);
     static void OnKeyDown(int VirtualKey);
+    static void OnChar(uint16 CodeUnit);
+    static FString ConsumeTextInput();
     static void OnMouseDown(EMouseButton MouseButton);
     static void OnMouseMove(int32 x, int32 y);
     static void OnMouseWheelDelta(int32 Wheel);
@@ -54,4 +58,5 @@ private:
     static inline int32 DeltaX = 0, DeltaY = 0;
 
     static inline int32 WheelDelta = 0;
+    static inline std::wstring TextInput;
 };

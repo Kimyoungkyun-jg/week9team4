@@ -18,6 +18,7 @@ class AGameMode : public AActor
 public:
 	AGameMode();
 	void SpawnPlayer(APawn*& OutPawn, APlayerController*& OutController);
+	virtual bool AllowsPlayerControllerInput() const { return true; }
 
 	UClass* GetDefaultPawnClass() const { return DefaultPawnClass; }
 	UClass* GetPlayerControllerClass() const { return PlayerControllerClass; }

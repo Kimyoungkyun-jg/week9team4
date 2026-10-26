@@ -76,6 +76,47 @@ TArray<UWidget*> UCanvasWidget::GetChildrenInPaintOrder() const
 	return Ordered;
 }
 
+UTextInputWidget::UTextInputWidget()
+{
+	SetText("");
+	SetFontSize(30.0f);
+	SetBackgroundColor({0.1f, 0.14f, 0.25f, 1.0f});
+	SetHoverBackgroundColor({0.16f, 0.22f, 0.38f, 1.0f});
+}
+
+FString UTextInputWidget::GetDisplayText() const
+{
+	return (GetValue().empty() && !bFocused ? Placeholder : GetValue()) + (bFocused ? "|" : "");
+}
+
+void UTextInputWidget::AppendText(const FString& Text)
+{
+	if (bReadOnly) return;
+	FString Value = GetValue();
+	int32 Count = 0;
+	for (unsigned char Byte : Value) if ((Byte & 0xC0) != 0x80) ++Count;
+	for (size_t Index = 0; Index < Text.size() && Count < std::max(1, MaxLength);)
+	{
+		const unsigned char Lead = static_cast<unsigned char>(Text[Index]);
+		const size_t Width = Lead < 0x80 ? 1 : Lead < 0xE0 ? 2 : Lead < 0xF0 ? 3 : 4;
+		if (Index + Width > Text.size()) break;
+		if (Lead >= 32 && Lead != 127) { Value.append(Text, Index, Width); ++Count; }
+		Index += Width;
+	}
+	SetValue(Value);
+}
+
+void UTextInputWidget::Backspace()
+{
+	if (bReadOnly) return;
+	FString Value = GetValue();
+	if (Value.empty()) return;
+	size_t Index = Value.size() - 1;
+	while (Index && (static_cast<unsigned char>(Value[Index]) & 0xC0) == 0x80) --Index;
+	Value.erase(Index);
+	SetValue(Value);
+}
+
 void UCanvasWidget::Layout(const FRect& ParentRect)
 {
 	UWidget::Layout(ParentRect);

@@ -710,7 +710,9 @@ void FSettingsPanel::DrawCollisionChannelSettings()
 	{
 		ImGui::PushID(Index);
 		ImGui::SetNextItemWidth(200.0f);
-		ImGui::InputText(Defaults.CollisionChannelNames[Index], Settings.CollisionChannelNames[Index], FEditorSettings::CollisionChannelNameCapacity);
+		const FString SlotName = "Channel" + std::to_string(Index);
+		ImGui::InputTextWithHint(SlotName.c_str(), Defaults.CollisionChannelNames[Index],
+			Settings.CollisionChannelNames[Index], FEditorSettings::CollisionChannelNameCapacity);
 		ImGui::PopID();
 	}
 }

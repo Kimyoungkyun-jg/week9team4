@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <chrono>
 #include <utility>
 #include "UObject/Object.h"
 #include "UObject/Class.h"
@@ -19,6 +20,10 @@ public:
 	virtual void Init();
 	virtual void Shutdown();
 	void RequestEndSession();
+	void StartRunTimer();
+	double StopRunTimer();
+	double GetRunElapsedSeconds() const;
+	bool IsRunTimerRunning() const { return bRunTimerRunning; }
 	void SetEndSessionHandler(std::function<void()> Handler) { EndSessionHandler = std::move(Handler); }
 	UWorld* GetWorld() const;
 	FWorldContext* GetWorldContext() const { return WorldContext; }
@@ -34,4 +39,7 @@ private:
 	TUniquePtr<FLuaManager> LuaManager;
 	std::function<void()> EndSessionHandler;
 	bool bEndSessionRequested = false;
+	std::chrono::steady_clock::time_point RunStartedAt{};
+	double LastRunSeconds = 0.0;
+	bool bRunTimerRunning = false;
 };

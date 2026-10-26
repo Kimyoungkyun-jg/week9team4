@@ -1,0 +1,333 @@
+{
+  "Version": 1,
+  "Root": {
+    "Class": "UCanvasWidget",
+    "Properties": {
+      "WidgetName": "ScoreboardRoot"
+    },
+    "Children": [
+      {
+        "Class": "UImageWidget",
+        "Properties": {
+          "WidgetName": "ScoreboardShade",
+          "TexturePath": "WhiteTexture",
+          "Tint": [
+            0.01,
+            0.02,
+            0.06,
+            1
+          ],
+          "Size": [
+            1672,
+            941
+          ]
+        },
+        "Children": []
+      },
+      {
+        "Class": "UImageWidget",
+        "Properties": {
+          "WidgetName": "ScoreboardBackground",
+          "TexturePath": "Assets/Icons/ScoreBoard.png",
+          "Size": [
+            1672,
+            941
+          ]
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreName1",
+          "Anchor": [
+            0.383,
+            0.368
+          ],
+          "Size": [
+            310,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            1,
+            0.9,
+            0.35,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreTime1",
+          "Anchor": [
+            0.623,
+            0.368
+          ],
+          "Size": [
+            210,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            1,
+            0.9,
+            0.35,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreName2",
+          "Anchor": [
+            0.383,
+            0.454
+          ],
+          "Size": [
+            310,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreTime2",
+          "Anchor": [
+            0.623,
+            0.454
+          ],
+          "Size": [
+            210,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreName3",
+          "Anchor": [
+            0.383,
+            0.541
+          ],
+          "Size": [
+            310,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            1,
+            0.65,
+            0.35,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreTime3",
+          "Anchor": [
+            0.623,
+            0.541
+          ],
+          "Size": [
+            210,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            1,
+            0.65,
+            0.35,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreName4",
+          "Anchor": [
+            0.383,
+            0.628
+          ],
+          "Size": [
+            310,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            0.45,
+            0.95,
+            1,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreTime4",
+          "Anchor": [
+            0.623,
+            0.628
+          ],
+          "Size": [
+            210,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            0.45,
+            0.95,
+            1,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreName5",
+          "Anchor": [
+            0.383,
+            0.715
+          ],
+          "Size": [
+            310,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            0.75,
+            0.55,
+            1,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "ScoreTime5",
+          "Anchor": [
+            0.623,
+            0.715
+          ],
+          "Size": [
+            210,
+            45
+          ],
+          "FontSize": 32,
+          "Color": [
+            0.75,
+            0.55,
+            1,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "CurrentTime",
+          "Anchor": [
+            0.498,
+            0.838
+          ],
+          "Size": [
+            340,
+            50
+          ],
+          "FontSize": 36,
+          "Color": [
+            1,
+            0.95,
+            0.55,
+            1
+          ],
+          "FontPath": "Assets/Fonts/Pretendard.json"
+        },
+        "Children": []
+      },
+      {
+        "Class": "UButtonWidget",
+        "Properties": {
+          "WidgetName": "BackToMenu",
+          "Text": "->",
+          "Anchor": [
+            1,
+            0
+          ],
+          "Position": [
+            -120,
+            30
+          ],
+          "Size": [
+            90,
+            55
+          ],
+          "FontSize": 32,
+          "BackgroundColor": [
+            0.02,
+            0.06,
+            0.18,
+            0.9
+          ],
+          "HoverBackgroundColor": [
+            0.05,
+            0.18,
+            0.38,
+            1
+          ],
+          "TextColor": [
+            1,
+            0.85,
+            0.15,
+            1
+          ]
+        },
+        "Children": []
+      }
+    ]
+  }
+}
