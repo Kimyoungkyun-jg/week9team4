@@ -1,13 +1,38 @@
 #include "EnginePCH.h"
 #include "MapActor.h"
 #include "Asset/AssetManager.h"
+#include "Components/BoxComponent.h"
+#include "Engine/World.h"
+#include "Serialization/StructuredArchiveSlots.h"
 #include <cmath>
+#include <string>
 
 namespace
 {
 	bool IsFinite(const FVector& V)
 	{
 		return std::isfinite(V.X) && std::isfinite(V.Y) && std::isfinite(V.Z);
+	}
+
+	const UStaticMeshComponent* FindMapMeshComponent(const AMapActor& Map)
+	{
+		const UStaticMeshComponent* Mesh = nullptr;
+		for (UActorComponent* Component : Map.GetComponents())
+			if (const auto* Candidate = Cast<UStaticMeshComponent>(Component))
+			{
+				if (Mesh) return nullptr;
+				Mesh = Candidate;
+			}
+		return Mesh == Map.GetStaticMeshComponent() ? Mesh : nullptr;
+	}
+
+	bool HasValidSeedMeshData(const FStaticMeshData* Mesh)
+	{
+		if (!Mesh || Mesh->Indices.IsEmpty() || Mesh->Indices.Num() % 3 != 0 || Mesh->Vertices.IsEmpty() ||
+			!std::isfinite(Mesh->AABB.Min.Z + 0.231775f)) return false;
+		for (uint32 Index : Mesh->Indices)
+			if (Index >= static_cast<uint32>(Mesh->Vertices.Num()) || !IsFinite(Mesh->Vertices[Index].Position)) return false;
+		return true;
 	}
 
 	FMatrix InverseGridMatrix(const FMatrix& Matrix, const FVector& Scale)
@@ -122,10 +147,128 @@ AMapActor::AMapActor()
 	if (!GetStaticMeshComponent()->GetMeshData() || !ResetGridToInitial()) InitializeDefaultTerrain();
 }
 
+void AMapActor::BeginPlay()
+{
+	Super::BeginPlay();
+	if (GetWorld() && (GetWorld()->GetWorldType() == EWorldType::PIE || GetWorld()->GetWorldType() == EWorldType::Game))
+	{
+		if (!HasExistingWallCollision())
+			RebuildWallCollision();
+	}
+}
+
+bool AMapActor::HasExistingWallCollision() const
+{
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component && Component->IsA(UBoxComponent::StaticClass()))
+			return true;
+	}
+	return false;
+}
+
+void AMapActor::ClearWallCollisionComponents()
+{
+	TArray<UActorComponent*> ToRemove;
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component && Component->IsA(UBoxComponent::StaticClass()))
+			ToRemove.Add(Component);
+	}
+	for (UActorComponent* Component : ToRemove)
+		DestroyComponent(Component);
+	WallCollisionComponents.Reset();
+}
+
+void AMapActor::GenerateWallCollisionComponents()
+{
+	ClearWallCollisionComponents();
+	for (const FBox& Bounds : GetWallCollisionLocalBoxes())
+	{
+		const FName Name("WallCollision_" + std::to_string(WallCollisionComponents.Num()));
+		UBoxComponent* Box = Cast<UBoxComponent>(AddComponent(UBoxComponent::StaticClass(), Name));
+		if (!Box) continue;
+		Box->SetRelativeLocation((Bounds.Min + Bounds.Max) * 0.5f);
+		Box->SetBoxExtent((Bounds.Max - Bounds.Min) * 0.5f);
+		Box->SetCollisionObjectType(ECollisionChannel::WorldStatic);
+		Box->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
+		Box->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Block);
+		Box->SetGenerateOverlapEvents(false);
+		Box->SetCollisionEnabled(true);
+		WallCollisionComponents.Add(Box);
+	}
+}
+
+TArray<FBox> AMapActor::GetWallCollisionLocalBoxes() const
+{
+	TArray<FBox> Boxes;
+	if (GetGridTransformWarning()) return Boxes;
+	// Keep touching wall rectangles joined; inset only their exposed faces.
+	// Checkerboard wall corners need a tighter inset so the pawn cannot slip diagonally through.
+	bool bDiagonalWallCorner = false;
+	for (int32 Y = 0; Y + 1 < Rows && !bDiagonalWallCorner; ++Y)
+		for (int32 X = 0; X + 1 < Columns; ++X)
+		{
+			const bool A = Tiles[Y * Columns + X] == EMapTileTerrain::Wall;
+			const bool B = Tiles[Y * Columns + X + 1] == EMapTileTerrain::Wall;
+			const bool C = Tiles[(Y + 1) * Columns + X] == EMapTileTerrain::Wall;
+			const bool D = Tiles[(Y + 1) * Columns + X + 1] == EMapTileTerrain::Wall;
+			if (A == D && B == C && A != B) { bDiagonalWallCorner = true; break; }
+		}
+	const float Inset = bDiagonalWallCorner ? 0.05f : 0.08f;
+	TArray<uint8> Covered;
+	Covered.Init(0, Columns * Rows);
+	for (int32 Row = 0; Row < Rows; ++Row)
+		for (int32 Column = 0; Column < Columns; ++Column)
+		{
+			const int32 Index = Row * Columns + Column;
+			if (Covered[Index] || Tiles[Index] != EMapTileTerrain::Wall) continue;
+			int32 EndColumn = Column + 1;
+			while (EndColumn < Columns && !Covered[Row * Columns + EndColumn] &&
+				Tiles[Row * Columns + EndColumn] == EMapTileTerrain::Wall) ++EndColumn;
+			int32 EndRow = Row + 1;
+			while (EndRow < Rows)
+			{
+				if ((Column > 0 && Tiles[EndRow * Columns + Column - 1] == EMapTileTerrain::Wall) ||
+					(EndColumn < Columns && Tiles[EndRow * Columns + EndColumn] == EMapTileTerrain::Wall)) break;
+				bool bFullRow = true;
+				for (int32 X = Column; X < EndColumn; ++X)
+					if (Covered[EndRow * Columns + X] || Tiles[EndRow * Columns + X] != EMapTileTerrain::Wall)
+						{ bFullRow = false; break; }
+				if (!bFullRow) break;
+				++EndRow;
+			}
+			for (int32 Y = Row; Y < EndRow; ++Y)
+				for (int32 X = Column; X < EndColumn; ++X) Covered[Y * Columns + X] = 1;
+
+			bool bWallLeft = false, bWallRight = false, bWallBelow = false, bWallAbove = false;
+			for (int32 Y = Row; Y < EndRow; ++Y)
+			{
+				bWallLeft |= Column > 0 && Tiles[Y * Columns + Column - 1] == EMapTileTerrain::Wall;
+				bWallRight |= EndColumn < Columns && Tiles[Y * Columns + EndColumn] == EMapTileTerrain::Wall;
+			}
+			for (int32 X = Column; X < EndColumn; ++X)
+			{
+				bWallBelow |= Row > 0 && Tiles[(Row - 1) * Columns + X] == EMapTileTerrain::Wall;
+				bWallAbove |= EndRow < Rows && Tiles[EndRow * Columns + X] == EMapTileTerrain::Wall;
+			}
+			constexpr float WallHeight = 2.5f;
+			Boxes.Add({ GridOrigin + FVector(Column * TileSize + (bWallLeft ? 0.0f : Inset), Row * TileSize + (bWallBelow ? 0.0f : Inset), 0.0f),
+				GridOrigin + FVector(EndColumn * TileSize - (bWallRight ? 0.0f : Inset), EndRow * TileSize - (bWallAbove ? 0.0f : Inset), WallHeight) });
+		}
+	return Boxes;
+}
+
+void AMapActor::RebuildWallCollision()
+{
+	GenerateWallCollisionComponents();
+}
+
 bool AMapActor::ResetGridToInitial()
 {
-	const FStaticMeshData* Mesh = GetStaticMeshComponent()->GetMeshData();
-	if (!Mesh || Mesh->Indices.IsEmpty() || Mesh->Vertices.IsEmpty() || !std::isfinite(Mesh->AABB.Min.Z))
+	const UStaticMeshComponent* MeshComponent = FindMapMeshComponent(*this);
+	const FStaticMeshData* Mesh = MeshComponent ? MeshComponent->GetMeshData() : nullptr;
+	if (!HasValidSeedMeshData(Mesh))
 	{
 		HTR_LOG(Warning, "MapActor: cannot reset initial grid without valid map mesh data");
 		return false;
@@ -137,19 +280,23 @@ bool AMapActor::ResetGridToInitial()
 	// Derive its top from the asset so an explicitly loaded older mesh stays aligned too.
 	GridOrigin = FVector(-14.f, -12.f, Mesh->AABB.Min.Z + 0.231775f);
 	InitializeDefaultTerrain();
+	++GridRevision;
+	if (HasBegunPlay()) RebuildWallCollision();
 	return true;
 }
 
 void AMapActor::InitializeDefaultTerrain()
 {
 	Tiles.Init(DefaultTerrain, InitialColumns * InitialRows);
-	InitializeDefaultTerrainFromMesh();
+	const UStaticMeshComponent* MeshComponent = FindMapMeshComponent(*this);
+	if (MeshComponent && HasValidSeedMeshData(MeshComponent->GetMeshData())) InitializeDefaultTerrainFromMesh();
 	ApplyInitialWallOverrides();
 }
 
 void AMapActor::InitializeDefaultTerrainFromMesh()
 {
-	const FStaticMeshData* Mesh = GetStaticMeshComponent()->GetMeshData();
+	const UStaticMeshComponent* MeshComponent = FindMapMeshComponent(*this);
+	const FStaticMeshData* Mesh = MeshComponent ? MeshComponent->GetMeshData() : nullptr;
 	if (!Mesh) return; // Asset unavailable during early class construction: retain editable Floor defaults.
 	// Slice the closed map geometry just above the raised floor base. Projecting all
 	// geometry from above would mistake overhead surfaces for walls across rooms.
@@ -268,6 +415,8 @@ bool AMapActor::ConfigureGrid(int32 C, int32 R, float Size, const FVector& Origi
 	Rows = R;
 	TileSize = Size;
 	GridOrigin = Origin;
+	++GridRevision;
+	if (HasBegunPlay()) RebuildWallCollision();
 	return true;
 }
 
@@ -292,6 +441,8 @@ bool AMapActor::SetTile(int32 Column, int32 Row, EMapTileTerrain Terrain)
 {
 	if (!IsValidTile(Column, Row) || !IsValidTerrain(Terrain)) return false;
 	Tiles[Row * Columns + Column] = Terrain;
+	++GridRevision;
+	if (HasBegunPlay()) RebuildWallCollision();
 	return true;
 }
 
@@ -299,6 +450,8 @@ bool AMapActor::FillTiles(EMapTileTerrain Terrain)
 {
 	if (!IsValidTerrain(Terrain)) return false;
 	for (auto& Tile : Tiles) Tile = Terrain;
+	++GridRevision;
+	if (HasBegunPlay()) RebuildWallCollision();
 	return true;
 }
 
@@ -315,6 +468,7 @@ const char* AMapActor::GetGridTransformWarning() const
 			Mesh = Candidate;
 		}
 	if (!Mesh) return "Map mesh component is missing.";
+	if (Mesh != GetStaticMeshComponent()) return "Map inherited mesh component is missing; restore the original component.";
 	if (Mesh->GetAttachParent() != Root) return "Attach the map mesh directly to the Actor root.";
 	const FMatrix RelativeMesh = Mesh->GetTransform().GetLocalMatrix();
 	for (int32 I = 0; I < 4; ++I)
@@ -356,6 +510,18 @@ bool AMapActor::TryWorldToTileXYProjected(const FVector& World, int32& OutColumn
 	if (!std::isfinite(X) || !std::isfinite(Y) || X < 0.0 || Y < 0.0 || X >= Columns || Y >= Rows) return false;
 	OutColumn = static_cast<int32>(std::floor(X));
 	OutRow = static_cast<int32>(std::floor(Y));
+	return true;
+}
+
+bool AMapActor::TryWorldToGridUVProjected(const FVector& World, FVector2& OutUV) const
+{
+	FMatrix Matrix;
+	if (!IsFinite(World) || !TryGetGridToWorld(Matrix)) return false;
+	const FVector Local = InverseGridMatrix(Matrix, GetRootComponent()->GetWorldScale3D()).TransformPosition(World);
+	const double U = (static_cast<double>(Local.X) - GridOrigin.X) / (TileSize * Columns);
+	const double V = (static_cast<double>(Local.Y) - GridOrigin.Y) / (TileSize * Rows);
+	if (!std::isfinite(U) || !std::isfinite(V) || U < 0.0 || V < 0.0 || U >= 1.0 || V >= 1.0) return false;
+	OutUV = FVector2(static_cast<float>(U), static_cast<float>(V));
 	return true;
 }
 
@@ -408,5 +574,6 @@ void AMapActor::Serialize(FStructuredArchive::FRecord Record)
 	{
 		Columns = C; Rows = R; TileSize = Size; GridOrigin = Origin;
 		Tiles = std::move(Loaded); // Owning value array, independent in PIE.
+		++GridRevision;
 	}
 }

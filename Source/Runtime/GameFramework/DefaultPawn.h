@@ -13,7 +13,9 @@ public:
 	void AddControllerYawInput(float Value) override;
 	void AddControllerPitchInput(float Value) override;
 	UCameraComponent* GetCameraComponent() const { return CameraComponent; }
+protected:
+	float GetMoveSpeed() const { return MoveSpeed; }
 private:
 	UCameraComponent* CameraComponent = nullptr;
-	float MoveSpeed = 20.0f;
+	float MoveSpeed = 5.0f;
 };

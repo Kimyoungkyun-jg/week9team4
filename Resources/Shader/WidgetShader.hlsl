@@ -2,6 +2,7 @@ cbuffer WidgetParams : register(b0)
 {
     float4 ViewportAndMode; // width, height, MSDF distance range, unused
     float4 Tint;
+    float4 ClipCircle; // center x/y, radius in pixels; zero disables clipping
 };
 
 Texture2D WidgetTexture : register(t0);
@@ -30,9 +31,19 @@ PSInput mainVS(VSInput Input)
 
 float4 mainPS(PSInput Input) : SV_TARGET
 {
+	float Coverage = 1.0;
+	if (ClipCircle.z > 0.0)
+	{
+		float Edge = ClipCircle.z - length(Input.Position.xy - ClipCircle.xy);
+		clip(Edge);
+		Coverage = saturate(Edge);
+	}
+	if (ViewportAndMode.w > 0.0 &&
+		(Input.UV.x < 0.0 || Input.UV.x > 1.0 || Input.UV.y < 0.0 || Input.UV.y > 1.0))
+		return float4(0.09, 0.11, 0.14, Coverage);
     float4 Sample = WidgetTexture.Sample(WidgetSampler, Input.UV);
     if (ViewportAndMode.z <= 0.0)
-        return Sample * Tint;
+		return Sample * Tint * float4(1.0, 1.0, 1.0, Coverage);
 
     float Distance = max(min(Sample.r, Sample.g), min(max(Sample.r, Sample.g), Sample.b));
     uint Width, Height;
@@ -41,5 +52,5 @@ float4 mainPS(PSInput Input) : SV_TARGET
     float2 ScreenTexSize = 1.0 / max(fwidth(Input.UV), float2(1e-6, 1e-6));
     float PixelRange = max(0.5 * dot(UnitRange, ScreenTexSize), 1.0);
     float Opacity = saturate(PixelRange * (Distance - 0.5) + 0.5);
-    return float4(Tint.rgb, Tint.a * Opacity);
+    return float4(Tint.rgb, Tint.a * Opacity * Coverage);
 }

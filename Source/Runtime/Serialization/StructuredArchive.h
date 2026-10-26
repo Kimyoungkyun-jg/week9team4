@@ -6,7 +6,11 @@
 
 using FArchiveFormatterType = FStructuredArchiveFormatter;
 
-
+class FStructuredArchiveSlot;
+class FStructuredArchiveRecord;
+class FStructuredArchiveArray;
+class FStructuredArchiveStream;
+class FStructuredArchiveMap;
 
 class FStructuredArchive
 {
