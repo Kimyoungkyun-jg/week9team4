@@ -229,7 +229,7 @@ private:
 	bool bIsSIEMode = false;
 
 	int32 InputOwnerPIEInstance = -1;
-	bool bGameMouseCaptured = false;
+	bool bMouseCaptureReleasedByUser = false;
 	int32 PendingFocusedPIEInstance = -1;
 	int32 PendingWheelDelta = 0;
 

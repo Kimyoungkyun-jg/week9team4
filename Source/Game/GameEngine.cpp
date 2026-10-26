@@ -13,6 +13,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Input/InputSystem.h"
 #include "Launch/LaunchEngineLoop.h"
+#include "Core/Window.h"
 #include "Render/Renderer.h"
 #include "Render/RenderCommand.h"
 #include "Render/SceneRenderer.h"
@@ -73,7 +74,7 @@ FEngineConfig UGameEngine::GetConfig() const
 	Desc.bBorderless = true;
 	Desc.SyncInterval = 0;   // 0 = VSync 끔 (FPS 측정용)
 	Desc.bCreateDepthBuffer = false;
-	Desc.bExitOnEscape = true;        
+	Desc.bExitOnEscape = false;
 	return Desc;
 }
 
@@ -105,23 +106,50 @@ void UGameEngine::Tick(float DeltaTime)
 	if (!GameContext || !GameContext->World() || !GameContext->GameViewport) return;
 	FGameViewportClient& Viewport = *GameContext->GameViewport;
 	Viewport.ProcessPendingSceneChange();
+	FWindow* Window = GetEngineLoop().GetMainWindow();
+	const APacmanGameMode* PacmanMode = Cast<APacmanGameMode>(GameContext->World()->GetGameMode());
+	const bool bGameplay = PacmanMode && PacmanMode->WantsMouseCapture();
+	bool bRecaptureClick = false;
+	if (!bGameplay) bMouseCaptureReleasedByUser = false;
+	if (Window)
+	{
+		if (!bGameplay || bMouseCaptureReleasedByUser) Window->ReleaseCursor();
+		else Window->CaptureCursor();
+	}
+	if (bGameplay && Window && Window->IsCursorCaptured() &&
+		(FInputSystem::IsKeyPressed(EKeyCode::Escape) || FInputSystem::IsKeyPressed(EKeyCode::F8)))
+	{
+		Window->ReleaseCursor();
+		bMouseCaptureReleasedByUser = true;
+	}
+	else if (bGameplay && bMouseCaptureReleasedByUser &&
+		FInputSystem::IsMousePressed(EMouseButton::Left))
+	{
+		bMouseCaptureReleasedByUser = false;
+		bRecaptureClick = true;
+		if (Window) Window->CaptureCursor();
+	}
 	Viewport.MouseMove(nullptr, FInputSystem::GetMouseX(), FInputSystem::GetMouseY());
 	for (int32 Key = 0; Key < 256; ++Key)
 	{
 		const EKeyCode Code = static_cast<EKeyCode>(Key);
-		if (FInputSystem::IsKeyPressed(Code)) Viewport.InputKey(nullptr, Key, true);
+		if (FInputSystem::IsKeyPressed(Code) && Code != EKeyCode::Escape && Code != EKeyCode::F8)
+			Viewport.InputKey(nullptr, Key, true);
 		if (FInputSystem::IsKeyReleased(Code)) Viewport.InputKey(nullptr, Key, false);
 	}
 	for (const auto [Button, Code] : { std::pair{ EMouseButton::Left, EKeyCode::LButton },
 		std::pair{ EMouseButton::Right, EKeyCode::RButton },
 		std::pair{ EMouseButton::Middle, EKeyCode::MButton } })
 	{
-		if (FInputSystem::IsMousePressed(Button)) Viewport.InputKey(nullptr, static_cast<int32>(Code), true);
+		if (FInputSystem::IsMousePressed(Button) && !(bRecaptureClick && Button == EMouseButton::Left))
+			Viewport.InputKey(nullptr, static_cast<int32>(Code), true);
 		if (FInputSystem::IsMouseReleased(Button)) Viewport.InputKey(nullptr, static_cast<int32>(Code), false);
 	}
-	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseX, static_cast<float>(FInputSystem::GetMouseDeltaX()), DeltaTime);
-	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseY, static_cast<float>(FInputSystem::GetMouseDeltaY()), DeltaTime);
+	const bool bCaptured = Window && Window->IsCursorCaptured();
+	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseX, bGameplay && !bCaptured ? 0.0f : static_cast<float>(FInputSystem::GetMouseDeltaX()), DeltaTime);
+	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseY, bGameplay && !bCaptured ? 0.0f : static_cast<float>(FInputSystem::GetMouseDeltaY()), DeltaTime);
 	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseWheel, static_cast<float>(FInputSystem::GetWheelDelta()), DeltaTime);
+	if (bCaptured) Window->RecenterCursor();
 	GameContext->World()->Tick(DeltaTime);
 }
 
@@ -149,6 +177,7 @@ void UGameEngine::Render()
 
 void UGameEngine::PreExit()
 {
+	if (FWindow* Window = GetEngineLoop().GetMainWindow()) Window->ReleaseCursor();
 	if (GameContext)
 	{
 		DestroyWorldContext(GameContext->World());
