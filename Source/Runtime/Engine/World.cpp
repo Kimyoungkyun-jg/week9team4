@@ -39,11 +39,13 @@
 
 namespace
 {
-	inline void WritePerObjectConstants(uint8* Dest, const FMatrix& LocalToWorld, const FMatrix& WorldToLocal)
+	inline void WritePerObjectConstants(uint8* Dest, const FMatrix& LocalToWorld, const FMatrix& WorldToLocal,
+		bool bReceiveSpecular)
 	{
 		FPerObjectConstants Constants{};
 		Constants.World = LocalToWorld;
 		Constants.NormalMatrix = WorldToLocal.GetTransposed();
+		Constants.LightingFlags.X = bReceiveSpecular ? 1.0f : 0.0f;
 		std::memcpy(Dest, &Constants, sizeof(Constants));
 	}
 }
@@ -164,7 +166,6 @@ void UWorld::Tick(float DeltaTime)
 	}
 
 	bIsTicking = false;
-
 }
 
 void UWorld::ClearWorld()
@@ -320,7 +321,8 @@ void UWorld::GatherRenderPackets(FRenderQueue& RenderQueue, const FViewContext* 
 					FRenderPacket& Packet = RenderQueue[p];
 					const FMatrix& Model = Packet.Proxy ? Packet.Proxy->GetLocalToWorld() : Packet.Model ? *Packet.Model : FMatrix::Identity;
 					const FMatrix WorldToLocal = Packet.Proxy ? Packet.Proxy->GetWorldToLocal() : Model.Inverse();
-					WritePerObjectConstants(SlotDest + size_t(NextExtraSlot) * ObjectSlotBytes, Model, WorldToLocal);
+					WritePerObjectConstants(SlotDest + size_t(NextExtraSlot) * ObjectSlotBytes, Model, WorldToLocal,
+						!Packet.Proxy || Packet.Proxy->bReceiveSpecular);
 					Packet.Slot = NextExtraSlot++;
 				}
 			}
@@ -361,7 +363,7 @@ void UWorld::GatherPacketChunk(uint32 Begin, uint32 End, uint32 ChunkIndex,
 		if (SlotDest)
 		{
 			WritePerObjectConstants(SlotDest + size_t(VisibleIndex) * ObjectSlotBytes,
-				Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal());
+				Proxy->GetLocalToWorld(), Proxy->GetWorldToLocal(), Proxy->bReceiveSpecular);
 			Slot = VisibleIndex;
 		}
 

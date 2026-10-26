@@ -7,8 +7,11 @@
 #include "Containers/Array.h"
 #include <functional>
 #include <chrono>
+#include <algorithm>
 
 class UCanvasWidget;
+class AMapActor;
+class FTexture2D;
 
 // Position is a pixel offset from Anchor; Pivot is a normalized point within Size.
 class UWidget : public UObject
@@ -188,4 +191,37 @@ private:
 	FLinearColor TextColor{1.0f, 1.0f, 1.0f, 1.0f};
 	std::function<void()> OnClicked;
 	bool bPressed = false;
+};
+
+class UMinimapWidget : public UWidget
+{
+	DECLARE_CLASS(UMinimapWidget, UWidget)
+	REFLECT_START(UMinimapWidget)
+		PROPERTY(RadiusTiles)
+	REFLECT_END()
+public:
+	UMinimapWidget();
+	~UMinimapWidget() override;
+	void SetMap(const AMapActor* InMap);
+	void SetPlayer(const FVector2& UV, const FVector2& Direction);
+	void ClearPlayer() { bHasPlayer = false; }
+	void SetCoins(TArray<FVector2> InCoins) { Coins = std::move(InCoins); }
+	const AMapActor* GetMap() const { return Map; }
+	FTexture2D* GetTerrainTexture();
+	FRect GetMapRect() const;
+	bool HasPlayer() const { return bHasPlayer; }
+	const FVector2& GetPlayerUV() const { return PlayerUV; }
+	const FVector2& GetPlayerDirection() const { return PlayerDirection; }
+	const TArray<FVector2>& GetCoins() const { return Coins; }
+	float GetRadiusTiles() const { return RadiusTiles; }
+	void SetRadiusTiles(float Value) { RadiusTiles = std::max(1.0f, Value); }
+private:
+	float RadiusTiles = 8.0f;
+	const AMapActor* Map = nullptr;
+	uint64 CachedGridRevision = static_cast<uint64>(-1);
+	TUniquePtr<FTexture2D> TerrainTexture;
+	FVector2 PlayerUV;
+	FVector2 PlayerDirection{1.0f, 0.0f};
+	TArray<FVector2> Coins;
+	bool bHasPlayer = false;
 };

@@ -182,7 +182,8 @@ void UPrimitiveComponent::PostEditChangeProperty(const FProperty& Property)
 	Super::PostEditChangeProperty(Property);
     if (Property.Name == "StaticMesh") UpdateCollisionShape();
 	if (Property.Name == "bCastShadow" ||
-		Property.Name == "bReceiveShadow")
+		Property.Name == "bReceiveShadow" ||
+		Property.Name == "bReceiveSpecular")
 	{
 		MarkRenderStateDirty();
 	}
@@ -202,6 +203,13 @@ void UPrimitiveComponent::SetReceiveShadow(bool NewValue)
 	{
 		bReceiveShadow = NewValue;
 	}
+}
+
+void UPrimitiveComponent::SetReceiveSpecular(bool NewValue)
+{
+	if (bReceiveSpecular == NewValue) return;
+	bReceiveSpecular = NewValue;
+	MarkRenderStateDirty();
 }
 
 void UPrimitiveComponent::CreateRenderState()

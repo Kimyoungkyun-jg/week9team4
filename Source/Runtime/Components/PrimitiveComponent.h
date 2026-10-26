@@ -32,6 +32,7 @@ class UPrimitiveComponent :public USceneComponent
 	REFLECT_START(ClassName)
 		PROPERTY(bCastShadow)
 		PROPERTY(bReceiveShadow)
+		PROPERTY(bReceiveSpecular)
 		REFLECT_END()
 public:
 	UPrimitiveComponent();
@@ -96,9 +97,11 @@ public:
 
 	void SetCastShadow(bool NewValue);
 	void SetReceiveShadow(bool NewValue);
+	void SetReceiveSpecular(bool NewValue);
 
 	bool bCastShadow = true;
 	bool bReceiveShadow = true;
+	bool bReceiveSpecular = true;
 
 protected:
 	void UpdateCollisionShape();

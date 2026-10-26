@@ -6,6 +6,7 @@
 #include "UObject/UObjectIterator.h"
 #include "Core/EngineLog.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
+#include "Editor/Viewports/ViewportsPanel.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -212,11 +213,12 @@ void FWidgetEditorPanel::AddWidget(int Type)
 		: Type == 1 ? static_cast<UWidget*>(NewObject<UImageWidget>())
 		: Type == 2 ? static_cast<UWidget*>(NewObject<UTextWidget>())
 		: Type == 3 ? static_cast<UWidget*>(NewObject<UButtonWidget>())
-		: static_cast<UWidget*>(NewObject<UTimerWidget>());
-	const FString Name = (Type == 0 ? "Canvas" : Type == 1 ? "Image" : Type == 2 ? "Text" : Type == 3 ? "Button" : "Timer") + std::to_string(NewWidgetIndex++);
+		: Type == 4 ? static_cast<UWidget*>(NewObject<UTimerWidget>())
+		: static_cast<UWidget*>(NewObject<UMinimapWidget>());
+	const FString Name = (Type == 0 ? "Canvas" : Type == 1 ? "Image" : Type == 2 ? "Text" : Type == 3 ? "Button" : Type == 4 ? "Timer" : "Minimap") + std::to_string(NewWidgetIndex++);
 	Widget->SetWidgetName(Name);
 	Widget->SetPosition({20.0f, 20.0f});
-	Widget->SetSize(Type == 0 ? FVector2{240.0f, 120.0f} : FVector2{160.0f, 48.0f});
+	Widget->SetSize(Type == 0 ? FVector2{240.0f, 120.0f} : Type == 5 ? FVector2{192.0f, 192.0f} : FVector2{160.0f, 48.0f});
 	if (UImageWidget* Image = Cast<UImageWidget>(Widget))
 		Image->SetTexturePath("Assets/Icons/Toolbar/Play.png");
 	if (UTextWidget* Text = Cast<UTextWidget>(Widget))
@@ -318,7 +320,15 @@ void FWidgetEditorPanel::DrawPreview(UWidget* Widget, ImDrawList* DrawList, ImVe
 	const FRect& Rect = Widget->GetLayoutRect();
 	const ImVec2 Min{Origin.x + Rect.X * Scale, Origin.y + Rect.Y * Scale};
 	const ImVec2 Max{Min.x + Rect.Width * Scale, Min.y + Rect.Height * Scale};
-	if (UImageWidget* Image = Cast<UImageWidget>(Widget))
+	if (Cast<UMinimapWidget>(Widget))
+	{
+		const ImVec2 Center{(Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f};
+		const float Radius = std::min(Max.x - Min.x, Max.y - Min.y) * 0.5f;
+		DrawList->AddCircleFilled(Center, Radius, IM_COL32(20, 23, 29, 255));
+		DrawList->AddCircle(Center, Radius, IM_COL32(90, 100, 112, 255));
+		DrawList->AddCircleFilled(Center, std::max(2.0f, 3.0f * Scale), IM_COL32(64, 220, 255, 255));
+	}
+	else if (UImageWidget* Image = Cast<UImageWidget>(Widget))
 	{
 		UTexture2D* Texture = UAssetManager::GetAssetByPath<UTexture2D>(Image->GetTexturePath());
 		if (Texture && Texture->GetResource() && Texture->GetResource()->GetSRV())
@@ -433,7 +443,16 @@ void FWidgetEditorPanel::DrawDetails()
 		int ZOrder = Selected->GetZOrder();
 		if (ImGui::DragInt("Z Order", &ZOrder)) { Selected->SetZOrder(ZOrder); MarkDirty(); }
 	}
-	if (UImageWidget* Image = Cast<UImageWidget>(Selected))
+	if (UMinimapWidget* Minimap = Cast<UMinimapWidget>(Selected))
+	{
+		float Radius = Minimap->GetRadiusTiles();
+		if (ImGui::DragFloat("Radius (tiles)", &Radius, 0.25f, 1.0f, 128.0f))
+		{
+			Minimap->SetRadiusTiles(Radius);
+			MarkDirty();
+		}
+	}
+	else if (UImageWidget* Image = Cast<UImageWidget>(Selected))
 	{
 		const FString CurrentPath = Image->GetTexturePath();
 		UTexture2D* CurrentTexture = UAssetManager::GetAssetByPath<UTexture2D>(CurrentPath);
@@ -531,6 +550,18 @@ void FWidgetEditorPanel::DrawDetails()
 
 void FWidgetEditorPanel::OnRender()
 {
+	if (!bPreviewSizeInitialized && ViewportsPanel)
+	{
+		if (FEditorViewportClient* Viewport = ViewportsPanel->GetViewportClient(ViewportsPanel->GetActiveViewIndex()))
+		{
+			if (Viewport->GetWidth() > 1 && Viewport->GetHeight() > 1)
+			{
+				PreviewWidth = static_cast<float>(Viewport->GetWidth());
+				PreviewHeight = static_cast<float>(Viewport->GetHeight());
+				bPreviewSizeInitialized = true;
+			}
+		}
+	}
 	if (!Root) NewAsset();
 	if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{ bHistoryTransactionOpen = false; LastHistoryActiveID = 0; }
@@ -581,6 +612,8 @@ void FWidgetEditorPanel::OnRender()
 		if (ImGui::Button("Button")) AddWidget(3);
 		ImGui::SameLine();
 		if (ImGui::Button("Timer")) AddWidget(4);
+		ImGui::SameLine();
+		if (ImGui::Button("Minimap")) AddWidget(5);
 		if (ImGui::Button("Delete Selected")) DeleteSelected();
 		ImGui::SameLine();
 		if (ImGui::Button("Duplicate")) DuplicateSelected();

@@ -6,7 +6,8 @@
 #include "Engine/Scene.h"
 
 FPrimitiveSceneProxy::FPrimitiveSceneProxy(UPrimitiveComponent* InComponent)
-    : Component(InComponent), bCastsShadow(InComponent->bCastShadow), bReceiveShadow(InComponent->bReceiveShadow) 
+    : bCastsShadow(InComponent->bCastShadow), bReceiveShadow(InComponent->bReceiveShadow),
+      bReceiveSpecular(InComponent->bReceiveSpecular), Component(InComponent)
 {
 }
 
@@ -48,6 +49,7 @@ void FPrimitiveSceneProxy::UpdateRenderState()
     bHiddenInGame = !Component->IsShown(true);
     bCastsShadow = Component->bCastShadow;
     bReceiveShadow = Component->bReceiveShadow;
+	bReceiveSpecular = Component->bReceiveSpecular;
     UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(Component);
     if (StaticMeshComponent) Mesh = StaticMeshComponent->GetStaticMesh();
     if (Mesh != PreviousMesh)

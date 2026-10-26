@@ -1,0 +1,141 @@
+{
+    "Root": {
+        "Children": [
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                    0.5,
+                    0.5
+                    ],
+                    "Pivot": [
+                    0.5,
+                    0.5
+                    ],
+                    "Position": [
+                    0.0,
+                    -129.0
+                    ],
+                    "Size": [
+                        494.9148254394531,
+                        126.64417266845703
+                    ],
+                    "TexturePath": "Assets/Icons/PACMAN.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UButtonWidget",
+                "Properties": {
+                    "Anchor": [
+                    0.5,
+                    0.5
+                    ],
+                    "BackgroundColor": [
+                        0.19912341237068176,
+                        0.3479704260826111,
+                        0.6509804129600525,
+                        0.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 43.0,
+                    "Pivot": [
+                    0.5,
+                    0.5
+                    ],
+                    "Position": [
+                    0.0,
+                    79.0
+                    ],
+                    "Size": [
+                        127.45763397216797,
+                        52.06780242919922
+                    ],
+                    "Text": "Start",
+                    "TextColor": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Button4",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UButtonWidget",
+                "Properties": {
+                    "Anchor": [
+                    0.5,
+                    0.5
+                    ],
+                    "BackgroundColor": [
+                        0.19912341237068176,
+                        0.3479704260826111,
+                        0.6509804129600525,
+                        0.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 43.0,
+                    "Pivot": [
+                    0.5,
+                    0.5
+                    ],
+                    "Position": [
+                    0.0,
+                    145.0
+                    ],
+                    "Size": [
+                        85.42369842529297,
+                        48.0
+                    ],
+                    "Text": "Run",
+                    "TextColor": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Button4Copy",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            }
+        ],
+        "Class": "UCanvasWidget",
+        "Properties": {
+            "Anchor": [
+                0.0,
+                0.0
+            ],
+            "Pivot": [
+                0.0,
+                0.0
+            ],
+            "Position": [
+                0.0,
+                0.0
+            ],
+            "Size": [
+                100.0,
+                100.0
+            ],
+            "WidgetName": "Root",
+            "ZOrder": 0,
+            "bVisible": true
+        }
+    },
+    "Version": 1
+}

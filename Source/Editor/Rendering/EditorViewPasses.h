@@ -34,11 +34,13 @@ struct FEditorOverlayResources
 	const FEditorSettings* Settings = nullptr;
 	FMapTileRenderer* MapTiles = nullptr;
 	const FMapTileEditor* MapTileEditor = nullptr;
+	bool bAllowCollisionDebug = true;
 };
 
 struct FSceneOverlayCallbacks
 {
 	std::function<void()> EditorLines;
+	std::function<void()> CollisionLines;
 	std::function<void()> EditorGrid;
 	std::function<void()> EditorMapTiles;
 	std::function<void()> EditorOutline;
@@ -67,6 +69,8 @@ public:
 
 private:
 	FSceneOverlayCallbacks Overlays;
+	void ConfigureCollisionOverlay(const FEditorOverlayResources& Resources);
+	void RenderCollisionLines();
 	void RenderEditorLines(FEditorViewportClient* ViewClient, bool bDrawSelectedLight, bool bDrawCascadeBounds);
 	void RenderEditorGrid(FEditorViewportClient* ViewClient, const FViewportSettings& ViewportSetting);
 	void RenderActorUUIDs();

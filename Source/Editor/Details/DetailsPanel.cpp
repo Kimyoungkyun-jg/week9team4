@@ -641,9 +641,10 @@ namespace
 
 					const char* SamplerItems[] = { "Linear Clamp", "Linear Wrap" };
 					int SamplerIndex = Effective ? static_cast<int>(Effective->SamplerState) : static_cast<int>(ESamplerState::LinearClamp);
+					if (SamplerIndex < 0 || SamplerIndex >= IM_ARRAYSIZE(SamplerItems)) SamplerIndex = 0;
 					if (ImGui::BeginCombo("##SamplerState", SamplerItems[SamplerIndex]))
 					{
-						for (int i = 0; i < static_cast<int>(ESamplerState::Count); ++i)
+						for (int i = 0; i < IM_ARRAYSIZE(SamplerItems); ++i)
 						{
 							if (ImGui::Selectable(SamplerItems[i], SamplerIndex == i))
 							{
@@ -669,6 +670,7 @@ namespace
 
 					const char* BlendItems[] = { "Opaque", "Alpha Blend" };
 					int BlendIndex = Effective ? static_cast<int>(Effective->BlendState) : static_cast<int>(EBlendState::Opaque);
+					if (BlendIndex < 0 || BlendIndex >= IM_ARRAYSIZE(BlendItems)) BlendIndex = 0;
 					if (ImGui::BeginCombo("##BlendState", BlendItems[BlendIndex]))
 					{
 						for (int i = 0; i < IM_ARRAYSIZE(BlendItems); ++i)

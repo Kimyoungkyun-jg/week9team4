@@ -22,6 +22,12 @@ IncludeDir["json"]  = "Source/ThirdParty/json"
 IncludeDir["DDSLoader"] = "Source/ThirdParty/DDSLoader"
 
 local VcpkgRoot = os.getenv("VCPKG_ROOT")
+if not VcpkgRoot or VcpkgRoot == "" then
+	local userProfile = os.getenv("USERPROFILE")
+	if userProfile and userProfile ~= "" then
+		VcpkgRoot = userProfile .. "/vcpkg"
+	end
+end
 assert(VcpkgRoot and VcpkgRoot ~= "", "VCPKG_ROOT must point to the vcpkg installation")
 VcpkgRoot = VcpkgRoot:gsub("\\", "/")
 local LuaJitDir = path.join(VcpkgRoot, "installed/x64-windows")
@@ -54,7 +60,7 @@ function CommonSettings()
 
 	filter "system:windows"
 		systemversion "latest"
-		buildoptions { "/utf-8" }
+		buildoptions { "/utf-8", "/bigobj" }
 		defines { "ENGINE_PLATFORM_WINDOWS" }
 
 	filter "configurations:Debug"

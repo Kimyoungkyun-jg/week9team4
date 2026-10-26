@@ -79,7 +79,8 @@ float4 mainPS(FPSInput Input) : SV_Target
     float4 NormalData = NormalRoughness.Load(int3(Pixel, 0));
     float3 Albedo = MaterialData.rgb;
     float Metallic = MaterialData.a;
-    float Roughness = NormalData.a;
+    float Roughness = abs(NormalData.a);
+    float SpecularMask = NormalData.a >= 0.0f ? 1.0f : 0.0f;
     float3 N = NormalData.xyz * rsqrt(max(dot(NormalData.xyz, NormalData.xyz), 1.0e-8f));
     
     float2 UV = (float2(Pixel) + 0.5f) / ViewportSize.xy;
@@ -283,7 +284,7 @@ float4 mainPS(FPSInput Input) : SV_Target
         AccumulateLocalLight(LocalDiffuse, LocalSpecular, Albedo, Metallic, Roughness, N, V, L, Radiance);
     }
     
-    return float4(Lighting + LocalDiffuse + LocalSpecular, 1.0f);
+    return float4(Lighting + LocalDiffuse + LocalSpecular * SpecularMask, 1.0f);
 }
 
 

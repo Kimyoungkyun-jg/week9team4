@@ -40,8 +40,23 @@ if (-not (Test-Path (Join-Path $Installed 'include\sol\sol.hpp'))) {
 
 $VsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (-not (Test-Path $VsWhere)) { throw 'Visual Studio Installer (vswhere.exe) was not found.' }
-$VsPath = (& $VsWhere -latest -prerelease -products '*' -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1)
-$VsVersion = (& $VsWhere -latest -prerelease -products '*' -requires Microsoft.Component.MSBuild -property installationVersion | Select-Object -First 1)
+$VsPath = (& $VsWhere -latest -prerelease -all -products '*' -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1)
+$VsVersion = (& $VsWhere -latest -prerelease -all -products '*' -requires Microsoft.Component.MSBuild -property installationVersion | Select-Object -First 1)
+if (-not $VsPath -or -not $VsVersion) {
+    $Candidates = @(
+        @{ Path = "C:\Program Files\Microsoft Visual Studio\18\Insiders"; Version = "18.0" },
+        @{ Path = "C:\Program Files\Microsoft Visual Studio\2022\Community"; Version = "17.0" },
+        @{ Path = "C:\Program Files\Microsoft Visual Studio\2022\Professional"; Version = "17.0" },
+        @{ Path = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"; Version = "17.0" }
+    )
+    foreach ($Candidate in $Candidates) {
+        if (Test-Path (Join-Path $Candidate.Path 'MSBuild\Current\Bin\MSBuild.exe')) {
+            $VsPath = $Candidate.Path
+            $VsVersion = $Candidate.Version
+            break
+        }
+    }
+}
 if (-not $VsPath -or -not $VsVersion) { throw 'Visual Studio with MSBuild was not found.' }
 $Action = if ([int]($VsVersion.Split('.')[0]) -ge 18) { 'vs2026' } else { 'vs2022' }
 
