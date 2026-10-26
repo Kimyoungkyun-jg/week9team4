@@ -5,6 +5,7 @@
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/CoinActor.h"
 #include "GameActor/GhostActor.h"
+#include "GameActor/GhostAIComponent.h"
 #include "GameActor/MainMenuGameMode.h"
 #include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
@@ -81,6 +82,7 @@ bool UEditorEngine::Init()
 	AFlashlightActor::StaticClass();
 	ACoinActor::StaticClass();
 	AGhostActor::StaticClass();
+	UGhostAIComponent::StaticClass();
 	AMainMenuGameMode::StaticClass();
 	AMainMenuHUD::StaticClass();
 	APacmanGameMode::StaticClass();
@@ -98,10 +100,10 @@ bool UEditorEngine::Init()
 	EditorUI = MakeUnique<FEditorUI>();
 	EditorUI->Init();
 
-	EditorUI->SetNewSceneCallback([this]() { CreateNewScene(); });
-	EditorUI->SetOpenSceneCallback([this]() { OpenScene(); });
-	EditorUI->SetSaveSceneCallback([this]() { SaveCurrentScene(); });
-	EditorUI->SetSaveSceneAsCallback([this]() { SaveSceneAs(); });
+	EditorUI->SetNewSceneCallback([this]() { PendingSceneFileAction = ESceneFileAction::New; });
+	EditorUI->SetOpenSceneCallback([this]() { PendingSceneFileAction = ESceneFileAction::Open; });
+	EditorUI->SetSaveSceneCallback([this]() { PendingSceneFileAction = ESceneFileAction::Save; });
+	EditorUI->SetSaveSceneAsCallback([this]() { PendingSceneFileAction = ESceneFileAction::SaveAs; });
 
 	OutputLogPanel = EditorUI->AddEditorPanel<FOutputLogPanel>();
 	FLog::AddSink(OutputLogPanel);
@@ -320,13 +322,29 @@ bool UEditorEngine::Init()
 // 입력·창 메시지는 FEngineLoop가 먼저 처리하고 Present는 호출 직후에 한다.
 void UEditorEngine::Tick(const float DeltaTime)
 {
+	const ESceneFileAction SceneAction = PendingSceneFileAction;
+	PendingSceneFileAction = ESceneFileAction::None;
+	switch (SceneAction)
+	{
+	case ESceneFileAction::New: CreateNewScene(); break;
+	case ESceneFileAction::Open: OpenScene(); break;
+	case ESceneFileAction::Save: SaveCurrentScene(); break;
+	case ESceneFileAction::SaveAs: SaveSceneAs(); break;
+	default: break;
+	}
 	// PIE 창 닫기 요청 처리
 	if (PIEWindow && PIEWindow->ConsumeCloseRequest())
 		RequestEndPlayMap();
 	if (bRequestEndPlayMapQueued) { bRequestEndPlayMapQueued = false; EndPlayMap(); }
 	if (bPlaySessionRequested) { bPlaySessionRequested = false; if (!PlayWorld) StartPlayInEditorSession(); }
 	if (FWorldContext* Context = GetPIEWorldContext(); Context && Context->GameViewport)
+	{
 		Context->GameViewport->ProcessPendingSceneChange();
+		// 씬 전환으로 선택 액터가 해제된 경우 선택 초기화
+		if ((Gizmo && Gizmo->GetTarget() && GUObjectArray.Find(Gizmo->GetTarget()) == INDEX_NONE) ||
+			(Outline && Outline->GetTarget() && GUObjectArray.Find(Outline->GetTarget()) == INDEX_NONE))
+			ResetSceneSelection();
+	}
 
 	BeginFrame(DeltaTime);
 	UpdateViewportState(DeltaTime);
@@ -507,6 +525,10 @@ void UEditorEngine::TickWorldAndEditor(const float DeltaTime)
 	if (InvalidComponent(Gizmo->GetTarget())) Gizmo->SetTarget(nullptr, false);
 	if (InvalidComponent(Outline->GetTarget())) Outline->SetTarget(nullptr);
 	UpdateGizmoAndPicking();
+	// 월드 틱 중 선택 액터가 삭제된 경우 선택 초기화
+	if ((Gizmo && Gizmo->GetTarget() && GUObjectArray.Find(Gizmo->GetTarget()) == INDEX_NONE) ||
+		(Outline && Outline->GetTarget() && GUObjectArray.Find(Outline->GetTarget()) == INDEX_NONE))
+		ResetSceneSelection();
 	EditorWorld->GetScene().UpdateAllTransforms();
 	if (PlayWorld)
 		PlayWorld->GetScene().UpdateAllTransforms();
@@ -667,6 +689,10 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	FWorldContext* Context = GetPIEWorldContext();
 	if (!Context || !Context->GameViewport) return;
 	FGameViewportClient& GameViewport = *Context->GameViewport;
+	FWindow* InputWindow = IsPIEInWindow() ? PIEWindow.get() : MainWindow;
+	const APacmanGameMode* PacmanMode = Cast<APacmanGameMode>(Context->World()->GetGameMode());
+	const bool bWantsCapture = PacmanMode && PacmanMode->WantsMouseCapture() && !GameViewport.IsSIEMode();
+	if (!bWantsCapture) bMouseCaptureReleasedByUser = false;
 	const FVector2 Mouse = ViewportsPanel->GetLocalMousePosition();
 	const int32 InputViewIndex = IsPIEInWindow() && GameViewport.IsSIEMode()
 		? PIEStartEditorViewIndex : PIEViewIndex;
@@ -684,15 +710,48 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		? ::GetForegroundWindow() == PIEWindow->GetHandle() || bEditorSIEFocus
 		: ::GetForegroundWindow() == MainWindow->GetHandle() &&
 			ActiveViewIdx == InputViewIndex &&
-			(ViewportsPanel->IsHovered() || (GameViewport.IsSIEMode() && FInputSystem::IsMouseDown(EMouseButton::Right))) &&
+			(ViewportsPanel->IsHovered() || bWantsCapture || (GameViewport.IsSIEMode() && FInputSystem::IsMouseDown(EMouseButton::Right))) &&
 			!ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-	if (!bFocused) { GameViewport.LostFocus(); return; }
+	if (!bFocused) { if (InputWindow) InputWindow->ReleaseCursor(); GameViewport.LostFocus(); return; }
 	if (!IsPIEInWindow() &&
 		(FInputSystem::IsMousePressed(EMouseButton::Left) || FInputSystem::IsMousePressed(EMouseButton::Right)) &&
 		!bMouseOverPIE)
 	{
+		if (InputWindow) InputWindow->ReleaseCursor();
 		GameViewport.LostFocus();
 		return;
+	}
+	auto CaptureGameCursor = [&]()
+	{
+		if (!InputWindow) return;
+		if (IsPIEInWindow()) InputWindow->CaptureCursor();
+		else
+		{
+			const FVector2 Origin = ViewportsPanel->GetContentOrigin();
+			const RECT Rect{
+				static_cast<LONG>(Origin.X + PIEViewRect.X), static_cast<LONG>(Origin.Y + PIEViewRect.Y),
+				static_cast<LONG>(Origin.X + PIEViewRect.X + PIEViewRect.Width),
+				static_cast<LONG>(Origin.Y + PIEViewRect.Y + PIEViewRect.Height) };
+			InputWindow->CaptureCursor(&Rect);
+		}
+	};
+	if (InputWindow)
+	{
+		if (!bWantsCapture || bMouseCaptureReleasedByUser) InputWindow->ReleaseCursor();
+		else CaptureGameCursor();
+	}
+	if (bWantsCapture && InputWindow && InputWindow->IsCursorCaptured() &&
+		(FInputSystem::IsKeyPressed(EKeyCode::Escape) || FInputSystem::IsKeyPressed(EKeyCode::F8)))
+	{
+		InputWindow->ReleaseCursor();
+		bMouseCaptureReleasedByUser = true;
+	}
+	const bool bRecaptureClick = bWantsCapture && bMouseCaptureReleasedByUser && (IsPIEInWindow() || bMouseOverPIE) &&
+		FInputSystem::IsMousePressed(EMouseButton::Left);
+	if (bRecaptureClick)
+	{
+		bMouseCaptureReleasedByUser = false;
+		CaptureGameCursor();
 	}
 	if (IsPIEInWindow() && !bEditorSIEFocus)
 	{
@@ -713,7 +772,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		else GameViewport.BeginSIEMode();
 		OnActiveWorldChanged();
 	}
-	if (FInputSystem::IsKeyPressed(EKeyCode::Escape))
+	if (FInputSystem::IsKeyPressed(EKeyCode::Escape) && !bWantsCapture)
 		GameViewport.InputKey(nullptr, static_cast<int32>(EKeyCode::Escape), true);
 	if (GameViewport.ConsumeExitRequest())
 	{
@@ -741,7 +800,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	for (EMouseButton Button : MouseButtons)
 	{
 		const int32 Key = Button == EMouseButton::Left ? static_cast<int32>(EKeyCode::LButton) : static_cast<int32>(EKeyCode::RButton);
-		if (FInputSystem::IsMousePressed(Button))
+		if (FInputSystem::IsMousePressed(Button) && !(bRecaptureClick && Button == EMouseButton::Left))
 		{
 			if (GameViewport.IsSIEMode())
 			{
@@ -758,8 +817,10 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 			else GameViewport.InputKey(nullptr, Key, false);
 		}
 	}
-	const float MouseX = static_cast<float>(FInputSystem::GetMouseDeltaX());
-	const float MouseY = static_cast<float>(FInputSystem::GetMouseDeltaY());
+	const float MouseX = bWantsCapture && (!InputWindow || !InputWindow->IsCursorCaptured())
+		? 0.0f : static_cast<float>(FInputSystem::GetMouseDeltaX());
+	const float MouseY = bWantsCapture && (!InputWindow || !InputWindow->IsCursorCaptured())
+		? 0.0f : static_cast<float>(FInputSystem::GetMouseDeltaY());
 	const float Wheel = static_cast<float>(FInputSystem::GetWheelDelta());
 	if (GameViewport.IsSIEMode())
 	{
@@ -774,6 +835,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 		GameViewport.InputAxis(nullptr, 0, EGameInputAxis::MouseX, MouseX, DeltaTime);
 		GameViewport.InputAxis(nullptr, 0, EGameInputAxis::MouseY, MouseY, DeltaTime);
 	}
+	if (InputWindow && InputWindow->IsCursorCaptured()) InputWindow->RecenterCursor();
 }
 
 // 화면을 표시하고 UI 변경 후 View 설정을 보관한다.
@@ -1090,6 +1152,9 @@ void UEditorEngine::EndPlayMap()
 {
 	if (!PlayWorld)
 		return;
+	if (PIEWindow) PIEWindow->ReleaseCursor();
+	if (MainWindow) MainWindow->ReleaseCursor();
+	bMouseCaptureReleasedByUser = false;
 	bIsPaused = false;
 	bStepRequested = false;
 
@@ -1226,11 +1291,10 @@ void UEditorEngine::CreateNewScene()
 		HTR_LOG(Warning, "Cannot create a new scene during PIE. Stop the play session first.");
 		return;
 	}
+	ResetSceneSelection();
 	if (!FEditorFileUtils::NewScene(EditorWorld))
 		return;
 	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
-
-	ResetSceneSelection();
 }
 
 // 씬 불러오기가 성공하면 에디터 선택 상태를 초기화한다.
@@ -1241,11 +1305,10 @@ void UEditorEngine::OpenScene()
 		HTR_LOG(Warning, "Cannot open a scene during PIE. Stop the play session first.");
 		return;
 	}
+	ResetSceneSelection();
 	if (!FEditorFileUtils::LoadScene(EditorWorld))
 		return;
 	if (SettingsPanel) SettingsPanel->MarkSceneSaved();
-
-	ResetSceneSelection();
 }
 
 // 공통 파일 유틸리티로 현재 씬을 저장한다.

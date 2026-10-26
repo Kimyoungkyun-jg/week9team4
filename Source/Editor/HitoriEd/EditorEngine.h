@@ -204,6 +204,8 @@ private:
 	bool bIsStep = false;
 
 	bool bPlaySessionRequested = false;
+	enum class ESceneFileAction { None, New, Open, Save, SaveAs };
+	ESceneFileAction PendingSceneFileAction = ESceneFileAction::None;
 	bool bRequestEndPlayMapQueued = false;
 	bool bStepRequested = false;
 	bool bIsPaused = false;
@@ -227,7 +229,7 @@ private:
 	bool bIsSIEMode = false;
 
 	int32 InputOwnerPIEInstance = -1;
-	bool bGameMouseCaptured = false;
+	bool bMouseCaptureReleasedByUser = false;
 	int32 PendingFocusedPIEInstance = -1;
 	int32 PendingWheelDelta = 0;
 

@@ -9,17 +9,29 @@
       {
         "Class": "UImageWidget",
         "Properties": {
-          "WidgetName": "NameBackground",
+          "WidgetName": "NameShade",
           "TexturePath": "WhiteTexture",
           "Tint": [
+            0.01,
             0.02,
-            0.03,
-            0.1,
+            0.06,
             1
           ],
           "Size": [
-            1672,
-            941
+            1280,
+            720
+          ]
+        },
+        "Children": []
+      },
+      {
+        "Class": "UImageWidget",
+        "Properties": {
+          "WidgetName": "NameBackground",
+          "TexturePath": "Assets/Icons/ClearScene.png",
+          "Size": [
+            1280,
+            720
           ]
         },
         "Children": []
@@ -27,72 +39,28 @@
       {
         "Class": "UTextWidget",
         "Properties": {
-          "WidgetName": "NameTitle",
-          "Text": "GAME CLEAR",
-          "Anchor": [
-            0.5,
-            0.28
-          ],
-          "Position": [
-            -160,
-            0
-          ],
-          "Size": [
-            400,
-            65
-          ],
-          "FontSize": 54,
+          "WidgetName": "ClearTime",
+          "Text": "--:--.--",
+          "FontPath": "Assets/Fonts/Pretendard.json",
+          "FontSize": 29.091,
           "Color": [
             1,
-            0.85,
-            0.15,
+            0.95,
+            0.7,
             1
           ],
-          "FontPath": "Assets/Fonts/Pretendard.json"
-        },
-        "Children": []
-      },
-      {
-        "Class": "UTextWidget",
-        "Properties": {
-          "WidgetName": "ClearTime",
-          "Text": "Clear time: --:--.--",
-          "Anchor": [
-            0.5,
-            0.4
-          ],
           "Position": [
-            -130,
+            0,
             0
           ],
           "Size": [
-            350,
-            50
+            191.388,
+            39.809
           ],
-          "FontSize": 32,
-          "FontPath": "Assets/Fonts/Pretendard.json"
-        },
-        "Children": []
-      },
-      {
-        "Class": "UTextWidget",
-        "Properties": {
-          "WidgetName": "NamePrompt",
-          "Text": "Enter your name",
           "Anchor": [
-            0.5,
-            0.52
-          ],
-          "Position": [
-            -130,
-            0
-          ],
-          "Size": [
-            350,
-            45
-          ],
-          "FontSize": 30,
-          "FontPath": "Assets/Fonts/Pretendard.json"
+            0.523325,
+            0.451647
+          ]
         },
         "Children": []
       },
@@ -103,36 +71,71 @@
           "Text": "",
           "Placeholder": "Click to type",
           "MaxLength": 9,
-          "FontSize": 30,
-          "Anchor": [
-            0.5,
-            0.6
-          ],
+          "FontPath": "Assets/Fonts/Pretendard.json",
+          "FontSize": 26.794,
           "Position": [
-            -200,
+            0,
             0
           ],
           "Size": [
-            400,
-            56
+            405.742,
+            49.761
           ],
           "BackgroundColor": [
+            0.03,
             0.08,
-            0.14,
-            0.28,
-            1
+            0.2,
+            0.04
           ],
           "HoverBackgroundColor": [
             0.12,
-            0.24,
-            0.42,
-            1
+            0.3,
+            0.65,
+            0.12
           ],
           "TextColor": [
             1,
-            0.95,
-            0.65,
+            1,
+            1,
             1
+          ],
+          "HoverTextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "Anchor": [
+            0.340909,
+            0.621679
+          ]
+        },
+        "Children": []
+      },
+      {
+        "Class": "UTextWidget",
+        "Properties": {
+          "WidgetName": "NameError",
+          "Text": "",
+          "FontPath": "Assets/Fonts/Pretendard.json",
+          "FontSize": 19.904,
+          "Color": [
+            1,
+            0.55,
+            0.55,
+            1
+          ],
+          "Position": [
+            0,
+            0
+          ],
+          "Size": [
+            298.565,
+            27.56
+          ],
+          "Anchor": [
+            0.400718,
+            0.723698
           ]
         },
         "Children": []
@@ -141,37 +144,31 @@
         "Class": "UButtonWidget",
         "Properties": {
           "WidgetName": "SaveScore",
-          "Text": "CONFIRM",
-          "FontSize": 30,
-          "Anchor": [
-            0.5,
-            0.72
-          ],
+          "Text": "",
+          "FontPath": "Assets/Fonts/Pretendard.json",
           "Position": [
-            -100,
+            0,
             0
           ],
           "Size": [
-            200,
-            60
+            234.258,
+            47.464
           ],
           "BackgroundColor": [
-            0.09,
-            0.22,
-            0.47,
-            1
+            0.04,
+            0.13,
+            0.4,
+            0.12
           ],
           "HoverBackgroundColor": [
-            0.16,
-            0.4,
-            0.68,
-            1
+            0.2,
+            0.44,
+            0.85,
+            0.28
           ],
-          "TextColor": [
-            1,
-            0.9,
-            0.25,
-            1
+          "Anchor": [
+            0.408493,
+            0.777896
           ]
         },
         "Children": []

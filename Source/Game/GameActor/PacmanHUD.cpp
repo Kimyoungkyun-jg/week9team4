@@ -3,6 +3,7 @@
 
 #include "CoinActor.h"
 #include "PacmanGameMode.h"
+#include "ScoreboardUI.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
@@ -83,13 +84,12 @@ APacmanHUD::APacmanHUD()
 void APacmanHUD::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (bNameEntryOpen)
-		if (FGameViewportClient* Viewport = GetGameViewport())
-			if (UImageWidget* Background = Cast<UImageWidget>(FindWidget("NameBackground")))
-				Background->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
-	if (bScoreboardOpen) LayoutScoreboard();
+	if (bResultScreenOpen) LayoutResultScreen();
+	if (bNameEntryOpen) LayoutNameEntry();
+	if (bScoreboardOpen) ScoreboardUI::Layout(*this);
 	UWorld* World = GetWorld();
 	UMinimapWidget* Minimap = Cast<UMinimapWidget>(FindWidget("Minimap"));
+	if (Minimap) LayoutGameUI();
 	if (!World || !Minimap || !World->GetPersistentLevel()) return;
 	const AMapActor* Map = nullptr;
 	for (AActor* Actor : World->GetPersistentLevel()->GetActors())
@@ -128,6 +128,20 @@ void APacmanHUD::Tick(float DeltaTime)
 
 void APacmanHUD::OnWidgetShown(const FString& Path)
 {
+	if (Path == "Assets/UI/GameUI.ui.json") { LayoutGameUI(); return; }
+	bResultScreenOpen = Path == "Assets/UI/GameOver.ui.json" || Path == "Assets/UI/GameClear.ui.json";
+	bShowingGameOver = Path == "Assets/UI/GameOver.ui.json";
+	if (bResultScreenOpen) LayoutResultScreen();
+	if (Path == "Assets/UI/GameOver.ui.json")
+	{
+		// 게임오버 화면 버튼 클릭 시 메인메뉴로 이동
+		BindButton("Button2", [this]
+		{
+			if (FGameViewportClient* Viewport = GetGameViewport())
+				Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+		});
+		return;
+	}
 	if (Path == "Assets/UI/GameClear.ui.json")
 	{
 		BindButton("Button2", [this] { ShowNameEntry(); });
@@ -136,7 +150,8 @@ void APacmanHUD::OnWidgetShown(const FString& Path)
 	if (Path == "Assets/UI/NameEntry.ui.json")
 	{
 		bNameEntryOpen = true;
-		SetText("ClearTime", "Clear time: " + FormatTime(ClearSeconds));
+		LayoutNameEntry();
+		SetText("ClearTime", FormatTime(ClearSeconds));
 		if (UTextInputWidget* Input = Cast<UTextInputWidget>(FindWidget("NameEntry")))
 			Input->SetOnSubmitted([this] { SaveScore(); });
 		BindButton("SaveScore", [this] { SaveScore(); });
@@ -145,13 +160,75 @@ void APacmanHUD::OnWidgetShown(const FString& Path)
 	if (Path != "Assets/UI/Scoreboard.ui.json") return;
 	bNameEntryOpen = false;
 	bScoreboardOpen = true;
-	LayoutScoreboard();
-	UpdateScoreboard();
+	ScoreboardUI::Layout(*this);
+	ScoreboardUI::Populate(*this, ClearSeconds);
 	BindButton("BackToMenu", [this]
 	{
 		if (FGameViewportClient* Viewport = GetGameViewport())
 			Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
 	});
+}
+
+void APacmanHUD::LayoutGameUI()
+{
+	FGameViewportClient* Viewport = GetGameViewport();
+	if (!Viewport) return;
+	const float Scale = std::min(Viewport->GetWidth() / 1280.0f, Viewport->GetHeight() / 720.0f);
+	if (Scale <= 0.0f) return;
+	if (UMinimapWidget* Map = Cast<UMinimapWidget>(FindWidget("Minimap")))
+	{
+		Map->SetPosition({-32.0f * Scale, 8.0f * Scale});
+		Map->SetSize({318.0f * Scale, 302.0f * Scale});
+	}
+	const auto LayoutIcon = [this, Scale](const char* Name, float X)
+	{
+		if (UImageWidget* Icon = Cast<UImageWidget>(FindWidget(Name)))
+		{
+			Icon->SetPosition({X * Scale, 24.0f * Scale});
+			Icon->SetSize({48.0f * Scale, 48.0f * Scale});
+		}
+	};
+	const auto LayoutText = [this, Scale](const char* Name, float X, float Width)
+	{
+		if (UTextWidget* Label = Cast<UTextWidget>(FindWidget(Name)))
+		{
+			Label->SetPosition({X * Scale, 26.0f * Scale});
+			Label->SetSize({Width * Scale, 48.0f * Scale});
+			Label->SetFontSize(40.0f * Scale);
+		}
+	};
+	LayoutIcon("Heart", 32.0f);
+	LayoutText("Life", 88.0f, 50.0f);
+	LayoutIcon("Coin", 170.0f);
+	LayoutText("Coins", 226.0f, 70.0f);
+}
+
+void APacmanHUD::LayoutResultScreen()
+{
+	FGameViewportClient* Viewport = GetGameViewport();
+	if (!Viewport) return;
+	const float Width = static_cast<float>(Viewport->GetWidth());
+	const float Height = static_cast<float>(Viewport->GetHeight());
+	if (Width <= 0.0f || Height <= 0.0f) return;
+	const float ArtWidth = bShowingGameOver ? 938.0f : 1066.0f;
+	constexpr float ArtHeight = 768.0f;
+	const float Scale = std::min(Width / ArtWidth, Height / ArtHeight);
+	if (UButtonWidget* Button = Cast<UButtonWidget>(FindWidget("Button2")))
+	{
+		Button->SetAnchor({0, 0});
+		Button->SetPivot({0, 0});
+		Button->SetPosition({0, 0});
+		Button->SetSize({Width, Height});
+		Button->SetBackgroundColor({0, 0, 0, 1});
+		Button->SetHoverBackgroundColor({0, 0, 0, 1});
+	}
+	if (UImageWidget* Image = Cast<UImageWidget>(FindWidget("Image3")))
+	{
+		Image->SetAnchor({0, 0});
+		Image->SetPivot({0, 0});
+		Image->SetPosition({(Width - ArtWidth * Scale) * 0.5f, (Height - ArtHeight * Scale) * 0.5f});
+		Image->SetSize({ArtWidth * Scale, ArtHeight * Scale});
+	}
 }
 
 void APacmanHUD::ShowNameEntry()
@@ -160,6 +237,50 @@ void APacmanHUD::ShowNameEntry()
 		if (APacmanGameMode* Mode = Cast<APacmanGameMode>(World->GetGameMode()))
 			ClearSeconds = Mode->GetClearSeconds();
 	ShowWidget("Assets/UI/NameEntry.ui.json");
+}
+
+void APacmanHUD::LayoutNameEntry()
+{
+	FGameViewportClient* Viewport = GetGameViewport();
+	if (!Viewport) return;
+	const float Width = static_cast<float>(Viewport->GetWidth());
+	const float Height = static_cast<float>(Viewport->GetHeight());
+	const float Scale = std::min(Width / 1672.0f, Height / 941.0f);
+	const float Left = (Width - 1672.0f * Scale) * 0.5f;
+	const float Top = (Height - 941.0f * Scale) * 0.5f;
+	if (UImageWidget* Shade = Cast<UImageWidget>(FindWidget("NameShade"))) Shade->SetSize({Width, Height});
+	if (UImageWidget* Background = Cast<UImageWidget>(FindWidget("NameBackground")))
+	{
+		Background->SetPosition({Left, Top});
+		Background->SetSize({1672.0f * Scale, 941.0f * Scale});
+	}
+	if (UTextWidget* Time = Cast<UTextWidget>(FindWidget("ClearTime")))
+	{
+		Time->SetAnchor({0, 0});
+		Time->SetPosition({Left + 875.0f * Scale, Top + 425.0f * Scale});
+		Time->SetSize({210.0f * Scale, 50.0f * Scale});
+		Time->SetFontSize(38.0f * Scale);
+	}
+	if (UTextInputWidget* Input = Cast<UTextInputWidget>(FindWidget("NameEntry")))
+	{
+		Input->SetAnchor({0, 0});
+		Input->SetPosition({Left + 570.0f * Scale, Top + 585.0f * Scale});
+		Input->SetSize({530.0f * Scale, 65.0f * Scale});
+		Input->SetFontSize(35.0f * Scale);
+	}
+	if (UTextWidget* Error = Cast<UTextWidget>(FindWidget("NameError")))
+	{
+		Error->SetAnchor({0, 0});
+		Error->SetPosition({Left + 670.0f * Scale, Top + 681.0f * Scale});
+		Error->SetSize({400.0f * Scale, 40.0f * Scale});
+		Error->SetFontSize(26.0f * Scale);
+	}
+	if (UButtonWidget* Confirm = Cast<UButtonWidget>(FindWidget("SaveScore")))
+	{
+		Confirm->SetAnchor({0, 0});
+		Confirm->SetPosition({Left + 683.0f * Scale, Top + 732.0f * Scale});
+		Confirm->SetSize({306.0f * Scale, 62.0f * Scale});
+	}
 }
 
 void APacmanHUD::ShowScoreboard()
@@ -175,41 +296,41 @@ void APacmanHUD::SaveScore()
 	if (!Input) return;
 	FString Name = Input->GetValue();
 	const size_t First = Name.find_first_not_of(' ');
-	if (First == FString::npos) { SetText("NamePrompt", "Enter a name first"); return; }
+	if (First == FString::npos) { SetText("NameError", "Enter a name first"); return; }
 	const size_t Last = Name.find_last_not_of(' ');
 	Name = Name.substr(First, Last - First + 1);
 	auto Scores = LoadScores();
 	Scores.push_back({Name, ClearSeconds});
 	std::stable_sort(Scores.begin(), Scores.end(), [](const FScoreEntry& A, const FScoreEntry& B) { return A.Seconds < B.Seconds; });
-	if (!SaveScores(Scores)) { SetText("NamePrompt", "Could not save score"); return; }
+	if (!SaveScores(Scores)) { SetText("NameError", "Could not save score"); return; }
 	bScoreSaved = true;
 	ShowScoreboard();
 }
 
-void APacmanHUD::UpdateScoreboard()
+void ScoreboardUI::Populate(AGameHUD& HUD, std::optional<double> CurrentSeconds)
 {
 	const auto Scores = LoadScores();
 	for (size_t Index = 0; Index < 5; ++Index)
 	{
 		const FString Number = std::to_string(Index + 1);
-		SetText("ScoreName" + Number, Index < Scores.size() ? FitScoreName(Scores[Index].Name) : "");
-		SetText("ScoreTime" + Number, Index < Scores.size() ? FormatTime(Scores[Index].Seconds) : "");
+		HUD.SetText("ScoreName" + Number, Index < Scores.size() ? FitScoreName(Scores[Index].Name) : "");
+		HUD.SetText("ScoreTime" + Number, Index < Scores.size() ? FormatTime(Scores[Index].Seconds) : "");
 	}
-	SetText("CurrentTime", FormatTime(ClearSeconds));
+	HUD.SetText("CurrentTime", CurrentSeconds ? FormatTime(*CurrentSeconds) : "");
 }
 
-void APacmanHUD::LayoutScoreboard()
+void ScoreboardUI::Layout(AGameHUD& HUD)
 {
-	FGameViewportClient* Viewport = GetGameViewport();
+	FGameViewportClient* Viewport = HUD.GetGameViewport();
 	if (!Viewport) return;
 	const float Width = static_cast<float>(Viewport->GetWidth());
 	const float Height = static_cast<float>(Viewport->GetHeight());
 	const float Scale = std::min(Width / 1672.0f, Height / 941.0f);
 	const float Left = (Width - 1672.0f * Scale) * 0.5f;
 	const float Top = (Height - 941.0f * Scale) * 0.5f;
-	if (UImageWidget* Shade = Cast<UImageWidget>(FindWidget("ScoreboardShade")))
+	if (UImageWidget* Shade = Cast<UImageWidget>(HUD.FindWidget("ScoreboardShade")))
 		Shade->SetSize({Width, Height});
-	if (UImageWidget* Background = Cast<UImageWidget>(FindWidget("ScoreboardBackground")))
+	if (UImageWidget* Background = Cast<UImageWidget>(HUD.FindWidget("ScoreboardBackground")))
 	{
 		Background->SetPosition({Left, Top});
 		Background->SetSize({1672.0f * Scale, 941.0f * Scale});
@@ -218,26 +339,29 @@ void APacmanHUD::LayoutScoreboard()
 	for (size_t Index = 0; Index < 5; ++Index)
 	{
 		const FString Number = std::to_string(Index + 1);
-		if (UTextWidget* Name = Cast<UTextWidget>(FindWidget("ScoreName" + Number)))
+		if (UTextWidget* Name = Cast<UTextWidget>(HUD.FindWidget("ScoreName" + Number)))
 		{
 			Name->SetAnchor({0, 0});
 			Name->SetPosition({Left + 0.383f * 1672.0f * Scale, Top + RowY[Index] * 941.0f * Scale});
+			Name->SetSize({310.0f * Scale, 48.0f * Scale});
 			Name->SetFontSize(32.0f * Scale);
 		}
-		if (UTextWidget* Time = Cast<UTextWidget>(FindWidget("ScoreTime" + Number)))
+		if (UTextWidget* Time = Cast<UTextWidget>(HUD.FindWidget("ScoreTime" + Number)))
 		{
 			Time->SetAnchor({0, 0});
 			Time->SetPosition({Left + 0.623f * 1672.0f * Scale, Top + RowY[Index] * 941.0f * Scale});
+			Time->SetSize({210.0f * Scale, 48.0f * Scale});
 			Time->SetFontSize(32.0f * Scale);
 		}
 	}
-	if (UTextWidget* Time = Cast<UTextWidget>(FindWidget("CurrentTime")))
+	if (UTextWidget* Time = Cast<UTextWidget>(HUD.FindWidget("CurrentTime")))
 	{
 		Time->SetAnchor({0, 0});
 		Time->SetPosition({Left + 0.498f * 1672.0f * Scale, Top + 0.838f * 941.0f * Scale});
+		Time->SetSize({340.0f * Scale, 55.0f * Scale});
 		Time->SetFontSize(36.0f * Scale);
 	}
-	if (UButtonWidget* Back = Cast<UButtonWidget>(FindWidget("BackToMenu")))
+	if (UButtonWidget* Back = Cast<UButtonWidget>(HUD.FindWidget("BackToMenu")))
 	{
 		Back->SetAnchor({0, 0});
 		Back->SetPosition({Left + 1552.0f * Scale, Top + 30.0f * Scale});

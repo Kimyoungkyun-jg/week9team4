@@ -1,4 +1,4 @@
-﻿#include "EnginePCH.h"
+#include "EnginePCH.h"
 #include "Editor/Outliner/OutlinerPanel.h"
 
 #include "Engine/Level.h"
@@ -14,10 +14,15 @@ bool FOutlinerPanel::Init()
 
 void FOutlinerPanel::Tick(float DeltaTime)
 {
-    if (SelectedObject && (!IsValid(SelectedObject) ||
-        (Cast<AActor>(SelectedObject) && Cast<AActor>(SelectedObject)->IsActorBeingDestroyed())))
-        SelectActor(nullptr);
-    if (PendingDeleteActor && PendingDeleteActor->IsPendingKillPending()) PendingDeleteActor = nullptr;
+	if (SelectedObject)
+	{
+		AActor* SelectedActor = GUObjectArray.Find(SelectedObject) != INDEX_NONE && IsValid(SelectedObject)
+			? Cast<AActor>(SelectedObject) : nullptr;
+		if (!SelectedActor || SelectedActor->IsActorBeingDestroyed()) SelectActor(nullptr);
+	}
+	if (PendingDeleteActor && (GUObjectArray.Find(PendingDeleteActor) == INDEX_NONE ||
+		!IsValid(PendingDeleteActor) || PendingDeleteActor->IsPendingKillPending()))
+		PendingDeleteActor = nullptr;
 }
 
 void FOutlinerPanel::OnRender()
@@ -39,7 +44,8 @@ void FOutlinerPanel::OnRender()
     ImGui::End();
 
     // Actors 순회가 완전히 끝난 뒤 삭제
-    if (PendingDeleteActor)
+    if (PendingDeleteActor && GUObjectArray.Find(PendingDeleteActor) != INDEX_NONE &&
+        IsValid(PendingDeleteActor) && !PendingDeleteActor->IsPendingKillPending())
     {
         if (DeleteCallback)
         {
@@ -85,7 +91,8 @@ void FOutlinerPanel::DrawActors(ULevel* Level)
 		}
     }
 
-    if (PendingDeleteActor)
+    if (PendingDeleteActor && GUObjectArray.Find(PendingDeleteActor) != INDEX_NONE &&
+        IsValid(PendingDeleteActor) && !PendingDeleteActor->IsPendingKillPending())
     {
         DeleteActorCallback(PendingDeleteActor);
         PendingDeleteActor = nullptr;
@@ -156,5 +163,8 @@ void FOutlinerPanel::SelectActor(AActor* Actor)
 
 AActor* FOutlinerPanel::GetSelectedActor() const
 {
-    return Cast<AActor>(SelectedObject);
+	if (!SelectedObject || GUObjectArray.Find(SelectedObject) == INDEX_NONE || !IsValid(SelectedObject))
+		return nullptr;
+	AActor* Actor = Cast<AActor>(SelectedObject);
+	return Actor && !Actor->IsActorBeingDestroyed() ? Actor : nullptr;
 }

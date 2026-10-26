@@ -2,6 +2,8 @@
 #include "PlayerPawn.h"
 #include "FlashlightActor.h"
 #include "Engine/World.h"
+#include "Engine/GameInstance.h"
+#include "Audio/SoundManager.h"
 #include "Engine/Level.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
@@ -14,10 +16,12 @@
 
 APlayerPawn::APlayerPawn()
 {
+	// Controller movement runs in PrePhysics; consume its final result once.
+	PrimaryActorTick.TickGroup = ETickingGroup::PostPhysics;
 	SetActorEnableCollision(true);
 	CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>("CollisionComponent");
 	SetRootComponent(CollisionComponent);
-	CollisionComponent->SetCapsuleSize(0.2f, 1.0f);
+	CollisionComponent->SetCapsuleSize(0.5f, 1.0f);
 	CollisionComponent->SetCollisionEnabled(true);
 	CollisionComponent->SetCollisionObjectType(ECollisionChannel::Pawn);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
@@ -34,6 +38,8 @@ APlayerPawn::APlayerPawn()
 void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
+	FootstepCadence.Reset();
+	WalkDisplacement = FVector::ZeroVector;
 	UCameraComponent* Camera = GetCameraComponent();
 	const FRotator SpawnRotation = GetActorRotation();
 	SetActorRotation(FRotator(0.0f, SpawnRotation.Yaw, 0.0f));
@@ -57,6 +63,13 @@ void APlayerPawn::BeginPlay()
 				}
 				break;
 			}
+	PlayerStartLocation = GetActorLocation();
+	PlayerStartRotation = GetActorRotation();
+	if (Camera)
+	{
+		PlayerStartCameraLocation = Camera->GetRelativeLocation();
+		PlayerStartCameraRotation = Camera->GetRelativeRotation();
+	}
 
 	SetActorEnableCollision(true);
 	if (CollisionComponent)
@@ -87,6 +100,7 @@ void APlayerPawn::AddMovementInput(const FVector& WorldDirection, float ScaleVal
 	const FVector FlatDirection(WorldDirection.X, WorldDirection.Y, 0.0f);
 	const FVector Delta = FlatDirection.GetSafeNormal() * (ScaleValue * GetMoveSpeed());
 	if (Delta.SizeSquared() <= SMALL_NUMBER) return;
+	const FVector BeforeMove = GetActorLocation();
 	FHitResult Hit;
 	CollisionComponent->MoveComponent(Delta, CollisionComponent->GetWorldRotation(), true, &Hit);
 	if (Hit.bBlockingHit && !Hit.bStartPenetrating)
@@ -97,6 +111,31 @@ void APlayerPawn::AddMovementInput(const FVector& WorldDirection, float ScaleVal
 		if (Slide.SizeSquared() > SMALL_NUMBER)
 			CollisionComponent->MoveComponent(Slide, CollisionComponent->GetWorldRotation(), true);
 	}
+	// Sample only the completed swept move, not arbitrary location changes between frames.
+	// A teleport from an overlap callback must not count as a walk either.
+	const FVector AfterMove = GetActorLocation();
+	const FVector Actual(AfterMove.X - BeforeMove.X, AfterMove.Y - BeforeMove.Y, 0.0f);
+	UWorld* PawnWorld = GetWorld();
+	if (HasBegunPlay() && PawnWorld && !PawnWorld->IsPaused() &&
+		(PawnWorld->GetWorldType() == EWorldType::Game || PawnWorld->GetWorldType() == EWorldType::PIE) &&
+		Actual.SizeSquared() <= Delta.SizeSquared() + 0.0001f)
+		WalkDisplacement += Actual;
+}
+
+void APlayerPawn::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	UWorld* PawnWorld = GetWorld();
+	const bool bPlaying = PawnWorld && !PawnWorld->IsPaused() &&
+		(PawnWorld->GetWorldType() == EWorldType::Game || PawnWorld->GetWorldType() == EWorldType::PIE);
+	const bool bStep = FootstepCadence.Advance(DeltaTime, bPlaying && WalkDisplacement.SizeSquared() > 0.00000001f);
+	WalkDisplacement = FVector::ZeroVector;
+	if (!bStep) return;
+	static constexpr const char* Steps[] = {"Assets/Sounds/footstep00.wav", "Assets/Sounds/footstep01.wav",
+		"Assets/Sounds/footstep02.wav", "Assets/Sounds/footstep03.wav", "Assets/Sounds/footstep04.wav"};
+	const int Index = std::uniform_int_distribution<int>(0, 4)(FootstepRandom);
+	if (UGameInstance* Instance = PawnWorld->GetGameInstance())
+		if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->PlaySFX(Steps[Index], 0.5f);
 }
 
 void APlayerPawn::AddControllerPitchInput(float Value)
@@ -113,12 +152,28 @@ void APlayerPawn::SetLife(int32 InLife)
 {
 	Life = std::max(0, InLife);
 	if (UWorld* PawnWorld = GetWorld())
+	{
 		if (AGameHUD* HUD = PawnWorld->GetHUD())
 			HUD->SetText("Life", std::to_string(Life));
+	}
+}
+
+void APlayerPawn::RespawnAtPlayerStart()
+{
+	SetActorLocation(PlayerStartLocation);
+	SetActorRotation(PlayerStartRotation);
+	if (UCameraComponent* Camera = GetCameraComponent())
+	{
+		Camera->SetRelativeLocation(PlayerStartCameraLocation);
+		Camera->SetRelativeRotation(PlayerStartCameraRotation);
+	}
+	if (CollisionComponent) CollisionComponent->UpdateOverlaps();
 }
 
 void APlayerPawn::EndPlay()
 {
+	FootstepCadence.Reset();
+	WalkDisplacement = FVector::ZeroVector;
 	if (FlashlightActor)
 	{
 		FlashlightActor->Destroy();

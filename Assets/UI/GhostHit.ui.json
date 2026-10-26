@@ -1,0 +1,19 @@
+{
+    "Version": 1,
+    "Root": {
+        "Class": "UCanvasWidget",
+        "Properties": { "WidgetName": "GhostHitRoot" },
+        "Children": [
+            {
+                "Class": "UImageWidget",
+                "Properties": {
+                    "WidgetName": "GhostHitFlash",
+                    "TexturePath": "WhiteTexture",
+                    "Size": [1280, 720],
+                    "Tint": [0.0, 0.0, 0.0, 0.0]
+                },
+                "Children": []
+            }
+        ]
+    }
+}

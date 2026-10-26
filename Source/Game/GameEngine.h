@@ -15,5 +15,6 @@ public:
 	virtual void PreExit() override;
 private:
 	FWorldContext* GameContext = nullptr;
+	bool bMouseCaptureReleasedByUser = false;
 	FSceneViewPipeline ViewPipeline;
 };

@@ -8,7 +8,12 @@ class AMainMenuHUD : public AGameHUD
 
 public:
 	AMainMenuHUD();
+	void Tick(float DeltaTime) override;
 
 protected:
 	void OnWidgetShown(const FString& Path) override;
+
+private:
+	void LayoutMainMenu();
+	bool bScoreboardOpen = false;
 };
