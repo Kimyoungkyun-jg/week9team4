@@ -8,4 +8,5 @@ class AMainMenuGameMode : public AGameMode
 
 public:
 	AMainMenuGameMode();
+	bool AllowsPlayerControllerInput() const override { return false; }
 };

@@ -7,7 +7,10 @@
 #include "Components/SceneComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Actor/MapActor.h"
+#include "GameFramework/GameHUD.h"
 #include "Collision/HitResult.h"
+#include <algorithm>
+#include <string>
 
 APlayerPawn::APlayerPawn()
 {
@@ -104,6 +107,14 @@ void APlayerPawn::AddControllerPitchInput(float Value)
 		Rotation.Pitch = FMath::Clamp(Rotation.Pitch + Value, -89.0f, 89.0f);
 		Camera->SetRelativeRotation(Rotation);
 	}
+}
+
+void APlayerPawn::SetLife(int32 InLife)
+{
+	Life = std::max(0, InLife);
+	if (UWorld* PawnWorld = GetWorld())
+		if (AGameHUD* HUD = PawnWorld->GetHUD())
+			HUD->SetText("Life", std::to_string(Life));
 }
 
 void APlayerPawn::EndPlay()

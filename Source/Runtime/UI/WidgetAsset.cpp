@@ -41,6 +41,7 @@ namespace
 		else if (ClassName == "UTextWidget") Widget.reset(NewObject<UTextWidget>());
 		else if (ClassName == "UTimerWidget") Widget.reset(NewObject<UTimerWidget>());
 		else if (ClassName == "UButtonWidget") Widget.reset(NewObject<UButtonWidget>());
+		else if (ClassName == "UTextInputWidget") Widget.reset(NewObject<UTextInputWidget>());
 		else if (ClassName == "UMinimapWidget") Widget.reset(NewObject<UMinimapWidget>());
 		else return nullptr;
 		if (!Widget) return nullptr;

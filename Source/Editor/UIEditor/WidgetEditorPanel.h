@@ -50,6 +50,7 @@ private:
 	char FontBuffer[512]{};
 	bool bDirty = false;
 	bool bResizing = false;
+	bool bPreviewHover = false;
 	EPendingAction PendingAction = EPendingAction::None;
 	FString PendingPath;
 	FString ActionStatus;

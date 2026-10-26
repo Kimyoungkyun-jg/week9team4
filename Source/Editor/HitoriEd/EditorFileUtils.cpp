@@ -106,6 +106,21 @@ bool FEditorFileUtils::LoadScene(UWorld* World)
 	return true;
 }
 
+FString FEditorFileUtils::ChooseBoxColliderJsonPath(bool bSave)
+{
+	wchar_t FilePath[1024] = {};
+	OPENFILENAMEW Dialog = {};
+	Dialog.lStructSize = sizeof(Dialog);
+	Dialog.lpstrFile = FilePath;
+	Dialog.nMaxFile = 1024;
+	Dialog.lpstrFilter = L"BoxCollider JSON (*.json)\0*.json\0";
+	Dialog.lpstrDefExt = L"json";
+	Dialog.Flags = OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | (bSave ? OFN_OVERWRITEPROMPT : OFN_FILEMUSTEXIST);
+	if (!(bSave ? GetSaveFileNameW(&Dialog) : GetOpenFileNameW(&Dialog))) return {};
+	const auto Utf8 = std::filesystem::path(FilePath).u8string();
+	return FString(Utf8.begin(), Utf8.end());
+}
+
 FString FEditorFileUtils::OpenSaveSceneDialog()
 {
 	char FilePath[MAX_PATH] = {};

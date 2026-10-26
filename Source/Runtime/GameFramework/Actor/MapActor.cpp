@@ -6,9 +6,92 @@
 #include "Serialization/StructuredArchiveSlots.h"
 #include <cmath>
 #include <string>
+#include <unordered_set>
+#include <climits>
+#include <cctype>
 
 namespace
 {
+	constexpr uintmax_t MaxColliderJsonBytes = 64 * 1024 * 1024;
+
+	bool ValidateBoxData(const TArray<FMapBoxColliderData>& Boxes, FString& Error)
+	{
+		if (Boxes.Num() > AMapActor::MaxBoxColliderCount) { Error = "Too many BoxColliders (maximum 65536)."; return false; }
+		std::unordered_set<FName, FNameHash> Names;
+		for (int32 Index = 0; Index < Boxes.Num(); ++Index)
+		{
+			const auto& Box = Boxes[Index];
+			const FString Prefix = "Box[" + std::to_string(Index) + "]: ";
+			if (Box.Name.empty() || Box.Name.size() > 255 ||
+				std::any_of(Box.Name.begin(), Box.Name.end(), [](unsigned char C) { return C < 32 || C == 127; }))
+			{ Error = Prefix + "Name must contain 1..255 bytes and no control characters."; return false; }
+			// FName parses a numeric suffix into a signed int plus one. Reject overflow first.
+			const auto Suffix = Box.Name.find_last_of('_');
+			if (Suffix != FString::npos)
+			{
+				const auto Number = Box.Name.substr(Suffix + 1);
+				if (!Number.empty() && Number.find_first_not_of("0123456789") == FString::npos &&
+					(Number.size() > 10 || std::stoull(Number) >= INT_MAX))
+				{ Error = Prefix + "Name numeric suffix is out of range."; return false; }
+			}
+			const FName Name(Box.Name);
+			if (Name.IsNone() || !Names.insert(Name).second)
+			{ Error = Prefix + "Name is None or duplicates another Box name (case insensitive)."; return false; }
+			for (int Axis = 0; Axis < 3; ++Axis)
+			{
+				if (!std::isfinite(Box.Location[Axis]) || std::abs(Box.Location[Axis]) > 1.e6f ||
+					!std::isfinite(Box.Rotation[Axis]) || std::abs(Box.Rotation[Axis]) > 1.e6f ||
+					!std::isfinite(Box.Scale[Axis]) || Box.Scale[Axis] < 1.e-4f || Box.Scale[Axis] > 1.e4f ||
+					!std::isfinite(Box.Extent[Axis]) || Box.Extent[Axis] < 0.f || Box.Extent[Axis] > 1.e6f)
+				{ Error = Prefix + "Invalid transform/extent: finite location/rotation +/-1e6, scale 1e-4..1e4, half extent 0..1e6 required."; return false; }
+			}
+			if (!IsCollisionChannel(Box.Collision.ObjectChannel))
+			{ Error = Prefix + "Invalid ObjectChannel."; return false; }
+			for (auto Response : Box.Collision.Responses)
+				if (Response < ECollisionResponse::Ignore || Response > ECollisionResponse::Block)
+				{ Error = Prefix + "Invalid collision response."; return false; }
+		}
+		return true;
+	}
+
+	std::filesystem::path ColliderJsonPath(const FString& Path)
+	{
+		if (Path.empty()) throw std::runtime_error("Select a JSON file path first.");
+		auto FullPath = std::filesystem::absolute(std::filesystem::path(std::u8string(Path.begin(), Path.end()))).lexically_normal();
+		auto Extension = FullPath.extension().string();
+		std::transform(Extension.begin(), Extension.end(), Extension.begin(), [](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+		if (Extension != ".json") throw std::runtime_error("BoxCollider files must use the .json extension.");
+		return FullPath;
+	}
+
+	// CREATE_NEW prevents sharing a temporary file; failed writes never truncate the destination.
+	bool WriteColliderJson(const std::filesystem::path& Path, const std::string& Text, FString& Error)
+	{
+		std::filesystem::path Temporary;
+		HANDLE File = INVALID_HANDLE_VALUE;
+		for (int Attempt = 0; Attempt < 100 && File == INVALID_HANDLE_VALUE; ++Attempt)
+		{
+			Temporary = Path;
+			Temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64()) + L"." + std::to_wstring(Attempt);
+			File = CreateFileW(Temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (File == INVALID_HANDLE_VALUE && GetLastError() != ERROR_FILE_EXISTS) break;
+		}
+		if (File == INVALID_HANDLE_VALUE) { Error = "Cannot create temporary JSON file. Windows error " + std::to_string(GetLastError()); return false; }
+		DWORD Written = 0;
+		bool Success = WriteFile(File, Text.data(), static_cast<DWORD>(Text.size()), &Written, nullptr) && Written == Text.size();
+		DWORD Failure = Success ? ERROR_SUCCESS : GetLastError();
+		if (Success && !FlushFileBuffers(File)) { Success = false; Failure = GetLastError(); }
+		if (!CloseHandle(File) && Success) { Success = false; Failure = GetLastError(); }
+		if (Success && !MoveFileExW(Temporary.c_str(), Path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{ Success = false; Failure = GetLastError(); }
+		if (!Success)
+		{
+			Error = "Cannot commit JSON file; existing destination preserved. Windows error " + std::to_string(Failure);
+			DeleteFileW(Temporary.c_str());
+		}
+		return Success;
+	}
+
 	bool IsFinite(const FVector& V)
 	{
 		return std::isfinite(V.X) && std::isfinite(V.Y) && std::isfinite(V.Z);
@@ -168,6 +251,14 @@ bool AMapActor::HasExistingWallCollision() const
 	return false;
 }
 
+TArray<UBoxComponent*> AMapActor::GetBoxCollisionComponents() const
+{
+	TArray<UBoxComponent*> Boxes;
+	for (UActorComponent* Component : GetComponents())
+		if (auto* Box = Cast<UBoxComponent>(Component)) Boxes.Add(Box);
+	return Boxes;
+}
+
 void AMapActor::ClearWallCollisionComponents()
 {
 	TArray<UActorComponent*> ToRemove;
@@ -178,25 +269,204 @@ void AMapActor::ClearWallCollisionComponents()
 	}
 	for (UActorComponent* Component : ToRemove)
 		DestroyComponent(Component);
-	WallCollisionComponents.Reset();
 }
 
-void AMapActor::GenerateWallCollisionComponents()
+bool AMapActor::GenerateWallCollisionComponents(FString* OutError, const std::function<void()>& BeforeReplace)
 {
-	ClearWallCollisionComponents();
+	FString Error;
+	if (const char* Warning = GetGridTransformWarning())
+	{
+		if (OutError) *OutError = Warning;
+		return false;
+	}
+	TArray<FMapBoxColliderData> Boxes;
 	for (const FBox& Bounds : GetWallCollisionLocalBoxes())
 	{
-		const FName Name("WallCollision_" + std::to_string(WallCollisionComponents.Num()));
-		UBoxComponent* Box = Cast<UBoxComponent>(AddComponent(UBoxComponent::StaticClass(), Name));
-		if (!Box) continue;
-		Box->SetRelativeLocation((Bounds.Min + Bounds.Max) * 0.5f);
-		Box->SetBoxExtent((Bounds.Max - Bounds.Min) * 0.5f);
-		Box->SetCollisionObjectType(ECollisionChannel::WorldStatic);
-		Box->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
-		Box->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Block);
-		Box->SetGenerateOverlapEvents(false);
-		Box->SetCollisionEnabled(true);
-		WallCollisionComponents.Add(Box);
+		FMapBoxColliderData Box;
+		Box.Name = "WallCollision_" + std::to_string(Boxes.Num());
+		Box.Location = (Bounds.Min + Bounds.Max) * 0.5f;
+		Box.Extent = (Bounds.Max - Bounds.Min) * 0.5f;
+		Box.Collision.ObjectChannel = ECollisionChannel::WorldStatic;
+		Box.Collision.Responses.fill(ECollisionResponse::Ignore);
+		Box.Collision.Responses[static_cast<int32>(ECollisionChannel::Pawn)] = ECollisionResponse::Block;
+		Box.Collision.bEnabled = true;
+		Boxes.Add(Box);
+	}
+	const bool Success = ReplaceBoxColliders(Boxes, Error, BeforeReplace);
+	if (OutError) *OutError = Error;
+	return Success;
+}
+
+bool AMapActor::CaptureBoxColliders(TArray<FMapBoxColliderData>& OutBoxes, FString& Error) const
+{
+	Error.clear();
+	TArray<FMapBoxColliderData> Boxes;
+	for (auto* Box : GetBoxCollisionComponents())
+	{
+		if (Box == GetRootComponent() || Box->GetAttachParent() != GetRootComponent())
+		{ Error = "Box '" + Box->GetName() + "' must attach directly to the MapActor root. Export did not change its attachment."; return false; }
+		FMapBoxColliderData Data;
+		Data.Name = Box->GetName();
+		Data.Location = Box->GetRelativeLocation();
+		Data.Rotation = Box->GetRelativeRotation();
+		Data.Scale = Box->GetRelativeScale3D();
+		Data.Extent = Box->GetUnscaledBoxExtent();
+		Data.Collision = Box->GetCollisionSettings();
+		Boxes.Add(Data);
+	}
+	if (!ValidateBoxData(Boxes, Error)) return false;
+	OutBoxes = std::move(Boxes);
+	return true;
+}
+
+bool AMapActor::SaveBoxCollidersToJson(const FString& Path, FString& Error, bool bAllowEmpty) const
+{
+	try
+	{
+		TArray<FMapBoxColliderData> Boxes;
+		if (!CaptureBoxColliders(Boxes, Error)) return false;
+		if (Boxes.IsEmpty() && !bAllowEmpty) { Error = "No BoxColliders. Confirm empty export first."; return false; }
+		json Root = { {"Version", 1}, {"Boxes", json::array()} };
+		for (const auto& Box : Boxes)
+		{
+			json Responses = json::array();
+			for (auto Response : Box.Collision.Responses) Responses.push_back(static_cast<int32>(Response));
+			Root["Boxes"].push_back({ {"Name", Box.Name},
+				{"Location", {Box.Location.X, Box.Location.Y, Box.Location.Z}},
+				{"Rotation", {Box.Rotation.Pitch, Box.Rotation.Yaw, Box.Rotation.Roll}},
+				{"Scale", {Box.Scale.X, Box.Scale.Y, Box.Scale.Z}},
+				{"BoxExtent", {Box.Extent.X, Box.Extent.Y, Box.Extent.Z}},
+				{"CollisionEnabled", Box.Collision.bEnabled},
+				{"ObjectChannel", static_cast<int32>(Box.Collision.ObjectChannel)},
+				{"Responses", Responses}, {"GenerateOverlapEvents", Box.Collision.bGenerateOverlapEvents} });
+		}
+		const std::string Text = Root.dump(2) + "\n";
+		if (Text.size() > MaxColliderJsonBytes) { Error = "JSON exceeds 64 MiB."; return false; }
+		return WriteColliderJson(ColliderJsonPath(Path), Text, Error);
+	}
+	catch (const std::exception& Exception) { Error = Exception.what(); return false; }
+}
+
+bool AMapActor::ReadBoxCollidersFromJson(const FString& Path, TArray<FMapBoxColliderData>& OutBoxes, FString& Error)
+{
+	Error.clear();
+	try
+	{
+		const auto FullPath = ColliderJsonPath(Path);
+		const auto Size = std::filesystem::file_size(FullPath);
+		if (Size > MaxColliderJsonBytes) throw std::runtime_error("JSON exceeds 64 MiB.");
+		std::ifstream File(FullPath, std::ios::binary);
+		if (!File) throw std::runtime_error("Cannot open JSON file.");
+		std::string Text(static_cast<size_t>(Size), '\0');
+		File.read(Text.data(), static_cast<std::streamsize>(Size));
+		if (!File || File.peek() != std::char_traits<char>::eof()) throw std::runtime_error("Cannot read JSON file or file changed while reading.");
+		// Bound nesting before parsing so adversarial JSON cannot exhaust the parser stack.
+		const json Root = json::parse(Text, [](int Depth, json::parse_event_t, json&) {
+			if (Depth > 16) throw std::runtime_error("JSON nesting is too deep.");
+			return true;
+		});
+		if (!Root.is_object() || !Root.at("Version").is_number_integer() || Root.at("Version") != 1)
+			throw std::runtime_error("Unsupported BoxCollider JSON version (expected 1).");
+		const auto& Array = Root.at("Boxes");
+		if (!Array.is_array() || Array.empty() || Array.size() > MaxBoxColliderCount)
+			throw std::runtime_error("Boxes must be a nonempty array of at most 65536 entries. Use Clear to remove all boxes.");
+		TArray<FMapBoxColliderData> Boxes;
+		for (const auto& Entry : Array)
+		{
+			if (!Entry.is_object()) throw std::runtime_error("Each Box must be an object.");
+			FMapBoxColliderData Box;
+			Box.Name = Entry.at("Name").get<FString>();
+			auto ReadVector = [&](const char* Key, auto& Value)
+			{
+				const auto& Vector = Entry.at(Key);
+				if (!Vector.is_array() || Vector.size() != 3) throw std::runtime_error(FString(Key) + " must be an array of 3 numbers.");
+				for (int Axis = 0; Axis < 3; ++Axis)
+				{
+					if (!Vector[Axis].is_number()) throw std::runtime_error(FString(Key) + " must contain numbers.");
+					const double Number = Vector[Axis].get<double>();
+					if (!std::isfinite(Number) || std::abs(Number) > 1.e6) throw std::runtime_error(FString(Key) + " is out of range.");
+					Value[Axis] = static_cast<float>(Number);
+				}
+			};
+			ReadVector("Location", Box.Location); ReadVector("Rotation", Box.Rotation);
+			ReadVector("Scale", Box.Scale); ReadVector("BoxExtent", Box.Extent);
+			Box.Collision.bEnabled = Entry.at("CollisionEnabled").get<bool>();
+			Box.Collision.bGenerateOverlapEvents = Entry.at("GenerateOverlapEvents").get<bool>();
+			auto ReadEnum = [](const json& Value, int Maximum)
+			{
+				if (!Value.is_number_integer() || Value < 0 || Value >= Maximum) throw std::runtime_error("Collision channel/response is out of range.");
+				return Value.get<int32>();
+			};
+			Box.Collision.ObjectChannel = static_cast<ECollisionChannel>(ReadEnum(Entry.at("ObjectChannel"), CollisionChannelCount));
+			const auto& Responses = Entry.at("Responses");
+			if (!Responses.is_array() || Responses.size() != CollisionChannelCount) throw std::runtime_error("Responses must contain all 6 channels.");
+			for (int Index = 0; Index < CollisionChannelCount; ++Index)
+				Box.Collision.Responses[Index] = static_cast<ECollisionResponse>(ReadEnum(Responses[Index], 3));
+			Boxes.Add(Box);
+		}
+		if (!ValidateBoxData(Boxes, Error)) return false;
+		OutBoxes = std::move(Boxes);
+		return true;
+	}
+	catch (const std::exception& Exception) { Error = Exception.what(); return false; }
+}
+
+bool AMapActor::ReplaceBoxColliders(const TArray<FMapBoxColliderData>& Boxes, FString& Error,
+	const std::function<void()>& BeforeReplace)
+{
+	Error.clear();
+	TArray<UBoxComponent*> Prepared;
+	const auto Previous = GetBoxCollisionComponents();
+	try
+	{
+		if (!GetRootComponent()) throw std::runtime_error("MapActor has no root.");
+		if (HasBegunPlay() && !Previous.IsEmpty()) throw std::runtime_error("Stop Play before replacing existing BoxColliders.");
+		if (!ValidateBoxData(Boxes, Error)) return false;
+		for (const auto* Box : Previous)
+			if (Box == GetRootComponent()) throw std::runtime_error("Cannot replace a Box used as the Actor root.");
+		TArray<FName> Names;
+		for (const auto& Data : Boxes)
+		{
+			const FName Name(Data.Name);
+			// Never pass a colliding name to NewObject: this engine can overwrite existing objects.
+			if (auto* Existing = FindComponentByName(Name); Existing && !Cast<UBoxComponent>(Existing))
+				throw std::runtime_error("Box name conflicts with a non-Box component: " + Data.Name);
+			Names.Add(Name);
+		}
+		Prepared.Reserve(Boxes.Num());
+		for (const auto& Data : Boxes)
+		{
+			auto* Box = Cast<UBoxComponent>(AddComponent(UBoxComponent::StaticClass(), MakeUniqueObjectName(this, UBoxComponent::StaticClass())));
+			if (!Box) throw std::runtime_error("Failed to create BoxCollider. Previous boxes preserved.");
+			Prepared.Add(Box);
+			Box->SetCollisionEnabled(false);
+			Box->SetRelativeLocation(Data.Location);
+			Box->SetRelativeRotation(Data.Rotation);
+			Box->SetRelativeScale3D(Data.Scale);
+			Box->SetBoxExtent(Data.Extent);
+			Box->SetCollisionObjectType(Data.Collision.ObjectChannel);
+			for (int Channel = 0; Channel < CollisionChannelCount; ++Channel)
+				Box->SetCollisionResponseToChannel(static_cast<ECollisionChannel>(Channel), Data.Collision.Responses[Channel]);
+			Box->SetGenerateOverlapEvents(Data.Collision.bGenerateOverlapEvents);
+			Box->SetCollisionEnabled(Data.Collision.bEnabled);
+			if (GetWorld() && !Box->IsRegistered()) throw std::runtime_error("BoxCollider registration failed. Previous boxes preserved.");
+		}
+		// No previous component or editor reference is touched until all new boxes exist.
+		if (BeforeReplace) BeforeReplace();
+		for (auto* Box : Previous) DestroyComponent(Box);
+		for (int Index = 0; Index < Prepared.Num(); ++Index)
+		{
+			Prepared[Index]->SetName(Names[Index]);
+		}
+		return true;
+	}
+	catch (const std::exception& Exception)
+	{
+		// Also catches a component added to the owner if AddComponent throws during registration.
+		for (auto* Box : GetBoxCollisionComponents())
+			if (Previous.Find(Box) == INDEX_NONE) DestroyComponent(Box);
+		Error = Exception.what();
+		return false;
 	}
 }
 
@@ -282,7 +552,7 @@ bool AMapActor::ResetGridToInitial()
 	GridOrigin = FVector(-14.f, -12.f, Mesh->AABB.Min.Z + 0.231775f);
 	InitializeDefaultTerrain();
 	++GridRevision;
-	if (HasBegunPlay()) RebuildWallCollision();
+	if (HasBegunPlay() && !HasExistingWallCollision()) RebuildWallCollision();
 	return true;
 }
 
@@ -417,7 +687,7 @@ bool AMapActor::ConfigureGrid(int32 C, int32 R, float Size, const FVector& Origi
 	TileSize = Size;
 	GridOrigin = Origin;
 	++GridRevision;
-	if (HasBegunPlay()) RebuildWallCollision();
+	if (HasBegunPlay() && !HasExistingWallCollision()) RebuildWallCollision();
 	return true;
 }
 
@@ -443,7 +713,7 @@ bool AMapActor::SetTile(int32 Column, int32 Row, EMapTileTerrain Terrain)
 	if (!IsValidTile(Column, Row) || !IsValidTerrain(Terrain)) return false;
 	Tiles[Row * Columns + Column] = Terrain;
 	++GridRevision;
-	if (HasBegunPlay()) RebuildWallCollision();
+	if (HasBegunPlay() && !HasExistingWallCollision()) RebuildWallCollision();
 	return true;
 }
 
@@ -452,7 +722,7 @@ bool AMapActor::FillTiles(EMapTileTerrain Terrain)
 	if (!IsValidTerrain(Terrain)) return false;
 	for (auto& Tile : Tiles) Tile = Terrain;
 	++GridRevision;
-	if (HasBegunPlay()) RebuildWallCollision();
+	if (HasBegunPlay() && !HasExistingWallCollision()) RebuildWallCollision();
 	return true;
 }
 

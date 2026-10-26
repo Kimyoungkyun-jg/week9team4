@@ -166,6 +166,10 @@ LRESULT FWindow::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 		FInputSystem::OnKeyUp(wParam);
 		break;
 
+	case WM_CHAR:
+		FInputSystem::OnChar(static_cast<uint16>(wParam));
+		break;
+
 	// 포커스를 잃으면 이후의 KeyUp/ButtonUp 메시지가 이 창으로 오지 않으므로
 	// 눌린 상태가 그대로 남는다. 여기서 전부 비워준다.
 	case WM_KILLFOCUS:

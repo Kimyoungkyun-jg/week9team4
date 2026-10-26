@@ -104,6 +104,7 @@ void UGameEngine::Tick(float DeltaTime)
 {
 	if (!GameContext || !GameContext->World() || !GameContext->GameViewport) return;
 	FGameViewportClient& Viewport = *GameContext->GameViewport;
+	Viewport.ProcessPendingSceneChange();
 	Viewport.MouseMove(nullptr, FInputSystem::GetMouseX(), FInputSystem::GetMouseY());
 	for (int32 Key = 0; Key < 256; ++Key)
 	{

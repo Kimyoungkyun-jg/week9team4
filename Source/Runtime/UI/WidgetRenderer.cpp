@@ -62,12 +62,13 @@ void FWidgetRenderer::DrawWidget(UWidget* Widget)
 		DrawTextWidget(Text);
 	else if (UButtonWidget* Button = Cast<UButtonWidget>(Widget))
 	{
-		FLinearColor Color = Button->GetBackgroundColor();
+		UTextInputWidget* Input = Cast<UTextInputWidget>(Button);
+		FLinearColor Color = (Button->IsHovered() || (Input && Input->IsFocused())) ? Button->GetHoverBackgroundColor() : Button->GetBackgroundColor();
 		if (Button->IsPressed()) { Color.R *= 0.75f; Color.G *= 0.75f; Color.B *= 0.75f; }
 		DrawQuad(Button->GetLayoutRect(), 0, 0, 1, 1,
 			UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture"), Color);
-		DrawText(Button->GetText(), Button->GetFontPath(), Button->GetFontSize(),
-			Button->GetTextColor(), Button->GetLayoutRect());
+		DrawText(Input ? Input->GetDisplayText() : Button->GetText(), Button->GetFontPath(), Button->GetFontSize(),
+			Button->IsHovered() ? Button->GetHoverTextColor() : Button->GetTextColor(), Button->GetLayoutRect());
 	}
 	if (UCanvasWidget* Canvas = Cast<UCanvasWidget>(Widget))
 		for (UWidget* Child : Canvas->GetChildrenInPaintOrder())
