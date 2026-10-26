@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 
 struct FTransform;
+struct FEditorSettings;
 class FImGuiRenderer;
 using FShadowPreviewQuery = std::function<bool(const ULightComponent*, FTexture2DArray*&, TArray<FLightShadowRenderData>&)>;
 
@@ -44,6 +45,7 @@ public:
 	const ULightComponent* GetSelectedLight() const;
 	void SetShadowPreviewQuery(FShadowPreviewQuery InQuery) { QueryShadowPreview = std::move(InQuery); }
 	void SetImGuiRenderer(FImGuiRenderer* InRenderer) { ImGuiRenderer = InRenderer; }
+	void SetEditorSettings(const FEditorSettings* InSettings) { EditorSettings = InSettings; }
 
 	ImFont* GetCustomFont() { return CustomFont; }
 	const FMapTileEditor& GetMapTileEditor() const { return MapTileEditor; }
@@ -54,6 +56,7 @@ private:
 	void DrawScriptEditor();
 	FShadowPreviewQuery QueryShadowPreview;
 	FImGuiRenderer* ImGuiRenderer = nullptr;
+	const FEditorSettings* EditorSettings = nullptr;
 	float ShadowPreviewContrast = 32.0f;
 	void DrawSceneComponentNode(USceneComponent* Component, USceneComponent* Root, UActorComponent*& OutSelectedComponent);
 	void TryReparent(USceneComponent* DroppedComponent, USceneComponent* DragComponent);

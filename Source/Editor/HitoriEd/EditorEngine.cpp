@@ -156,6 +156,7 @@ bool UEditorEngine::Init()
 	CascadeFloorRenderer->Init();
 
 	SettingsPanel = EditorUI->AddEditorPanel<FSettingsPanel>();
+	DetailsPanel->SetEditorSettings(&SettingsPanel->GetSettings());
 	SettingsPanel->SetEditScriptCallback([this](const FString& Path)
 	{
 		DetailsPanel->SetOpen(true);

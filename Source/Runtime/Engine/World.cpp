@@ -163,9 +163,6 @@ void UWorld::Tick(float DeltaTime)
 		}
 	}
 
-    const auto Pending = PendingOverlapUpdates; PendingOverlapUpdates.Reset();
-    for (UPrimitiveComponent* Component : Pending)
-        if (CollisionComponents.Find(Component) != INDEX_NONE) Component->UpdateOverlaps();
 	bIsTicking = false;
 
 }
@@ -188,7 +185,6 @@ void UWorld::ClearWorld()
 		Level->ClearActors();
 	Scene.RemoveAllLights();
 	Scene.RemoveAllPrimitives();
-    PendingOverlapUpdates.Reset();
     CollisionEntries.Reset();
     CollisionBVH.Clear();
     DirtyCollisionComponents.Reset();
@@ -504,23 +500,6 @@ bool UWorld::DestroyActor(AActor* Actor)
 	BeginPlayList = std::move(NewBeginPlayList);
 
 	PathTracker.OnObjectDestroyed(Actor);
-
-	//for (UActorComponent* Component : Actor->Components)
-	//{
-	//	UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component);
-
-	//	if (!Primitive)
-	//		continue;
-
-	//	for (int32 i = PrimitiveComponents.Num() - 1; i >= 0; --i)
-	//	{
-	//		if (PrimitiveComponents[i] == Primitive)
-	//		{
-	//			PrimitiveComponents.RemoveAt(i, 1);
-	//			break;
-	//		}
-	//	}
-	//}
 
 	bool bRemovedFromLevel = false;
 	for (int32 i = Level->Actors.Num() - 1; i >= 0; --i)

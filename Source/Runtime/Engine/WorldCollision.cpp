@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "World.h"
+#include "Engine/Level.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
 #include "Collision/Ray.h"
@@ -16,14 +17,11 @@ void UWorld::UnregisterCollisionComponent(UPrimitiveComponent* Component)
 {
     int32 Index = CollisionComponents.Find(Component);
     if (Index != INDEX_NONE) CollisionComponents.RemoveAtSwap(Index);
-    Index = PendingOverlapUpdates.Find(Component);
-    if (Index != INDEX_NONE) PendingOverlapUpdates.RemoveAtSwap(Index);
     Index = DirtyCollisionComponents.Find(Component);
     if (Index != INDEX_NONE) DirtyCollisionComponents.RemoveAtSwap(Index);
     Component->bCollisionUpdateQueued = false;
     Component->CollisionEntryIndex = INDEX_NONE;
     bCollisionTopologyDirty = true;
-    Component->ClearComponentOverlaps(true);
 }
 
 void UWorld::MarkCollisionDirty(UPrimitiveComponent* Component)
@@ -34,8 +32,6 @@ void UWorld::MarkCollisionDirty(UPrimitiveComponent* Component)
         Component->bCollisionUpdateQueued = true;
         DirtyCollisionComponents.Add(Component);
     }
-    if ((Component->CollisionSettings.bGenerateOverlapEvents || !Component->OverlappingComponents.IsEmpty()) &&
-        PendingOverlapUpdates.Find(Component) == INDEX_NONE) PendingOverlapUpdates.Add(Component);
 }
 
 void UWorld::UpdateCollisionIndex()
@@ -175,6 +171,15 @@ bool UWorld::OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeom
 
 void UWorld::RemoveCollisionListeners(const void* Listener)
 {
+    for (ULevel* Level : Levels)
+    {
+        for (AActor* Actor : Level->GetActors())
+        {
+            Actor->OnActorHit.RemoveAll(Listener);
+            Actor->OnActorBeginOverlap.RemoveAll(Listener);
+            Actor->OnActorEndOverlap.RemoveAll(Listener);
+        }
+    }
     for (UPrimitiveComponent* Component : CollisionComponents)
     {
         Component->OnComponentHit.RemoveAll(Listener);

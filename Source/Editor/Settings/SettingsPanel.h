@@ -6,11 +6,19 @@
 #include "Math/Quat.h"
 #include "Math/Vector.h"
 #include "Render/RenderEnums.h"
+#include "Collision/CollisionShape.h"
 
 class UWorld;
 
 struct FEditorSettings
 {
+	static constexpr size_t CollisionChannelNameCapacity = 128;
+	// Display labels only; array indices match the existing fixed channel IDs.
+	char CollisionChannelNames[CollisionChannelCount][CollisionChannelNameCapacity] =
+	{
+		"WorldStatic", "WorldDynamic", "Pawn", "Projectile", "Visibility", "Camera"
+	};
+
 	const uint32 DirectionalShadowMapSizePerLevels[5] = { 256, 512, 1024, 2048, 4096 };
 	const uint32 PointShadowMapSizePerLevels[5] = { 128, 256, 512, 1024, 2048 };
 	const uint32 SpotShadowMapSizePerLevels[5] = { 128, 256, 512, 1024, 2048 };
@@ -108,6 +116,7 @@ private:
 	void ApplySceneDepthRange();
 	void DrawTestPawnSettings();
 	void DrawShadowMapSettings();
+	void DrawCollisionChannelSettings();
 
 	UWorld* World = nullptr;
 	UWorld* EditorWorld = nullptr;

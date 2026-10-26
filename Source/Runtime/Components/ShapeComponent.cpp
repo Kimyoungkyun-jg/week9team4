@@ -18,9 +18,9 @@ UShapeComponent::UShapeComponent()
 }
 void UShapeComponent::ShapeChanged()
 {
+    if (!IsValid(this) || IsBeingDestroyed()) return;
     SanitizeDimensions();
-    OnTransformDirty();
-    MarkRenderStateDirty();
+    UpdateCollisionShape();
 }
 void UShapeComponent::PostEditChangeProperty(const FProperty& Property)
 {

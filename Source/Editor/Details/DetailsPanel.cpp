@@ -4,6 +4,7 @@
 #include "imgui_internal.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
 #include "Components/PrimitiveComponent.h"
+#include "Editor/Settings/SettingsPanel.h"
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -940,21 +941,31 @@ namespace
 		}
 	}
 
-    void DrawCollisionSettings(UPrimitiveComponent* Component)
+    void DrawCollisionSettings(UPrimitiveComponent* Component, const FEditorSettings* EditorSettings)
     {
         if (!Component || !ImGui::CollapsingHeader("Collision", ImGuiTreeNodeFlags_DefaultOpen)) return;
         const auto Settings = Component->GetCollisionSettings();
         bool Enabled = Settings.bEnabled, Events = Settings.bGenerateOverlapEvents;
         if (ImGui::Checkbox("Collision Enabled", &Enabled)) Component->SetCollisionEnabled(Enabled);
         if (ImGui::Checkbox("Generate Overlap Events", &Events)) Component->SetGenerateOverlapEvents(Events);
-        const char* Channels[] = { "WorldStatic", "WorldDynamic", "Pawn", "Projectile", "Visibility", "Camera" };
+        static const FEditorSettings Defaults;
+        const char* Channels[CollisionChannelCount];
+        for (int Index = 0; Index < CollisionChannelCount; ++Index)
+        {
+            const char* Name = EditorSettings ? EditorSettings->CollisionChannelNames[Index] : "";
+            Channels[Index] = Name[0] ? Name : Defaults.CollisionChannelNames[Index];
+        }
         const char* Responses[] = { "Ignore", "Overlap", "Block" };
         int Channel = static_cast<int>(Settings.ObjectChannel);
         if (ImGui::Combo("Object Channel", &Channel, Channels, CollisionChannelCount)) Component->SetCollisionObjectType(static_cast<ECollisionChannel>(Channel));
         for (int Index = 0; Index < CollisionChannelCount; ++Index)
         {
+            ImGui::PushID(Index);
             int Response = static_cast<int>(Settings.Responses[Index]);
-            if (ImGui::Combo(Channels[Index], &Response, Responses, 3)) Component->SetCollisionResponseToChannel(static_cast<ECollisionChannel>(Index), static_cast<ECollisionResponse>(Response));
+            // Display names can change without changing the widget identity.
+            const FString Label = FString(Channels[Index]) + "###CollisionResponse";
+            if (ImGui::Combo(Label.c_str(), &Response, Responses, 3)) Component->SetCollisionResponseToChannel(static_cast<ECollisionChannel>(Index), static_cast<ECollisionResponse>(Response));
+            ImGui::PopID();
         }
     }
 
@@ -1224,7 +1235,7 @@ void FDetailsPanel::OnRender()
 			ImGui::PushID(TargetComponent);
 			ImGui::SeparatorText("Component Properties");
 			DrawProperties(TargetComponent, CustomFont);
-            DrawCollisionSettings(Cast<UPrimitiveComponent>(TargetComponent));
+            DrawCollisionSettings(Cast<UPrimitiveComponent>(TargetComponent), EditorSettings);
 			DrawShadowPreview();
 			if (ULuaScriptComponent* ScriptComponent = Cast<ULuaScriptComponent>(TargetComponent))
 			{

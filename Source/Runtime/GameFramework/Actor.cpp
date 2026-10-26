@@ -54,6 +54,9 @@ void AActor::EndPlayActor()
 	bIsEndingPlay = true;
 	EndPlay();
     if (World) World->RemoveCollisionListeners(this);
+	OnActorHit.Clear();
+	OnActorBeginOverlap.Clear();
+	OnActorEndOverlap.Clear();
 
 	TArray<UActorComponent*> EndingComponents;
 	if (!bActorIsBeingDestroyed) EndingComponents = Components;
@@ -394,9 +397,31 @@ bool AActor::TryGetActorBounds(FBox& OutBounds) const
 	return bHasBounds;
 }
 
+bool AActor::IsOverlappingActor(const AActor* Other) const
+{
+    if (!Other || Other == this) return false;
+    for (UActorComponent* Component : Components)
+    {
+        if (!IsValid(Component)) continue;
+        if (const auto* Primitive = Cast<UPrimitiveComponent>(Component))
+            for (UPrimitiveComponent* Overlap : Primitive->GetOverlappingComponents())
+                if (IsValid(Overlap) && Overlap->GetOwner() == Other) return true;
+    }
+    return false;
+}
+
 void AActor::SetActorEnableCollision(bool bEnabled)
 {
+    if (IsPendingKillPending() || bActorEnableCollision == bEnabled) return;
+    UWorld::FScopedObjectExecution ObjectScope(World);
     bActorEnableCollision = bEnabled;
-    if (World) for (UActorComponent* Component : Components)
-        if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) World->MarkCollisionDirty(Primitive);
+    const auto ChangedComponents = Components;
+    for (UActorComponent* Component : ChangedComponents)
+        if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->OnComponentCollisionSettingsChanged(false);
+    for (UActorComponent* Component : ChangedComponents)
+    {
+        if (IsPendingKillPending()) return;
+        if (Components.Find(Component) != INDEX_NONE && IsValid(Component))
+            if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component)) Primitive->UpdateOverlaps();
+    }
 }

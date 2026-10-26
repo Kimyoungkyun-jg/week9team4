@@ -153,8 +153,7 @@ private:
 	TArray<UPrimitiveComponent*> DirtyCollisionComponents;
 	FCollisionQueryStats CollisionQueryStats;
 	void UpdateCollisionIndex();
-	TArray<UPrimitiveComponent*> PendingOverlapUpdates;
-
+	friend class AActor;
 	friend class UActorComponent;
 	friend class USceneComponent;
 	friend class UPrimitiveComponent;

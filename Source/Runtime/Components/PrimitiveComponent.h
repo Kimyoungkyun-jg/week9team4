@@ -50,6 +50,7 @@ public:
 	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse Response);
 	void SetCollisionResponseToAllChannels(ECollisionResponse Response);
 	void SetGenerateOverlapEvents(bool bEnabled);
+	void OnComponentCollisionSettingsChanged(bool bUpdateOverlaps = true);
 	void UpdateOverlaps(const TArray<UPrimitiveComponent*>* PendingOverlaps = nullptr) override;
 	const TArray<UPrimitiveComponent*>& GetOverlappingComponents() const { return OverlappingComponents; }
 	TMulticastDelegate<UPrimitiveComponent*, UPrimitiveComponent*, const FHitResult&> OnComponentHit;
@@ -100,6 +101,7 @@ public:
 	bool bReceiveShadow = true;
 
 protected:
+	void UpdateCollisionShape();
 	void OnRegister() override;
 	void OnUnregister() override;
 	FCollisionSettings CollisionSettings;

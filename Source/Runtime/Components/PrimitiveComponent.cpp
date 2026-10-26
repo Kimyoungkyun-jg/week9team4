@@ -9,9 +9,15 @@
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Engine/Scene.h"
 #include "Engine/World.h"
+#include "GameFramework/Actor.h"
 
 namespace
 {
+	bool CanNotifyActorCollision(AActor* Actor)
+	{
+		return IsValid(Actor) && !Actor->IsPendingKillPending();
+	}
+
 	bool CanNotifyCollision(UPrimitiveComponent* Component)
 	{
 		return IsValid(Component) && !Component->IsBeingDestroyed() &&
@@ -174,7 +180,7 @@ bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& Ne
 void UPrimitiveComponent::PostEditChangeProperty(const FProperty& Property)
 {
 	Super::PostEditChangeProperty(Property);
-    if (Property.Name == "StaticMesh") { OnTransformDirty(); MarkRenderStateDirty(); }
+    if (Property.Name == "StaticMesh") UpdateCollisionShape();
 	if (Property.Name == "bCastShadow" ||
 		Property.Name == "bReceiveShadow")
 	{
@@ -256,52 +262,103 @@ void UPrimitiveComponent::OnRegister()
 {
     Super::OnRegister();
     GetWorld()->RegisterCollisionComponent(this);
+    if (HasBegunPlay()) UpdateOverlaps();
 }
 
 void UPrimitiveComponent::OnUnregister()
 {
     GetWorld()->UnregisterCollisionComponent(this);
+    ClearComponentOverlaps(true);
     Super::OnUnregister();
 }
 
 void UPrimitiveComponent::SetCollisionEnabled(bool bEnabled)
-{ CollisionSettings.bEnabled = bEnabled; if (GetWorld()) GetWorld()->MarkCollisionDirty(this); }
+{
+    if (CollisionSettings.bEnabled == bEnabled) return;
+    CollisionSettings.bEnabled = bEnabled;
+    OnComponentCollisionSettingsChanged();
+}
 void UPrimitiveComponent::SetGenerateOverlapEvents(bool bEnabled)
-{ CollisionSettings.bGenerateOverlapEvents = bEnabled; if (GetWorld()) GetWorld()->MarkCollisionDirty(this); }
+{
+    if (CollisionSettings.bGenerateOverlapEvents == bEnabled) return;
+    CollisionSettings.bGenerateOverlapEvents = bEnabled;
+    OnComponentCollisionSettingsChanged();
+}
 void UPrimitiveComponent::SetCollisionObjectType(ECollisionChannel Channel)
-{ if (IsCollisionChannel(Channel)) { CollisionSettings.ObjectChannel = Channel; if (GetWorld()) GetWorld()->MarkCollisionDirty(this); } }
+{
+    if (!IsCollisionChannel(Channel) || CollisionSettings.ObjectChannel == Channel) return;
+    CollisionSettings.ObjectChannel = Channel;
+    OnComponentCollisionSettingsChanged();
+}
 void UPrimitiveComponent::SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse Response)
 {
     if (!IsCollisionChannel(Channel) || Response < ECollisionResponse::Ignore || Response > ECollisionResponse::Block) return;
+    if (CollisionSettings.GetResponse(Channel) == Response) return;
     CollisionSettings.Responses[static_cast<int32>(Channel)] = Response;
-    if (GetWorld()) GetWorld()->MarkCollisionDirty(this);
+    OnComponentCollisionSettingsChanged();
 }
 void UPrimitiveComponent::SetCollisionResponseToAllChannels(ECollisionResponse Response)
 {
     if (Response < ECollisionResponse::Ignore || Response > ECollisionResponse::Block) return;
+    if (std::all_of(CollisionSettings.Responses.begin(), CollisionSettings.Responses.end(), [Response](ECollisionResponse Value) { return Value == Response; })) return;
     CollisionSettings.Responses.fill(Response);
+    OnComponentCollisionSettingsChanged();
+}
+
+void UPrimitiveComponent::OnComponentCollisionSettingsChanged(bool bUpdateOverlaps)
+{
+    if (!CanNotifyCollision(this)) return;
+    UWorld::FScopedObjectExecution ObjectScope(GetWorld() ? GetWorld() : (GetOwner() ? GetOwner()->GetWorld() : nullptr));
     if (GetWorld()) GetWorld()->MarkCollisionDirty(this);
+    if (bUpdateOverlaps) UpdateOverlaps();
+}
+
+void UPrimitiveComponent::UpdateCollisionShape()
+{
+    if (!CanNotifyCollision(this)) return;
+    UWorld::FScopedObjectExecution ObjectScope(GetWorld() ? GetWorld() : (GetOwner() ? GetOwner()->GetWorld() : nullptr));
+    OnTransformDirty();
+    if (!CanNotifyCollision(this)) return;
+    MarkRenderStateDirty();
+    UpdateOverlaps();
 }
 void UPrimitiveComponent::BeginComponentOverlap(UPrimitiveComponent* Other)
 {
     if (!CanGenerateOverlap(this, Other) || OverlappingComponents.Find(Other) != INDEX_NONE) return;
+    AActor* MyActor = GetOwner();
+    AActor* OtherActor = Other->GetOwner();
+    const bool bNotifyActorBegin = !MyActor->IsOverlappingActor(OtherActor);
     OverlappingComponents.Add(Other);
     if (Other->OverlappingComponents.Find(this) == INDEX_NONE) Other->OverlappingComponents.Add(this);
     if (!GetWorld() || !GetWorld()->HasBegunPlay()) return;
     OnComponentBeginOverlap.Broadcast(this, Other);
     if (CanNotifyCollision(Other)) Other->OnComponentBeginOverlap.Broadcast(Other, this);
+    if (bNotifyActorBegin)
+    {
+        if (CanNotifyActorCollision(MyActor)) MyActor->OnActorBeginOverlap.Broadcast(MyActor, OtherActor);
+        if (CanNotifyActorCollision(OtherActor)) OtherActor->OnActorBeginOverlap.Broadcast(OtherActor, MyActor);
+    }
 }
 
 void UPrimitiveComponent::EndComponentOverlap(UPrimitiveComponent* Other, bool bSkipNotifySelf)
 {
     const int32 Index = OverlappingComponents.Find(Other);
     if (Index == INDEX_NONE) return;
+    AActor* MyActor = GetOwner();
+    AActor* OtherActor = Other->GetOwner();
     OverlappingComponents.RemoveAtSwap(Index);
     const int32 OtherIndex = Other->OverlappingComponents.Find(this);
     if (OtherIndex != INDEX_NONE) Other->OverlappingComponents.RemoveAtSwap(OtherIndex);
+    // Capture the last-pair transition before component callbacks can remove another pair.
+    const bool bNotifyActorEnd = MyActor && OtherActor && MyActor != OtherActor && !MyActor->IsOverlappingActor(OtherActor);
     if (!GetWorld() || !GetWorld()->HasBegunPlay()) return;
     if (!bSkipNotifySelf && CanNotifyCollision(this)) OnComponentEndOverlap.Broadcast(this, Other);
     if (CanNotifyCollision(Other)) Other->OnComponentEndOverlap.Broadcast(Other, this);
+    if (bNotifyActorEnd)
+    {
+        if (CanNotifyActorCollision(MyActor)) MyActor->OnActorEndOverlap.Broadcast(MyActor, OtherActor);
+        if (CanNotifyActorCollision(OtherActor)) OtherActor->OnActorEndOverlap.Broadcast(OtherActor, MyActor);
+    }
 }
 
 void UPrimitiveComponent::ClearComponentOverlaps(bool bSkipNotifySelf)
@@ -334,14 +391,18 @@ void UPrimitiveComponent::DispatchBlockingHit(const FHitResult& Hit)
 {
     UPrimitiveComponent* Other = Hit.HitComponent;
     if (!CanNotifyCollision(this) || !CanNotifyCollision(Other)) return;
-    OnComponentHit.Broadcast(this, Other, Hit);
+    AActor* MyActor = GetOwner();
+    AActor* OtherActor = Other->GetOwner();
+    if (CanNotifyActorCollision(MyActor)) MyActor->OnActorHit.Broadcast(MyActor, OtherActor, Hit);
+    if (CanNotifyCollision(this)) OnComponentHit.Broadcast(this, Other, Hit);
     if (CanNotifyCollision(Other))
     {
         FHitResult Reverse = Hit;
         Reverse.HitComponent = this;
         Reverse.Normal = -Hit.Normal;
         Reverse.ImpactNormal = -Hit.ImpactNormal;
-        Other->OnComponentHit.Broadcast(Other, this, Reverse);
+        if (CanNotifyActorCollision(OtherActor)) OtherActor->OnActorHit.Broadcast(OtherActor, MyActor, Reverse);
+        if (CanNotifyCollision(Other)) Other->OnComponentHit.Broadcast(Other, this, Reverse);
     }
 }
 
@@ -363,7 +424,7 @@ void UPrimitiveComponent::Serialize(FStructuredArchive::FRecord Record)
         if (Record.GetUnderlyingArchive().IsLoading() && Index < CollisionChannelCount)
             CollisionSettings.Responses[Index] = static_cast<ECollisionResponse>(std::clamp(Response, 0, 2));
     }
-    if (GetWorld()) GetWorld()->MarkCollisionDirty(this);
+    if (Record.GetUnderlyingArchive().IsLoading()) OnComponentCollisionSettingsChanged();
 }
 
 void UPrimitiveComponent::DrawCollision(FLineBatcher& Lines, const FVector4& Color) const
