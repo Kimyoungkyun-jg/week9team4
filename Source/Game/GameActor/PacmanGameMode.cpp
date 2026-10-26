@@ -14,6 +14,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/LuaScriptComponent.h"
+#include "Components/CharacterMovementComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/GameInstance.h"
 #include "Audio/SoundManager.h"
@@ -182,6 +183,7 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 	SavedCameraFov = Camera->GetFieldOfView();
 	SavedGhostRotation = Ghost->GetActorRotation();
 	bGhostHitPlaying = true;
+	if (auto* Movement = Player->GetCharacterMovement()) Movement->SetMovementEnabled(false);
 	Ghost->SetHitFrozen(true);
 	const FVector Offset = Player->GetActorLocation() - Ghost->GetActorLocation();
 	const FVector ToPlayer(Offset.X, Offset.Y, 0.0f);

@@ -9,10 +9,10 @@ class ADefaultPawn : public APawn
 	DECLARE_CLASS(ADefaultPawn, APawn)
 public:
 	ADefaultPawn();
-	void AddMovementInput(const FVector& WorldDirection, float ScaleValue) override;
+	void Tick(float DeltaTime) override;
 	void AddControllerYawInput(float Value) override;
 	void AddControllerPitchInput(float Value) override;
-	UCameraComponent* GetCameraComponent() const { return CameraComponent; }
+	UCameraComponent* GetCameraComponent() const override { return CameraComponent; }
 protected:
 	float GetMoveSpeed() const { return MoveSpeed; }
 private:

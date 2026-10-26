@@ -111,6 +111,7 @@ bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& Ne
     const FRotator PreviousRotation = GetWorldRotation();
     FHitResult Result(1.f);
     Result.Init(Start, Start + Delta);
+    Result.Location = Start; // Also valid when a tiny swept move exits without changing the transform.
     for (int Axis = 0; Axis < 3; ++Axis)
         if (!std::isfinite(Delta[Axis]) || !std::isfinite(NewRotation[Axis])) { if (Hit) *Hit = Result; return false; }
     UWorld* World = GetWorld();

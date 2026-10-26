@@ -159,6 +159,7 @@ private:
 	friend class USceneComponent;
 	friend class UPrimitiveComponent;
 	friend class UMovementComponent;
+	friend class UCharacterMovementComponent;
 	void QueueObjectDeletion(UObject* Object);
 	TArray<UObject*> PendingDeletion;
 	bool bIsTicking = false;

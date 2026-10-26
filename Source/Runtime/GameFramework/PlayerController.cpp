@@ -4,6 +4,7 @@
 #include "GameFramework/GameMode.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/TestPawn.h"
+#include "Camera/CameraComponent.h"
 #include <cstring>
 
 APlayerController::APlayerController()
@@ -37,9 +38,9 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
 	MouseAxisX = MouseAxisY = 0.0f;
 	const FQuat Rotation = PossessedPawn->GetActorRotation().Quaternion();
-	if (Forward != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetForwardVector(), Forward * DeltaTime);
+	if (Forward != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetForwardVector(), Forward);
 	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
-	if (Right != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetRightVector(), Right * DeltaTime);
+	if (Right != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetRightVector(), Right);
 }
 
 void APlayerController::GetPlayerViewCamera(FVector& OutLocation, FRotator& OutRotation) const
@@ -47,6 +48,11 @@ void APlayerController::GetPlayerViewCamera(FVector& OutLocation, FRotator& OutR
 	if (!IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
 	OutLocation = PossessedPawn->GetActorLocation();
 	OutRotation = PossessedPawn->GetActorRotation();
+	if (UCameraComponent* Camera = PossessedPawn->GetCameraComponent())
+	{
+		OutLocation = Camera->GetWorldLocation();
+		OutRotation = Camera->GetWorldRotation();
+	}
 }
 
 void APlayerController::Possess(APawn* InPawn)
@@ -70,6 +76,12 @@ void APlayerController::InputKey(int32 Key, bool bDown)
 	if (Key < 0 || Key >= 256) return;
 	const bool bPressed = bDown && !bKeyDown[Key];
 	bKeyDown[Key] = bDown;
+	if (Key == static_cast<int32>(EKeyCode::Space) && IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed())
+	{
+		if (!bDown) PossessedPawn->StopJumping();
+		else if (bPressed && (!GetWorld() || !GetWorld()->GetGameMode() || GetWorld()->GetGameMode()->AllowsPlayerControllerInput()))
+			PossessedPawn->Jump();
+	}
 	if (bPressed && Key == static_cast<int32>(EKeyCode::LButton))
 		if (IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed())
 			if (ATestPawn* Pawn = Cast<ATestPawn>(PossessedPawn)) Pawn->FireProjectile();
@@ -84,6 +96,11 @@ void APlayerController::InputAxis(EGameInputAxis Axis, float Delta)
 
 void APlayerController::ClearInputState()
 {
+	if (IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed())
+	{
+		PossessedPawn->StopJumping();
+		PossessedPawn->ConsumeMovementInputVector();
+	}
 	std::memset(bKeyDown, 0, sizeof(bKeyDown));
 	MouseAxisX = MouseAxisY = 0.0f;
 }

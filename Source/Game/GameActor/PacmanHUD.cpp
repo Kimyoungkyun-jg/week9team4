@@ -8,7 +8,7 @@
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/Actor/MapActor.h"
-#include "GameFramework/DefaultPawn.h"
+#include "GameFramework/Pawn.h"
 #include "Camera/CameraComponent.h"
 #include "UI/Widget.h"
 #include <algorithm>
@@ -119,9 +119,7 @@ void APacmanHUD::Tick(float DeltaTime)
 		return;
 	}
 	float Yaw = Player->GetActorRotation().Yaw;
-	if (ADefaultPawn* DefaultPawn = Cast<ADefaultPawn>(Player))
-		if (UCameraComponent* Camera = DefaultPawn->GetCameraComponent())
-			Yaw = Camera->GetWorldRotation().Yaw;
+	if (UCameraComponent* Camera = Player->GetCameraComponent()) Yaw = Camera->GetWorldRotation().Yaw;
 	const float Radians = (Yaw - Map->GetActorRotation().Yaw) * 0.01745329252f;
 	Minimap->SetPlayer(PlayerUV, {std::cos(Radians), std::sin(Radians)});
 }
