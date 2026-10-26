@@ -40,8 +40,8 @@ if (-not (Test-Path (Join-Path $Installed 'include\sol\sol.hpp'))) {
 
 $VsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (-not (Test-Path $VsWhere)) { throw 'Visual Studio Installer (vswhere.exe) was not found.' }
-$VsPath = (& $VsWhere -latest -prerelease -products '*' -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1)
-$VsVersion = (& $VsWhere -latest -prerelease -products '*' -requires Microsoft.Component.MSBuild -property installationVersion | Select-Object -First 1)
+$VsPath = (& $VsWhere -latest -prerelease -all -products '*' -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1)
+$VsVersion = (& $VsWhere -latest -prerelease -all -products '*' -requires Microsoft.Component.MSBuild -property installationVersion | Select-Object -First 1)
 if (-not $VsPath -or -not $VsVersion) { throw 'Visual Studio with MSBuild was not found.' }
 $Action = if ([int]($VsVersion.Split('.')[0]) -ge 18) { 'vs2026' } else { 'vs2022' }
 

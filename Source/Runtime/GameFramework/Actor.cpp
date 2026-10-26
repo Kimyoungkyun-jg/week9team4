@@ -382,6 +382,35 @@ UActorComponent* AActor::FindComponentByName(FName Name) const
 	return nullptr;
 }
 
+UActorComponent* AActor::GetComponentByClass(const UClass* ComponentClass) const
+{
+	if (!ComponentClass) return nullptr;
+
+	for (UActorComponent* Component : Components)
+	{
+		if (Component && Component->IsA(ComponentClass))
+		{
+			return Component;
+		}
+	}
+	return nullptr;
+}
+
+TArray<UActorComponent*> AActor::GetComponentsByClass(const UClass* ComponentClass) const
+{
+	TArray<UActorComponent*> Result;
+	if (!ComponentClass) return Result;
+
+	for (UActorComponent* Component : Components)
+	{
+		if (Component && Component->IsA(ComponentClass))
+		{
+			Result.Add(Component);
+		}
+	}
+	return Result;
+}
+
 void AActor::RegisterAllComponents()
 {
 	if (!World) return;

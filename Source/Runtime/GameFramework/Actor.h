@@ -7,6 +7,8 @@
 #include "UObject/UObjectGlobals.h"
 #include "Containers/Set.h"
 #include "Engine/EngineBaseTypes.h"
+#include "UObject/UObjectHash.h"
+#include "UObject/Casts.h"
 
 #include "Lua/LuaMacros.h"
 
@@ -31,6 +33,23 @@ class AActor : public UObject
 		LUA_FUNC(SetActorRotation)
 		UserType["FindComponentByName"] = [](AActor& Self, const FString& Name) -> UActorComponent* {
 			return Self.FindComponentByName(FName(Name));
+		};
+		UserType["GetComponentByClass"] = [](AActor& Self, const FString& ClassName) -> UActorComponent* {
+			UClass* TargetClass = FindClass(ClassName);
+			return TargetClass ? Self.GetComponentByClass(TargetClass) : nullptr;
+		};
+		UserType["GetComponentsByClass"] = [](AActor& Self, const FString& ClassName, sol::this_state s) -> sol::table {
+			sol::state_view lua(s);
+			sol::table Result = lua.create_table();
+			UClass* TargetClass = FindClass(ClassName);
+			if (!TargetClass) return Result;
+
+			TArray<UActorComponent*> List = Self.GetComponentsByClass(TargetClass);
+			for (int32 i = 0; i < List.Num(); ++i)
+			{
+				Result[i + 1] = List[i];
+			}
+			return Result;
 		};
 	LUA_BIND_END()
 public:
@@ -83,6 +102,30 @@ public:
 	using Super::Serialize;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 	UActorComponent* FindComponentByName(FName Name) const;
+	UActorComponent* GetComponentByClass(const UClass* ComponentClass) const;
+	TArray<UActorComponent*> GetComponentsByClass(const UClass* ComponentClass) const;
+
+	template <typename T>
+	T* GetComponentByClass() const
+	{
+		static_assert(std::is_base_of_v<UActorComponent, T>, "T must derive from UActorComponent");
+		return Cast<T>(GetComponentByClass(T::StaticClass()));
+	}
+
+	template <typename T>
+	TArray<T*> GetComponentsByClass() const
+	{
+		static_assert(std::is_base_of_v<UActorComponent, T>, "T must derive from UActorComponent");
+		TArray<T*> OutComponents;
+		for (UActorComponent* Comp : Components)
+		{
+			if (T* Casted = Cast<T>(Comp))
+			{
+				OutComponents.Add(Casted);
+			}
+		}
+		return OutComponents;
+	}
 
 	virtual void RegisterAllComponents();
 	// Parameter : 바로 다시 Register 할껀지
