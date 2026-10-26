@@ -58,6 +58,7 @@ private:
 	class UImageWidget* HitImage = nullptr;
 	uint64 HitOverlayHandle = 0;
 	bool bGhostHitPlaying = false;
+	void CommitGameResult(bool bCleared);
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 };
