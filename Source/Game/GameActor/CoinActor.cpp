@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Asset/AssetManager.h"
 #include "PlayerPawn.h"
+#include "FlashlightActor.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/GameHUD.h"
 #include "GameFramework/GameMode.h"
@@ -79,6 +80,11 @@ void ACoinActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, UPrimi
 	APlayerController* Controller = PlayerPawn->GetController();
 	if (!Controller) return;
 	bCollected = true;
+
+	if (AFlashlightActor* Flashlight = PlayerPawn->GetFlashlightActor())
+	{
+		Flashlight->AddGauge(25.0f);
+	}
 
 	AGameHUD* HUD = Controller->GetHUD();
 	UWorld* World = GetWorld();

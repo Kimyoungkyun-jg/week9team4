@@ -61,4 +61,5 @@ private:
 	void CommitGameResult(bool bCleared);
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
+	void ReleaseGhostHitCamera();
 };

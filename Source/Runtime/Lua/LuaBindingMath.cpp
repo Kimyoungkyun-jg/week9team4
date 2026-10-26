@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "LuaBinding.h"
 #include "Math/Vector.h"
+#include "Math/Vector4.h"
 #include "Math/Rotator.h"
 #include "Math/Transform.h"
 
@@ -77,6 +78,20 @@ namespace LuaBindings
 			"Location", &FTransform::Location,
 			"Rotation", &FTransform::Rotation,
 			"Scale", &FTransform::Scale
+		);
+
+		// 4. FVector4 바인딩
+		Lua.new_usertype<FVector4>("FVector4",
+			sol::constructors<FVector4(), FVector4(float, float, float, float), FVector4(float), FVector4(const FVector&, float)>(),
+			sol::call_constructor, sol::constructors<FVector4(), FVector4(float, float, float, float), FVector4(float), FVector4(const FVector&, float)>(),
+			"X", &FVector4::X,
+			"Y", &FVector4::Y,
+			"Z", &FVector4::Z,
+			"W", &FVector4::W,
+			"R", &FVector4::X,
+			"G", &FVector4::Y,
+			"B", &FVector4::Z,
+			"A", &FVector4::W
 		);
 	}
 }

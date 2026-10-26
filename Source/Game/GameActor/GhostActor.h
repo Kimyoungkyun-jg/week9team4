@@ -24,6 +24,7 @@ class AGhostActor : public AActor
 	LUA_BIND_START(AGhostActor)
 		LUA_FUNC(ChangeEye)
 		LUA_FUNC(RestoreEye)
+		LUA_FUNC(ResetToHome)
 		UserType["IsPlayerInDetectionRange"] = sol::overload(
 			[](const AGhostActor& Self) { return Self.IsPlayerInDetectionRange(false); },
 			[](const AGhostActor& Self, bool bChase) { return Self.IsPlayerInDetectionRange(bChase); }
@@ -45,6 +46,10 @@ class AGhostActor : public AActor
 			ActorTable["RestoreEye"] = [](AActor& Self) {
 				if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
 					Ghost->RestoreEye();
+			};
+			ActorTable["ResetToHome"] = [](AActor& Self) {
+				if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
+					Ghost->ResetToHome();
 			};
 			ActorTable["IsPlayerInDetectionRange"] = sol::overload(
 				[](AActor& Self) -> bool {
@@ -73,6 +78,8 @@ public:
 	void Tick(float DeltaTime) override;
 	void ChangeEye();
 	void RestoreEye();
+	void ResetToHome();
+	const FVector& GetInitialLocation() const { return InitialLocation; }
 	void SetHitFrozen(bool bFrozen);
 	bool IsHitFrozen() const { return bHitFrozen; }
 

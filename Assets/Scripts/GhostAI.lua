@@ -1,5 +1,14 @@
 local GhostAI = {}
 
+-- 코루틴 안에서 지정한 시간(초) 동안 대기하는 헬퍼 함수
+local function WaitSeconds(seconds)
+    local remain = seconds
+    while remain > 0 do
+        local dt = coroutine.yield() -- Tick(dt)에서 전달해준 dt 수신
+        remain = remain - (dt or 0)
+    end
+end
+
 function GhostAI:BeginPlay()
     Log("[GhostAI] BeginPlay: " .. self.Owner:GetName())
 
@@ -23,7 +32,7 @@ function GhostAI:BeginPlay()
     self.WaitTimeBeforeChase = self.AI:GetWaitTimeBeforeChase()
     self.MaxChaseDuration = self.AI:GetMaxChaseDuration()
 
-    self.AlertTimer = 0.0
+    self.AlertCo = nil
     self.ChaseTimer = 0.0
     self.RepathTimer = 0.0
     self.RepathInterval = 0.3       -- BFS 재계산 간격 (초)
@@ -32,35 +41,79 @@ function GhostAI:BeginPlay()
     self.AI:MoveToNextPatrol()
 end
 
+-- Alert 상태 진입 및 코루틴 시작
+function GhostAI:EnterAlert()
+    Log("[GhostAI] Player detected! Waiting before chase...")
+    self.State = "Alert"
+    self.AI:StopMovement() -- 대기시간 동안 정지
+
+    self.AlertCo = coroutine.create(function()
+        -- 1. 대기 시간 동안 프레임마다 yield하며 대기
+        WaitSeconds(self.WaitTimeBeforeChase)
+
+        -- 2. 대기 완료 후 눈 색 변경 및 추격 시작
+        Log("[GhostAI] Alert wait finished! Changing eye to red and starting chase.")
+        self.Owner:ChangeEye()
+
+        self.State = "Chase"
+        self.ChaseTimer = 0.0
+        self.RepathTimer = 0.0
+        self.AI:ChasePlayer()
+
+        self.AlertCo = nil
+    end)
+
+    -- 코루틴 최초 1회 실행 (WaitSeconds 진입 및 첫 yield 지점까지 실행)
+    coroutine.resume(self.AlertCo)
+end
+
+function GhostAI:ResetToHome()
+    Log("[GhostAI] Resetting to home state: " .. self.Owner:GetName())
+    if self.Owner.RestoreEye then
+        self.Owner:RestoreEye()
+    end
+    self.State = "Patrol"
+    self.AlertCo = nil
+    self.ChaseTimer = 0.0
+    self.RepathTimer = 0.0
+    if self.AI then
+        self.AI:ResetToHome()
+        self.AI:MoveToNextPatrol()
+    end
+end
+
 function GhostAI:Tick(dt)
     if not self.AI then return end
+
+    -- 연출(CloseUp, Fade) 진행 중일 때는 AI 업데이트 일시 중지
+    if self.Owner.GetWorld then
+        local world = self.Owner:GetWorld()
+        if world and world.GetGameMode then
+            local gm = world:GetGameMode()
+            if gm and gm.IsResolvingGhostHit and gm:IsResolvingGhostHit() then
+                return
+            end
+        end
+    end
 
     -- 1. [순찰 모드 (Patrol)]
     if self.State == "Patrol" then
         if self.Owner:IsPlayerInDetectionRange() then
-            -- 플레이어 감지! 대기(Alert) 상태로 전환하고 멈춤
-            Log("[GhostAI] Player detected! Waiting before chase...")
-            self.State = "Alert"
-            self.AlertTimer = 0.0
-            self.AI:StopMovement() -- 대기시간 동안 정지
+            -- 플레이어 감지 시 대기(Alert) 코루틴 시작
+            self:EnterAlert()
         elseif self.AI:HasReachedDestination() then
             -- 다음 순찰 지점으로 이동
             self.AI:MoveToNextPatrol()
         end
 
-    -- 2. [대기 모드 (Alert)]: 대기시간 동안 멈춰있다가 눈 색 바꾸고 추격 시작
+    -- 2. [대기 모드 (Alert)]: 코루틴에 dt를 전달하여 대기 시간 진행
     elseif self.State == "Alert" then
-        self.AlertTimer = self.AlertTimer + dt
-        if self.AlertTimer >= self.WaitTimeBeforeChase then
-            Log("[GhostAI] Alert wait finished! Changing eye to red and starting chase.")
-            -- Ghost 눈 색 변경!
-            self.Owner:ChangeEye()
-
-            -- Chase 상태로 전환 및 즉시 플레이어 추격 시작
-            self.State = "Chase"
-            self.ChaseTimer = 0.0
-            self.RepathTimer = 0.0
-            self.AI:ChasePlayer()
+        if self.AlertCo and coroutine.status(self.AlertCo) ~= "dead" then
+            local success, err = coroutine.resume(self.AlertCo, dt)
+            if not success then
+                LogError("[GhostAI] Alert coroutine error: " .. tostring(err))
+                self.AlertCo = nil
+            end
         end
 
     -- 3. [추격 모드 (Chase)]
@@ -100,10 +153,7 @@ function GhostAI:Tick(dt)
     elseif self.State == "Return" then
         if self.Owner:IsPlayerInDetectionRange() then
             -- 복귀 중 다시 플레이어가 감지되면 Alert로 전환
-            Log("[GhostAI] Player detected again during return! Waiting before chase...")
-            self.State = "Alert"
-            self.AlertTimer = 0.0
-            self.AI:StopMovement()
+            self:EnterAlert()
         elseif self.AI:HasReachedDestination() then
             -- 복귀 완료: 순찰 재개
             Log("[GhostAI] Resuming patrol.")
