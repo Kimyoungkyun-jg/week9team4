@@ -168,6 +168,8 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 		if (Overlay) HUD->RemoveOverlay(Overlay);
 		return;
 	}
+	if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+		Image->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 	HitOverlayHandle = Overlay;
 	HitImage = Image;
 	HitGhost = Ghost;
@@ -178,6 +180,7 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 	SavedCameraFov = Camera->GetFieldOfView();
 	SavedGhostRotation = Ghost->GetActorRotation();
 	bGhostHitPlaying = true;
+	Ghost->SetHitFrozen(true);
 	const FVector Offset = Player->GetActorLocation() - Ghost->GetActorLocation();
 	const FVector ToPlayer(Offset.X, Offset.Y, 0.0f);
 	if (ToPlayer.SizeSquared() > SMALL_NUMBER)
@@ -241,19 +244,26 @@ void APacmanGameMode::ResolveGhostHit()
 	}
 	else
 	{
-		GhostHitPhase = EGhostHitPhase::WaitForGameOverFade;
-		ShowGameResult(false);
-		if (!bResultShown)
+		UWorld* World = GetWorld();
+		AGameHUD* HUD = World ? World->GetHUD() : nullptr;
+		if (HUD && HUD->ShowWidget("Assets/UI/GameOver.ui.json"))
 		{
-			if (UWorld* World = GetWorld())
-				if (AGameHUD* HUD = World->GetHUD()) HUD->RemoveOverlay(HitOverlayHandle);
+			if (UGameInstance* GameInstance = World->GetGameInstance()) GameInstance->StopRunTimer();
+			bResultShown = true;
+			GhostHitPhase = EGhostHitPhase::FadeFromBlack;
+			GhostHitElapsed = 0.0f;
+		}
+		else
+		{
+			if (HitGhost) HitGhost->SetHitFrozen(false);
+			HitGhost = nullptr;
+			if (HUD) HUD->RemoveOverlay(HitOverlayHandle);
 			HitOverlayHandle = 0;
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
 		}
 	}
-	HitGhost = nullptr;
 	HitPlayer = nullptr;
 	HitCamera = nullptr;
 }
@@ -280,6 +290,8 @@ void APacmanGameMode::TickGhostHit(float DeltaTime)
 		HitImage->SetTint({0.0f, 0.0f, 0.0f, 1.0f - std::clamp(GhostHitElapsed / 0.35f, 0.0f, 1.0f)});
 		if (GhostHitElapsed >= 0.35f)
 		{
+			if (HitGhost && LifeCount > 0) HitGhost->SetHitFrozen(false);
+			HitGhost = nullptr;
 			if (HUD) HUD->RemoveOverlay(HitOverlayHandle);
 			HitOverlayHandle = 0;
 			HitImage = nullptr;
@@ -287,9 +299,6 @@ void APacmanGameMode::TickGhostHit(float DeltaTime)
 			bGhostHitPlaying = false;
 			GhostHitCooldown = 1.0f;
 		}
-		break;
-	case EGhostHitPhase::WaitForGameOverFade:
-		HitImage->SetTint({0.0f, 0.0f, 0.0f, 1.0f});
 		break;
 	default: break;
 	}
@@ -310,6 +319,8 @@ void APacmanGameMode::ShowGameResult(bool bCleared)
 		FadeImage = nullptr;
 		return;
 	}
+	if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+		FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 	bPendingClear = bCleared;
 	if (UGameInstance* GameInstance = World->GetGameInstance())
 	{
@@ -344,6 +355,8 @@ void APacmanGameMode::Tick(float DeltaTime)
 		const FString Path = bPendingClear ? "Assets/UI/GameClear.ui.json" : "Assets/UI/GameOver.ui.json";
 		if (!HUD->ShowWidget(Path))
 		{
+			if (HitGhost) HitGhost->SetHitFrozen(false);
+			HitGhost = nullptr;
 			if (HitOverlayHandle) HUD->RemoveOverlay(HitOverlayHandle);
 			HitOverlayHandle = 0;
 			HitImage = nullptr;

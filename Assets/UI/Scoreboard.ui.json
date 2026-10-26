@@ -18,8 +18,8 @@
             1
           ],
           "Size": [
-            1672,
-            941
+            1280,
+            720
           ]
         },
         "Children": []
@@ -30,8 +30,8 @@
           "WidgetName": "ScoreboardBackground",
           "TexturePath": "Assets/Icons/ScoreBoard.png",
           "Size": [
-            1672,
-            941
+            1280,
+            720
           ]
         },
         "Children": []

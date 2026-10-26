@@ -42,7 +42,7 @@ private:
 	enum class EResultFadePhase { None, FadeOut, FadeIn, Complete };
 	EResultFadePhase FadePhase = EResultFadePhase::None;
 	bool bResultShown = false;
-	enum class EGhostHitPhase { None, CloseUp, FadeToBlack, FadeFromBlack, WaitForGameOverFade };
+	enum class EGhostHitPhase { None, CloseUp, FadeToBlack, FadeFromBlack };
 	EGhostHitPhase GhostHitPhase = EGhostHitPhase::None;
 	float GhostHitElapsed = 0.0f;
 	float GhostHitCooldown = 0.0f;
