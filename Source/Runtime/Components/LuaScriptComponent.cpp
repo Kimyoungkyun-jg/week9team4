@@ -108,6 +108,16 @@ bool ULuaScriptComponent::LoadOrReloadScript(bool bIsReload)
 	if (bIsReload)
 	{
 		HTR_LOG(Info, "[Lua] Hot-reloaded script: {}", LuaScriptPath);
+		sol::protected_function OnReloadFunc = LuaSelfTable["OnReload"];
+		if (OnReloadFunc.valid())
+		{
+			sol::protected_function_result CallResult = OnReloadFunc(LuaSelfTable);
+			if (!CallResult.valid())
+			{
+				sol::error Err = CallResult;
+				HTR_LOG(Error, "[Lua] OnReload error: {}", Err.what());
+			}
+		}
 	}
 
 	return true;

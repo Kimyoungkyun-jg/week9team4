@@ -5685,9 +5685,9 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 11.065666198730469,
-                                        "Y": 2.1534180641174316,
-                                        "Z": 0.0
+                                        "X": 20.96729278564453,
+                                        "Y": 12.020881652832031,
+                                        "Z": 0.3692054748535156
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -5695,9 +5695,9 @@
                                         "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1.0,
-                                        "Y": 1.0,
-                                        "Z": 1.0
+                                        "X": 2.0,
+                                        "Y": 2.0,
+                                        "Z": 2.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -5769,13 +5769,13 @@
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
                                 "BoxExtent": {
-                                    "X": 2.5,
-                                    "Y": 1.25,
+                                    "X": 4.0,
+                                    "Y": 2.25,
                                     "Z": 1.0
                                 },
                                 "Transform": {
                                     "Location": {
-                                        "X": 0.75,
+                                        "X": 1.25,
                                         "Y": 0.0,
                                         "Z": 0.5
                                     },
@@ -5817,13 +5817,13 @@
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
                                 "BoxExtent": {
-                                    "X": 4.0,
+                                    "X": 6.0,
                                     "Y": 3.25,
                                     "Z": 1.0
                                 },
                                 "Transform": {
                                     "Location": {
-                                        "X": 1.25,
+                                        "X": 1.75,
                                         "Y": 0.0,
                                         "Z": 0.5
                                     },
@@ -5941,15 +5941,15 @@
                             "Name": "GhostAIComponent",
                             "Parent": "",
                             "Properties": {
-                                "BackwardDetectionTiles": 3,
-                                "ChaseBackwardDetectionTiles": 5,
-                                "ChaseForwardDetectionTiles": 10,
+                                "BackwardDetectionTiles": 5,
+                                "ChaseBackwardDetectionTiles": 8,
+                                "ChaseForwardDetectionTiles": 15,
                                 "ChaseSideDetectionTiles": 6,
                                 "ChaseSpeed": 3.5,
-                                "ForwardDetectionTiles": 6,
+                                "ForwardDetectionTiles": 10,
                                 "MaxChaseDuration": 6.0,
                                 "MoveSpeed": 2.5,
-                                "SideDetectionTiles": 2,
+                                "SideDetectionTiles": 4,
                                 "WaitTimeBeforeChase": 1.0,
                                 "bAutoActivate": true,
                                 "bHiddenInGame": false,
@@ -6178,8 +6178,8 @@
                             "Properties": {
                                 "Transform": {
                                     "Location": {
-                                        "X": 1.6280312538146973,
-                                        "Y": -12.520956039428711,
+                                        "X": 1.5,
+                                        "Y": -12.5,
                                         "Z": -1.6036300659179688
                                     },
                                     "Rotation": {
@@ -6188,9 +6188,9 @@
                                         "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 1.0,
-                                        "Y": 1.0,
-                                        "Z": 1.0
+                                        "X": 2.0,
+                                        "Y": 2.0,
+                                        "Z": 2.0
                                     }
                                 },
                                 "bAutoActivate": true,
@@ -6262,15 +6262,15 @@
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
                                 "BoxExtent": {
-                                    "X": 3.0,
-                                    "Y": 1.0,
-                                    "Z": 1.5
+                                    "X": 4.0,
+                                    "Y": 2.25,
+                                    "Z": 1.0
                                 },
                                 "Transform": {
                                     "Location": {
-                                        "X": 0.0,
+                                        "X": 1.25,
                                         "Y": 0.0,
-                                        "Z": 0.0
+                                        "Z": 0.5
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -6310,15 +6310,15 @@
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
                                 "BoxExtent": {
-                                    "X": 5.0,
-                                    "Y": 3.0,
-                                    "Z": 1.5
+                                    "X": 6.0,
+                                    "Y": 3.25,
+                                    "Z": 1.0
                                 },
                                 "Transform": {
                                     "Location": {
-                                        "X": 0.0,
+                                        "X": 1.75,
                                         "Y": 0.0,
-                                        "Z": 0.0
+                                        "Z": 0.5
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -6434,15 +6434,15 @@
                             "Name": "GhostAIComponent",
                             "Parent": "",
                             "Properties": {
-                                "BackwardDetectionTiles": 3,
-                                "ChaseBackwardDetectionTiles": 5,
-                                "ChaseForwardDetectionTiles": 10,
+                                "BackwardDetectionTiles": 5,
+                                "ChaseBackwardDetectionTiles": 8,
+                                "ChaseForwardDetectionTiles": 15,
                                 "ChaseSideDetectionTiles": 6,
                                 "ChaseSpeed": 3.5,
-                                "ForwardDetectionTiles": 6,
+                                "ForwardDetectionTiles": 10,
                                 "MaxChaseDuration": 6.0,
                                 "MoveSpeed": 2.5,
-                                "SideDetectionTiles": 2,
+                                "SideDetectionTiles": 4,
                                 "WaitTimeBeforeChase": 1.0,
                                 "bAutoActivate": true,
                                 "bHiddenInGame": false,
