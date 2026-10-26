@@ -23,6 +23,8 @@
 #include "Components/FireBallComponent.h"
 #include "Components/LuaScriptComponent.h"
 #include "Asset/AssetManager.h"
+#include "GameActor/GhostActor.h"
+#include "GameActor/GhostAIComponent.h"
 #include "Render/Material.h"
 #include "Render/Texture2D.h"
 #include "Text/Font.h"
@@ -995,6 +997,245 @@ namespace
 			ImGui::EndPopup();
 		}
 	}
+
+	void DrawGhostAIDetails(UGhostAIComponent& AIComp)
+	{
+		if (!ImGui::CollapsingHeader("Ghost AI & Patrol Route", ImGuiTreeNodeFlags_DefaultOpen))
+			return;
+
+		ImGui::PushID(&AIComp);
+
+		// 1. 현재 타일 위치 및 시작 타일 스냅
+		int32 CurCol = 0, CurRow = 0;
+		bool bValidTile = AIComp.GetCurrentTile(CurCol, CurRow);
+		if (bValidTile)
+		{
+			ImGui::Text("Current Tile: [Col: %d, Row: %d]", CurCol, CurRow);
+		}
+		else
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Current Tile: Not on valid map grid!");
+		}
+
+		static int32 SnapCol = 0, SnapRow = 0;
+		if (SnapCol == 0 && SnapRow == 0 && bValidTile)
+		{
+			SnapCol = CurCol;
+			SnapRow = CurRow;
+		}
+
+		ImGui::Text("Snap to Start Tile:");
+		ImGui::SetNextItemWidth(70.0f);
+		ImGui::InputInt("##SnapCol", &SnapCol, 0);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(70.0f);
+		ImGui::InputInt("##SnapRow", &SnapRow, 0);
+		ImGui::SameLine();
+		if (ImGui::Button("Snap to Tile"))
+		{
+			AIComp.SnapOwnerToTile(SnapCol, SnapRow);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Snap Ghost directly to this (Column, Row) Floor tile in the editor");
+		}
+
+		ImGui::Separator();
+
+		// 2. 이동 및 타이머 파라미터
+		float Speed = AIComp.GetMoveSpeed();
+		if (ImGui::DragFloat("Move Speed", &Speed, 0.1f, 0.5f, 15.0f, "%.1f"))
+		{
+			AIComp.SetMoveSpeed(Speed);
+		}
+
+		float WaitTime = AIComp.GetWaitTimeBeforeChase();
+		if (ImGui::DragFloat("Chase Wait Time (s)", &WaitTime, 0.1f, 0.0f, 5.0f, "%.1f"))
+		{
+			AIComp.SetWaitTimeBeforeChase(WaitTime);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Time to stay stopped before turning eyes red and chasing player");
+		}
+
+		float ChaseDuration = AIComp.GetMaxChaseDuration();
+		if (ImGui::DragFloat("Chase Duration (s)", &ChaseDuration, 0.1f, 0.5f, 10.0f, "%.1f"))
+		{
+			AIComp.SetMaxChaseDuration(ChaseDuration);
+		}
+
+		ImGui::Separator();
+
+		// 3. 방향성 타일 탐지 범위 (Directional Detection Range)
+		ImGui::Text("Patrol Detection Range (Tiles):");
+		int32 ForwardTiles = AIComp.GetForwardDetectionTiles();
+		if (ImGui::DragInt("Forward Tiles", &ForwardTiles, 1, 0, 30))
+		{
+			AIComp.SetForwardDetectionTiles(ForwardTiles);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Detection distance in front of Ghost during patrol (number of tiles)");
+		}
+
+		int32 BackwardTiles = AIComp.GetBackwardDetectionTiles();
+		if (ImGui::DragInt("Backward Tiles", &BackwardTiles, 1, 0, 20))
+		{
+			AIComp.SetBackwardDetectionTiles(BackwardTiles);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Detection distance behind Ghost during patrol (number of tiles)");
+		}
+
+		int32 SideTiles = AIComp.GetSideDetectionTiles();
+		if (ImGui::DragInt("Side Width Tiles", &SideTiles, 1, 0, 10))
+		{
+			AIComp.SetSideDetectionTiles(SideTiles);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Lateral detection half-width during patrol (number of tiles to left and right)");
+		}
+
+		ImGui::Spacing();
+		ImGui::Text("Chase Detection Range (Tiles):");
+		int32 ChaseForward = AIComp.GetChaseForwardDetectionTiles();
+		if (ImGui::DragInt("Chase Forward Tiles", &ChaseForward, 1, 0, 40))
+		{
+			AIComp.SetChaseForwardDetectionTiles(ChaseForward);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Extended forward detection distance while actively chasing player (number of tiles)");
+		}
+
+		int32 ChaseBackward = AIComp.GetChaseBackwardDetectionTiles();
+		if (ImGui::DragInt("Chase Backward Tiles", &ChaseBackward, 1, 0, 30))
+		{
+			AIComp.SetChaseBackwardDetectionTiles(ChaseBackward);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Extended backward detection distance while actively chasing player (number of tiles)");
+		}
+
+		int32 ChaseSide = AIComp.GetChaseSideDetectionTiles();
+		if (ImGui::DragInt("Chase Side Width Tiles", &ChaseSide, 1, 0, 20))
+		{
+			AIComp.SetChaseSideDetectionTiles(ChaseSide);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Extended lateral half-width while chasing to prevent losing player on turns (number of tiles)");
+		}
+
+		ImGui::Separator();
+
+		// 4. 순찰 경로 (Patrol Points) 목록
+		TArray<FGhostTileCoord>& Points = AIComp.GetPatrolPoints();
+		ImGui::Text("Patrol Route (%d Points):", Points.Num());
+
+		AMapActor* Map = AIComp.GetCachedMap();
+
+		int32 ToDelete = -1;
+		int32 MoveUpIdx = -1;
+		int32 MoveDownIdx = -1;
+
+		for (int32 i = 0; i < Points.Num(); ++i)
+		{
+			ImGui::PushID(i);
+
+			ImGui::Text("#%d", i);
+			ImGui::SameLine();
+
+			ImGui::SetNextItemWidth(65.0f);
+			ImGui::DragInt("Col", &Points[i].Column, 1, 0, Map ? Map->GetColumns() - 1 : 255);
+			ImGui::SameLine();
+
+			ImGui::SetNextItemWidth(65.0f);
+			ImGui::DragInt("Row", &Points[i].Row, 1, 0, Map ? Map->GetRows() - 1 : 255);
+			ImGui::SameLine();
+
+			if (Map)
+			{
+				EMapTileTerrain Terrain;
+				if (Map->TryGetTile(Points[i].Column, Points[i].Row, Terrain))
+				{
+					if (Terrain == EMapTileTerrain::Floor)
+						ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.3f, 1.0f), "[Floor]");
+					else
+						ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "[Wall!]");
+				}
+				else
+				{
+					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "[Out]");
+				}
+			}
+			ImGui::SameLine();
+
+			if (ImGui::ArrowButton("##up", ImGuiDir_Up) && i > 0)
+			{
+				MoveUpIdx = i;
+			}
+			ImGui::SameLine();
+			if (ImGui::ArrowButton("##down", ImGuiDir_Down) && i + 1 < Points.Num())
+			{
+				MoveDownIdx = i;
+			}
+			ImGui::SameLine();
+
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.15f, 0.15f, 1.0f));
+			if (ImGui::Button("X"))
+			{
+				ToDelete = i;
+			}
+			ImGui::PopStyleColor();
+
+			ImGui::PopID();
+		}
+
+		if (ToDelete >= 0)
+		{
+			AIComp.RemovePatrolPoint(ToDelete);
+		}
+		else if (MoveUpIdx > 0)
+		{
+			AIComp.MovePatrolPointUp(MoveUpIdx);
+		}
+		else if (MoveDownIdx >= 0)
+		{
+			AIComp.MovePatrolPointDown(MoveDownIdx);
+		}
+
+		// 4. 추가 / 삭제 액션 버튼
+		if (ImGui::Button("+ Add Point"))
+		{
+			int32 AddCol = CurCol, AddRow = CurRow;
+			if (!Points.IsEmpty())
+			{
+				AddCol = Points.Last().Column;
+				AddRow = Points.Last().Row;
+			}
+			AIComp.AddPatrolPoint(AddCol, AddRow);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("+ Add Current Tile"))
+		{
+			if (bValidTile)
+			{
+				AIComp.AddPatrolPoint(CurCol, CurRow);
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Clear All"))
+		{
+			AIComp.ClearPatrolPoints();
+		}
+
+		ImGui::PopID();
+	}
 }
 
 bool FDetailsPanel::Init()
@@ -1203,6 +1444,13 @@ void FDetailsPanel::OnRender()
 		ImGui::PushID(TargetActor);
 		DrawProperties(TargetActor, CustomFont);
 		if (AMapActor* Map = Cast<AMapActor>(TargetActor)) MapTileEditor.DrawDetails(*Map);
+		if (AGhostActor* Ghost = Cast<AGhostActor>(TargetActor))
+		{
+			if (UGhostAIComponent* AIComp = Ghost->GetAIComponent())
+			{
+				DrawGhostAIDetails(*AIComp);
+			}
+		}
 		ImGui::PopID();
 
 		if (TargetComponent)
@@ -1212,6 +1460,10 @@ void FDetailsPanel::OnRender()
 			DrawProperties(TargetComponent, CustomFont);
             DrawCollisionSettings(Cast<UPrimitiveComponent>(TargetComponent));
 			DrawShadowPreview();
+			if (UGhostAIComponent* AIComp = Cast<UGhostAIComponent>(TargetComponent))
+			{
+				DrawGhostAIDetails(*AIComp);
+			}
 			if (ULuaScriptComponent* ScriptComponent = Cast<ULuaScriptComponent>(TargetComponent))
 			{
 				const FString& ScriptPath = ScriptComponent->GetScriptPath();
