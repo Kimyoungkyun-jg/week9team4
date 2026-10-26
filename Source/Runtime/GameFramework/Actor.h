@@ -15,6 +15,7 @@
 
 #include "Lua/LuaMacros.h"
 #include "Components/MovementComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 
 inline sol::object PushComponentToLua(lua_State* L, UActorComponent* Comp)
 {
@@ -26,6 +27,10 @@ inline sol::object PushComponentToLua(lua_State* L, UActorComponent* Comp)
 	if (auto* MoveComp = Cast<UMovementComponent>(Comp))
 	{
 		return sol::make_object(L, MoveComp);
+	}
+	if (auto* FogComp = Cast<UExponentialHeightFogComponent>(Comp))
+	{
+		return sol::make_object(L, FogComp);
 	}
 	if (auto* PrimComp = Cast<UPrimitiveComponent>(Comp))
 	{

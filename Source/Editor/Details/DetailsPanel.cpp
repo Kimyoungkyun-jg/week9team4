@@ -1163,6 +1163,21 @@ namespace
 		// 4. 순찰 경로 (Patrol Points) 목록
 		TArray<FGhostTileCoord>& Points = AIComp.GetPatrolPoints();
 		ImGui::Text("Patrol Route (%d Points):", Points.Num());
+		ImGui::SameLine();
+		if (ImGui::Button("Reset to Default"))
+		{
+			AIComp.InitializeDefaultPatrolPoints();
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Recalculate default 4-direction patrol route around current location");
+		}
+
+		if (Points.IsEmpty())
+		{
+			ImGui::TextDisabled("No patrol points set. (Ghost will stay in place)");
+			ImGui::TextDisabled("Click [+ Add Point], [+ Add Current Tile] or [Reset to Default]");
+		}
 
 		AMapActor* Map = AIComp.GetCachedMap();
 
