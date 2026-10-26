@@ -22,13 +22,10 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::S)]);
 	const float Right = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::D)]) -
 		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::A)]);
-	if (bKeyDown[static_cast<int32>(EKeyCode::RButton)])
-	{
-		PossessedPawn->AddControllerYawInput(MouseAxisX * LookSensitivity);
-		if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
-		PossessedPawn->AddControllerPitchInput(MouseAxisY * LookSensitivity);
-		if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
-	}
+	PossessedPawn->AddControllerYawInput(MouseAxisX * LookSensitivity);
+	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
+	PossessedPawn->AddControllerPitchInput(MouseAxisY * LookSensitivity);
+	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
 	MouseAxisX = MouseAxisY = 0.0f;
 	const FQuat Rotation = PossessedPawn->GetActorRotation().Quaternion();
 	if (Forward != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetForwardVector(), Forward * DeltaTime);

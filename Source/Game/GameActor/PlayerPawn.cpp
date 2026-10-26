@@ -17,7 +17,7 @@ APlayerPawn::APlayerPawn()
 	SetActorEnableCollision(true);
 	CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>("CollisionComponent");
 	SetRootComponent(CollisionComponent);
-	CollisionComponent->SetCapsuleSize(0.2f, 1.0f);
+	CollisionComponent->SetCapsuleSize(0.5f, 1.0f);
 	CollisionComponent->SetCollisionEnabled(true);
 	CollisionComponent->SetCollisionObjectType(ECollisionChannel::Pawn);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
@@ -57,6 +57,13 @@ void APlayerPawn::BeginPlay()
 				}
 				break;
 			}
+	PlayerStartLocation = GetActorLocation();
+	PlayerStartRotation = GetActorRotation();
+	if (Camera)
+	{
+		PlayerStartCameraLocation = Camera->GetRelativeLocation();
+		PlayerStartCameraRotation = Camera->GetRelativeRotation();
+	}
 
 	SetActorEnableCollision(true);
 	if (CollisionComponent)
@@ -115,6 +122,18 @@ void APlayerPawn::SetLife(int32 InLife)
 	if (UWorld* PawnWorld = GetWorld())
 		if (AGameHUD* HUD = PawnWorld->GetHUD())
 			HUD->SetText("Life", std::to_string(Life));
+}
+
+void APlayerPawn::RespawnAtPlayerStart()
+{
+	SetActorLocation(PlayerStartLocation);
+	SetActorRotation(PlayerStartRotation);
+	if (UCameraComponent* Camera = GetCameraComponent())
+	{
+		Camera->SetRelativeLocation(PlayerStartCameraLocation);
+		Camera->SetRelativeRotation(PlayerStartCameraRotation);
+	}
+	if (CollisionComponent) CollisionComponent->UpdateOverlaps();
 }
 
 void APlayerPawn::EndPlay()

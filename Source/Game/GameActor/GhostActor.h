@@ -10,6 +10,7 @@ class UCapsuleComponent;
 class UBoxComponent;
 class UMaterial;
 class ULuaScriptComponent;
+class UPrimitiveComponent;
 
 class AGhostActor : public AActor
 {

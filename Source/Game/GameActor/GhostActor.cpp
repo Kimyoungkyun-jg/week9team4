@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "GhostActor.h"
 #include "GhostAIComponent.h"
+#include "PacmanGameMode.h"
 #include "PlayerPawn.h"
 #include "Core/EngineLog.h"
 
@@ -145,7 +146,11 @@ void AGhostActor::OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, UPr
 
 	if (APlayerPawn* Player = Cast<APlayerPawn>(OtherActor))
 	{
+		if (OtherComp != Player->GetCollisionComponent()) return;
 		HTR_LOG(Warning, "[Ghost Collision] Ghost '{}' collided with Player '{}'!", GetName(), Player->GetName());
+		if (UWorld* World = GetWorld())
+			if (APacmanGameMode* Mode = Cast<APacmanGameMode>(World->GetGameMode()))
+				Mode->StartGhostHit(this, Player);
 	}
 }
 

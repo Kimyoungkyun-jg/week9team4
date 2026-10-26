@@ -1283,33 +1283,43 @@ bool FDetailsPanel::Init()
 
 void FDetailsPanel::Tick(float DeltaTime)
 {
-	if (TargetActor && TargetActor->IsPendingKillPending())
+	const auto LiveComponent = [](UActorComponent* Component)
 	{
-		TargetActor = nullptr;
+		return Component && GUObjectArray.Find(Component) != INDEX_NONE &&
+			IsValid(Component) && !Component->IsBeingDestroyed();
+	};
+	if (TargetActor && (GUObjectArray.Find(TargetActor) == INDEX_NONE ||
+		!IsValid(TargetActor) || TargetActor->IsPendingKillPending()))
+	{
+		SetTarget(nullptr);
 		SelectComponent(nullptr);
 	}
-	else if (TargetComponent && (!IsValid(TargetComponent) || TargetComponent->IsBeingDestroyed())) SelectComponent(nullptr);
-	if (EditingNameComponent && (!IsValid(EditingNameComponent) || EditingNameComponent->IsBeingDestroyed()))
+	else if (TargetComponent && !LiveComponent(TargetComponent)) SelectComponent(nullptr);
+	if (EditingNameComponent && !LiveComponent(EditingNameComponent))
 	{
 		EditingNameComponent = nullptr;
 		bIsEditingName = bFocusNameEdit = false;
 	}
-	if (PendingDeleteComponent && (!IsValid(PendingDeleteComponent) || PendingDeleteComponent->IsBeingDestroyed())) PendingDeleteComponent = nullptr;
-	if ((PendingDragComponent && (!IsValid(PendingDragComponent) || PendingDragComponent->IsBeingDestroyed())) ||
-		(PendingDroppedComponent && (!IsValid(PendingDroppedComponent) || PendingDroppedComponent->IsBeingDestroyed())))
+	if (PendingDeleteComponent && !LiveComponent(PendingDeleteComponent)) PendingDeleteComponent = nullptr;
+	if ((PendingDragComponent && !LiveComponent(PendingDragComponent)) ||
+		(PendingDroppedComponent && !LiveComponent(PendingDroppedComponent)))
 		PendingDragComponent = PendingDroppedComponent = nullptr;
 }
 
 const ULightComponent* FDetailsPanel::GetSelectedLight() const
 {
-	if (!IsValid(TargetComponent) || TargetComponent->IsBeingDestroyed()) return nullptr;
+	const auto LiveComponent = [](UActorComponent* Component)
+	{
+		return Component && GUObjectArray.Find(Component) != INDEX_NONE &&
+			IsValid(Component) && !Component->IsBeingDestroyed();
+	};
 	UActorComponent* Component = TargetComponent;
-	while (Component && Component->IsHiddenInDetails())
+	while (LiveComponent(Component) && Component->IsHiddenInDetails())
 	{
 		USceneComponent* SceneComponent = Cast<USceneComponent>(Component);
 		Component = SceneComponent ? SceneComponent->GetAttachParent() : nullptr;
 	}
-	return Cast<ULightComponent>(Component);
+	return LiveComponent(Component) ? Cast<ULightComponent>(Component) : nullptr;
 }
 
 void FDetailsPanel::DrawShadowPreview()
@@ -1463,6 +1473,18 @@ void FDetailsPanel::OnRender()
 	ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
 
 	ImGui::Begin("Details");
+
+	// 해제된 액터 및 컴포넌트 참조 정리
+	if (TargetActor && (GUObjectArray.Find(TargetActor) == INDEX_NONE ||
+		!IsValid(TargetActor) || TargetActor->IsPendingKillPending()))
+	{
+		SetTarget(nullptr);
+	}
+	if (TargetComponent && (GUObjectArray.Find(TargetComponent) == INDEX_NONE ||
+		!IsValid(TargetComponent) || TargetComponent->IsBeingDestroyed() || TargetComponent->GetOwner() != TargetActor))
+	{
+		TargetComponent = TargetActor ? TargetActor->GetRootComponent() : nullptr;
+	}
 
 	if (TargetActor)
 	{
