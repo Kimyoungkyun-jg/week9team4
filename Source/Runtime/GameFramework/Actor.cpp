@@ -10,13 +10,28 @@
 #include "Components/LuaScriptComponent.h"
 #include "Core/EngineLog.h"
 #include "UObject/Object.h"
+#include <format>
+#include <random>
 
 enum class EAttachmentRule;
 
 AActor::AActor()
 {
+	RegeneratePersistentActorId();
 	PrimaryActorTick.Target = this;
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>("DefaultSceneRoot"));
+}
+
+void AActor::RegeneratePersistentActorId()
+{
+	static std::random_device Random;
+	PersistentActorId = std::format("{:08x}{:08x}{:08x}{:08x}", Random(), Random(), Random(), Random());
+}
+
+void AActor::PostDuplicate(bool bDuplicateForPIE)
+{
+	Super::PostDuplicate(bDuplicateForPIE);
+	if (!bDuplicateForPIE) RegeneratePersistentActorId();
 }
 
 AActor::~AActor()
@@ -116,6 +131,11 @@ void AActor::Serialize(FStructuredArchive::FRecord Record)
 	Super::Serialize(Record);   // "Properties"
 
 	FArchive& Ar = Record.GetUnderlyingArchive();
+	if (auto IdField = Record.TryEnterField("PersistentActorId", Ar.IsSaving()))
+	{
+		IdField.GetValue() << PersistentActorId;
+		if (Ar.IsLoading() && PersistentActorId.empty()) RegeneratePersistentActorId();
+	}
 
 	if (Ar.HasAnyPortFlags(EPropertyPortFlags::PPF_Duplicate))
 	{

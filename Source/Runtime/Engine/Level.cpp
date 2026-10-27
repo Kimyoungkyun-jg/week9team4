@@ -6,6 +6,7 @@
 // 전방 선언만으로는 C4150(소멸자 미호출)이 되어 액터가 GUObjectArray에 남는다.
 #include "GameFramework/Actor.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include <unordered_set>
 
 void ULevel::AddActor(AActor* Actor)
 {
@@ -106,6 +107,17 @@ void ULevel::Serialize(FStructuredArchive::FRecord Record)
 		if (Actor)
 		{
 			Actor->Serialize(ActorRecord);
+		}
+	}
+	std::unordered_set<FString> SeenIds;
+	for (AActor* Actor : Actors)
+	{
+		if (!Actor) continue;
+		if (!SeenIds.insert(Actor->GetPersistentActorId()).second)
+		{
+			HTR_LOG(Warning, "Load: duplicate persistent actor id on '{}', regenerated", Actor->GetName());
+			Actor->RegeneratePersistentActorId();
+			SeenIds.insert(Actor->GetPersistentActorId());
 		}
 	}
 }

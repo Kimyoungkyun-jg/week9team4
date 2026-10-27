@@ -39,6 +39,7 @@
 #include "Editor/Outliner/OutlinerPanel.h"
 #include "Editor/HitoriEd/EditorFileUtils.h"
 #include "Editor/UIEditor/WidgetEditorPanel.h"
+#include "Editor/Sequencer/SequencerPanel.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
 #include "Core/EngineLog.h"
@@ -200,6 +201,12 @@ bool UEditorEngine::Init()
 
 	OutlinerPanel = EditorUI->AddEditorPanel<FOutlinerPanel>();
 	OutlinerPanel->SetWorld(GetActiveWorld());
+	SequencerPanel = EditorUI->AddEditorPanel<FSequencerPanel>();
+	SequencerPanel->SetWorld(EditorWorld);
+	SequencerPanel->SetViewportsPanel(ViewportsPanel);
+	SequencerPanel->SetSelectedActorProvider([this]() { return OutlinerPanel ? OutlinerPanel->GetSelectedActor() : nullptr; });
+	SequencerPanel->SetActorSelectionCallback([this](AActor* Actor) { if (OutlinerPanel) OutlinerPanel->SelectActor(Actor); });
+	SequencerPanel->SetPreviewAllowedQuery([this]() { return !IsPlaying(); });
 	OutlinerPanel->SetSelectionCallback(
 		[this](USceneComponent* Root)
 		{
@@ -1024,6 +1031,7 @@ void UEditorEngine::DrawPIEWindows()
 void UEditorEngine::PreExit()
 {
 	EndPlayMap();
+	if (SequencerPanel) SequencerPanel->ReleaseAsset();
 	if (WidgetEditorPanel) WidgetEditorPanel->ReleaseAsset();
 	if (SettingsPanel) SettingsPanel->SaveSettings();
 	EditorWorld->ClearWorld();
@@ -1075,6 +1083,7 @@ void UEditorEngine::DeleteComponent(UActorComponent* Component)
 
 void UEditorEngine::StartPlayInEditorSession()
 {
+	if (SequencerPanel) SequencerPanel->StopPreview();
 	// 별도 창 모드면 패널 View는 모두 에디터 월드로 두고 창 하나에만 PIE 월드를 그린다.
 	// 창을 만들지 못하면 선택한 View에서 실행한다.
 	const bool bNewWindow = (PlayMode == EPlayModeType::InEditorFloating);
@@ -1295,6 +1304,7 @@ void UEditorEngine::CreateNewScene()
 		HTR_LOG(Warning, "Cannot create a new scene during PIE. Stop the play session first.");
 		return;
 	}
+	if (SequencerPanel) SequencerPanel->StopPreview();
 	ResetSceneSelection();
 	if (!FEditorFileUtils::NewScene(EditorWorld))
 		return;
@@ -1309,6 +1319,7 @@ void UEditorEngine::OpenScene()
 		HTR_LOG(Warning, "Cannot open a scene during PIE. Stop the play session first.");
 		return;
 	}
+	if (SequencerPanel) SequencerPanel->StopPreview();
 	ResetSceneSelection();
 	if (!FEditorFileUtils::LoadScene(EditorWorld))
 		return;

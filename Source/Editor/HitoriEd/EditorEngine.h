@@ -33,6 +33,7 @@
 #include "Editor/ContentDrawer/ContentDrawerPanel.h"
 
 class FWidgetEditorPanel;
+class FSequencerPanel;
 
 #include "Editor/Rendering/Outline.h"
 #include "Editor/Rendering/OutLineRenderer.h"
@@ -170,6 +171,7 @@ private:
 	FOutlinerPanel* OutlinerPanel = nullptr;
 	FContentDrawerPanel* ContentDrawerPanel = nullptr;
 	FWidgetEditorPanel* WidgetEditorPanel = nullptr;
+	FSequencerPanel* SequencerPanel = nullptr;
 
 	UWorld* EditorWorld = nullptr;
 	UWorld* PlayWorld = nullptr;

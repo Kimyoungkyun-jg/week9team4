@@ -5467,6 +5467,7 @@
                         "Version": 1
                     },
                     "Name": "AMapActor_0",
+                    "PersistentActorId": "9fe3f33d5dd71755e253e5f55a5178d8",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
@@ -5670,6 +5671,7 @@
                         }
                     ],
                     "Name": "APlayerStart_0",
+                    "PersistentActorId": "50346d0ec3e9ba555ab40572900f9a4b",
                     "Properties": {
                         "bActorEnableCollision": false
                     },
@@ -5783,6 +5785,7 @@
                         }
                     ],
                     "Name": "AStaticMeshActor_1",
+                    "PersistentActorId": "0a6a69aa51e3352decfde494f1ed22dd",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
@@ -6116,6 +6119,7 @@
                         }
                     ],
                     "Name": "AGhostActor_1",
+                    "PersistentActorId": "0c40ff5bcb39674d4701361e234ff99d",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -6201,6 +6205,7 @@
                         }
                     ],
                     "Name": "AStaticMeshActor_0",
+                    "PersistentActorId": "ac15eac9eee28d6f651be7ee7ea0d6e6",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
@@ -6283,6 +6288,7 @@
                         }
                     ],
                     "Name": "AStaticMeshActor_2",
+                    "PersistentActorId": "132c47e4dcadc586c631061e8387da97",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
@@ -6652,6 +6658,7 @@
                         }
                     ],
                     "Name": "AGhostActor_0",
+                    "PersistentActorId": "974adfb72c437a94c0b7c72f55d934d8",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -7024,6 +7031,7 @@
                         }
                     ],
                     "Name": "AGhostActor_2",
+                    "PersistentActorId": "b8945b22ebd1b860cd5611395e9f1745",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -7396,6 +7404,7 @@
                         }
                     ],
                     "Name": "AGhostActor_3",
+                    "PersistentActorId": "b35c35c8484b55c961b4118e8dd2e7bc",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -7768,6 +7777,7 @@
                         }
                     ],
                     "Name": "AGhostActor_4",
+                    "PersistentActorId": "5006ec9ecf5f11cdb1381efbf06a92e0",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -8104,6 +8114,7 @@
                         }
                     ],
                     "Name": "AGhostActor_5",
+                    "PersistentActorId": "4e311ffdc802fecc259427fd46c3f85d",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -8476,6 +8487,7 @@
                         }
                     ],
                     "Name": "AGhostActor_6",
+                    "PersistentActorId": "2c2f0a741ada0cbde68ede11ff969883",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -8848,6 +8860,7 @@
                         }
                     ],
                     "Name": "AGhostActor_7",
+                    "PersistentActorId": "c94942b3da66c0d62e30ded5f4b741c2",
                     "Properties": {
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
@@ -9004,6 +9017,7 @@
                         }
                     ],
                     "Name": "AExponentialHeightFogActor_1",
+                    "PersistentActorId": "6730af2381c2af12363ba9d64318f0fc",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
@@ -9060,13 +9074,13 @@
                                 "BoxExtent": {
                                     "X": 14.0,
                                     "Y": 12.0,
-                                    "Z": 0.05
+                                    "Z": 0.05000000074505806
                                 },
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": -2.056300139427185
+                                        "Z": -2.056300163269043
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -9089,10 +9103,94 @@
                         }
                     ],
                     "Name": "MazeFloor",
+                    "PersistentActorId": "4e709f7f5086454d611a3189f838f1b1",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "FloorCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 200.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Map/Map.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 3.0,
+                                        "Y": 3.0,
+                                        "Z": 3.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_3",
+                    "PersistentActorId": "5e8aaeab6a921cb9534161e1e8e0f44c",
+                    "Properties": {
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}

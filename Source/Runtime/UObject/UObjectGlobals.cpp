@@ -39,7 +39,7 @@ namespace
 		//Parameters.InternalFlagMask = InternalFlagsMask;
 		//Parameters.DuplicateMode = DuplicateMode;
 
-		Parameters.PortFlags = EPropertyPortFlags::PPF_DuplicateForPIE;
+		Parameters.PortFlags = EPropertyPortFlags::PPF_None;
 
 		return Parameters;
 	}

@@ -164,6 +164,8 @@ public:
 
 	bool Destroy();
 	bool IsActorBeingDestroyed() const { return bActorIsBeingDestroyed; }
+	const FString& GetPersistentActorId() const { return PersistentActorId; }
+	void RegeneratePersistentActorId();
 	bool IsPendingKillPending() const { return bActorIsBeingDestroyed || !IsValid(this); }
 	
 	//xx삭제 예정
@@ -180,6 +182,7 @@ public:
 
 	using Super::Serialize;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
+	virtual void PostDuplicate(bool bDuplicateForPIE) override;
 	UActorComponent* FindComponentByName(FName Name) const;
 	UActorComponent* GetComponentByClass(const UClass* ComponentClass) const;
 	TArray<UActorComponent*> GetComponentsByClass(const UClass* ComponentClass) const;
@@ -219,6 +222,7 @@ protected:
 	UWorld* World = nullptr;
 	ULevel* Level = nullptr;
 private:
+	FString PersistentActorId;
 	bool bActorEnableCollision = true;
 	bool bHasBegunPlay = false;
 	bool bHasEndedPlay = false;

@@ -18,6 +18,7 @@
 #include "Serialization/StructuredArchiveSlots.h"
 #include "Serialization/Formatter/JsonArchiveOutputFormatter.h"
 #include "Serialization/Formatter/JsonArchiveInputFormatter.h"
+#include <cstring>
 
 namespace
 {
@@ -44,6 +45,38 @@ bool FJsonArchive::SaveWorldToBytes(UWorld* World, TArray<uint8>& OutBytes)
 	} 
 
 	return !Writer.IsError();
+}
+
+bool FJsonArchive::SaveActorToString(AActor* Actor, FString& OutJson)
+{
+	OutJson.clear();
+	if (!Actor) return false;
+	TArray<uint8> Bytes;
+	FMemoryWriter Writer(Bytes);
+	{
+		FJsonArchiveOutputFormatter Formatter(Writer);
+		FStructuredArchive Ar(Formatter);
+		Actor->Serialize(Ar.Open().EnterRecord());
+		Ar.Close();
+	}
+	if (Writer.IsError()) return false;
+	OutJson.assign(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
+	return !OutJson.empty();
+}
+
+bool FJsonArchive::LoadActorFromString(AActor* Actor, const FString& ActorJson)
+{
+	if (!Actor || ActorJson.empty()) return false;
+	TArray<uint8> Bytes;
+	Bytes.SetNum(static_cast<int32>(ActorJson.size()));
+	std::memcpy(Bytes.GetData(), ActorJson.data(), ActorJson.size());
+	FMemoryReader Reader(Bytes);
+	FJsonArchiveInputFormatter Formatter(Reader);
+	if (Reader.IsError()) return false;
+	FStructuredArchive Ar(Formatter);
+	Actor->Serialize(Ar.Open().EnterRecord());
+	Ar.Close();
+	return !Reader.IsError();
 }
 
 bool FJsonArchive::LoadWorldFromBytes(UWorld* World, const TArray<uint8>& Bytes)
