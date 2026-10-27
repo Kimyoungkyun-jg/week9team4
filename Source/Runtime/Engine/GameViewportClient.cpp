@@ -8,6 +8,8 @@
 #include "GameFramework/GameMode.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/MinimalViewInfo.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Camera/ViewportCameraMovement.h"
 #include <cmath>
 #include "Math/Frustum.h"
@@ -340,9 +342,12 @@ UCameraComponent* FGameViewportClient::FindPlayerCamera() const
 	if (!World) return nullptr;
 	if (APawn* Pawn = World->GetPlayerPawn())
 	{
-		if (UCameraComponent* Camera = Pawn->GetCameraComponent()) return Camera;
+		if (GUObjectArray.Find(Pawn) == INDEX_NONE || !IsValid(Pawn) || Pawn->IsActorBeingDestroyed()) return nullptr;
+		if (UCameraComponent* Camera = Pawn->GetCameraComponent();
+			Camera && GUObjectArray.Find(Camera) != INDEX_NONE && IsValid(Camera) && !Camera->IsBeingDestroyed()) return Camera;
 		for (UActorComponent* Component : Pawn->GetComponents())
-			if (UCameraComponent* Camera = Cast<UCameraComponent>(Component)) return Camera;
+			if (Component && GUObjectArray.Find(Component) != INDEX_NONE && IsValid(Component) && !Component->IsBeingDestroyed())
+				if (UCameraComponent* Camera = Cast<UCameraComponent>(Component)) return Camera;
 	}
 	return nullptr;
 }
@@ -398,44 +403,66 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 	);
 
 	const float Aspect = static_cast<float>(Width) / static_cast<float>(Height);
-
-	if (!CameraComponent && World)
+	FMinimalViewInfo POV;
+	bool bHasPOV = false;
+	if (bSIEMode)
 	{
-		CameraComponent = FindPlayerCamera();
-		if (!CameraComponent && World->GetMainCamera())
-			CameraComponent = World->GetMainCamera()->GetCameraComponent();
+		if (CameraComponent && GUObjectArray.Find(CameraComponent) != INDEX_NONE &&
+			IsValid(CameraComponent) && !CameraComponent->IsBeingDestroyed())
+		{
+			CameraComponent->GetCameraView(POV);
+			bHasPOV = true;
+		}
+	}
+	else if (World)
+	{
+		if (APlayerController* Controller = World->GetPlayerController())
+			if (APlayerCameraManager* Manager = Controller->GetPlayerCameraManager())
+				if (const FMinimalViewInfo* CachedPOV = Manager->GetCameraCachePOV())
+				{
+					POV = *CachedPOV;
+					bHasPOV = true;
+				}
+	}
+	if (!bHasPOV && World)
+	{
+		const auto IsUsableTarget = [](AActor* Target)
+		{
+			return Target && GUObjectArray.Find(Target) != INDEX_NONE &&
+				IsValid(Target) && !Target->IsActorBeingDestroyed();
+		};
+		AActor* Fallback = bSIEMode ? static_cast<AActor*>(World->GetMainCamera()) :
+			static_cast<AActor*>(World->GetPlayerPawn());
+		if (!IsUsableTarget(Fallback)) Fallback = World->GetMainCamera();
+		if (IsUsableTarget(Fallback))
+		{
+			Fallback->CalcCamera(0.0f, POV);
+			bHasPOV = true;
+		}
+	}
+	if (!bHasPOV)
+	{
+		POV.Location = FVector(-5.0f, -10.0f, 10.0f);
+		POV.Rotation = FRotator(30.0f, 45.0f, 0.0f);
+		POV.FarClip = 1000.0f;
 	}
 
-	if (CameraComponent)
-	{
-		CameraComponent->SetAspectRatio(Aspect);
-
-		OutView.ViewLocation = CameraComponent->GetWorldLocation();
-		OutView.ViewRotation = CameraComponent->GetWorldRotation();
-		OutView.ViewForward = OutView.ViewRotation.Quaternion().GetForwardVector();
-		OutView.ViewMatrix = CameraComponent->GetViewMatrix();
-		OutView.ProjectionMatrix = CameraComponent->GetProjectionMatrix();
-		OutView.ViewProjectionMatrix = CameraComponent->GetViewProjectionMatrix();
-		OutView.FieldOfView = CameraComponent->GetFieldOfView();
-		OutView.AspectRatio = Aspect;
-		OutView.NearClip = CameraComponent->GetNearZ();
-		OutView.FarClip = CameraComponent->GetFarZ();
-		OutView.OrthoWidth = CameraComponent->GetOrthoWidth();
-		OutView.bIsPerspective = !CameraComponent->GetIsOrthogonal();
-		OutView.bIsWireframe = false;
-	}
-	else
-	{
-		OutView.ViewLocation = FVector(-5.0f, -10.0f, 10.0f);
-		OutView.ViewRotation = FRotator(30.0f, 45.0f, 0.0f);
-		OutView.ViewForward = OutView.ViewRotation.Quaternion().GetForwardVector();
-		OutView.FieldOfView = 60.0f;
-		OutView.AspectRatio = Aspect;
-		OutView.NearClip = 0.1f;
-		OutView.FarClip = 1000.0f;
-		OutView.bIsPerspective = true;
-		OutView.bIsWireframe = false;
-	}
+	OutView.ViewLocation = POV.Location;
+	OutView.ViewRotation = POV.Rotation;
+	OutView.ViewForward = POV.Rotation.Quaternion().GetForwardVector();
+	OutView.FieldOfView = std::isfinite(POV.FieldOfView) ? std::clamp(POV.FieldOfView, 1.0f, 179.0f) : 60.0f;
+	OutView.AspectRatio = Aspect;
+	OutView.NearClip = std::isfinite(POV.NearClip) ? std::max(POV.NearClip, 0.001f) : 0.1f;
+	OutView.FarClip = std::isfinite(POV.FarClip) ? std::max(POV.FarClip, OutView.NearClip + 0.001f) : 10000.0f;
+	OutView.OrthoWidth = std::isfinite(POV.OrthoWidth) ? std::max(POV.OrthoWidth, 0.001f) : 16.0f;
+	OutView.bIsPerspective = POV.bIsPerspective;
+	OutView.bIsWireframe = false;
+	OutView.ViewMatrix = FMatrix::MakeTranslation(POV.Location * -1.0f) *
+		POV.Rotation.Quaternion().ToFMatrix().GetTransposed();
+	OutView.ProjectionMatrix = POV.bIsPerspective
+		? Perspective(FMath::DegreesToRadians(OutView.FieldOfView), Aspect, OutView.NearClip, OutView.FarClip)
+		: Ortho(OutView.OrthoWidth, Aspect, OutView.NearClip, OutView.FarClip);
+	OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
 
 	OutView.Frustum = ExtractFrustumPlanes(OutView.ViewProjectionMatrix);
 	OutView.FrustumCorners = GenerateFrustumCorners(OutView.ViewProjectionMatrix.Inverse());
@@ -452,22 +479,34 @@ bool FGameViewportClient::BeginSIEMode()
 {
 	if (bSIEMode)
 		return true;
-	if (!World || !World->GetMainCamera())
+	if (!World || !World->GetMainCamera() ||
+		GUObjectArray.Find(World->GetMainCamera()) == INDEX_NONE ||
+		!IsValid(World->GetMainCamera()) || World->GetMainCamera()->IsActorBeingDestroyed())
 		return false;
 
-	if (!CameraComponent) CameraComponent = FindPlayerCamera();
-	if (!CameraComponent) return false;
-
+	FMinimalViewInfo POV;
+	bool bHasPOV = false;
+	if (APlayerController* Controller = World->GetPlayerController())
+		if (APlayerCameraManager* Manager = Controller->GetPlayerCameraManager())
+			if (const FMinimalViewInfo* CachedPOV = Manager->GetCameraCachePOV())
+			{
+				POV = *CachedPOV;
+				bHasPOV = true;
+			}
+	if (!bHasPOV)
+	{
+		if (!CameraComponent || GUObjectArray.Find(CameraComponent) == INDEX_NONE ||
+			!IsValid(CameraComponent) || CameraComponent->IsBeingDestroyed()) CameraComponent = FindPlayerCamera();
+		if (!CameraComponent) return false;
+		CameraComponent->GetCameraView(POV);
+	}
 	UCameraComponent* MainCamera = World->GetMainCamera()->GetCameraComponent();
-	if (!MainCamera || MainCamera == CameraComponent) return false;
-	if (!SetCameraWorldPose(*MainCamera, CameraComponent->GetWorldLocation(),
-		CameraComponent->GetWorldRotation())) return false;
-
-	MainCamera->SetFieldOfView(CameraComponent->GetFieldOfView());
-	MainCamera->SetNearZ(CameraComponent->GetNearZ());
-	MainCamera->SetFarZ(CameraComponent->GetFarZ());
-	MainCamera->SetIsOrthogonal(CameraComponent->GetIsOrthogonal());
-	MainCamera->SetOrthoWidth(CameraComponent->GetOrthoWidth());
+	if (!MainCamera || !SetCameraWorldPose(*MainCamera, POV.Location, POV.Rotation)) return false;
+	MainCamera->SetFieldOfView(POV.FieldOfView);
+	MainCamera->SetNearZ(POV.NearClip);
+	MainCamera->SetFarZ(POV.FarClip);
+	MainCamera->SetIsOrthogonal(!POV.bIsPerspective);
+	MainCamera->SetOrthoWidth(POV.OrthoWidth);
 	bPreviousMainCameraExternalInputManaged = MainCamera->IsExternalInputManaged();
 	MainCamera->SetExternalInputManaged(true);
 	CameraComponent = MainCamera;
@@ -480,7 +519,8 @@ void FGameViewportClient::EndSIEMode()
 {
 	if (!bSIEMode)
 		return;
-	if (World && World->GetMainCamera())
+	if (World && World->GetMainCamera() && GUObjectArray.Find(World->GetMainCamera()) != INDEX_NONE &&
+		IsValid(World->GetMainCamera()) && !World->GetMainCamera()->IsActorBeingDestroyed())
 		if (UCameraComponent* MainCamera = World->GetMainCamera()->GetCameraComponent())
 			MainCamera->SetExternalInputManaged(bPreviousMainCameraExternalInputManaged);
 	CameraComponent = FindPlayerCamera();

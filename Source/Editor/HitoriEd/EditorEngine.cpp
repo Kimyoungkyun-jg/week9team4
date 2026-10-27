@@ -903,6 +903,8 @@ void UEditorEngine::BuildSceneRenderOptions(FGameViewportClient* ViewClient, FSc
 	}
 
 	Options.bEnableFXAA = SettingsPanel->GetSettings().bEnableFXAA;
+	Options.bEnableGammaCorrection = SettingsPanel->GetSettings().bEnableGammaCorrection;
+	Options.Vignetting = SettingsPanel->GetSettings().Vignetting;
 	Options.bCacheShadows = SettingsPanel->GetSettings().bCacheShadows;
 	Options.PcfMode = SettingsPanel->GetSettings().PcfMode;
 	Options.RenderingPath = SettingsPanel->GetSettings().RenderingPath;
@@ -921,6 +923,8 @@ void UEditorEngine::BuildSceneRenderOptions(FEditorViewportClient* ViewClient, b
 	}
 
 	Options.bEnableFXAA = SettingsPanel->GetSettings().bEnableFXAA;
+	Options.bEnableGammaCorrection = SettingsPanel->GetSettings().bEnableGammaCorrection;
+	Options.Vignetting = SettingsPanel->GetSettings().Vignetting;
 	Options.bCacheShadows = SettingsPanel->GetSettings().bCacheShadows;
 	Options.PcfMode = SettingsPanel->GetSettings().PcfMode;
 	Options.RenderingPath = SettingsPanel->GetSettings().RenderingPath;
