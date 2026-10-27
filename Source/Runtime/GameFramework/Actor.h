@@ -46,6 +46,7 @@ inline sol::object PushComponentToLua(lua_State* L, UActorComponent* Comp)
 
 class UWorld;
 class ULevel;
+struct FMinimalViewInfo;
 
 class AActor : public UObject
 {
@@ -104,6 +105,7 @@ public:
 	bool HasBegunPlay() const { return bHasBegunPlay; }
 	// 액터 자신의 로직. 컴포넌트는 각자의 PrimaryComponentTick으로 따로 실행된다.
 	virtual void Tick(float DeltaTime) {}
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutPOV) const;
 	virtual void EndPlay() {};
 	void EndPlayActor();
 	// FActorTickFunction이 호출하는 진입점

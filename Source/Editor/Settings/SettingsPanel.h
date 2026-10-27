@@ -6,6 +6,7 @@
 #include "Math/Quat.h"
 #include "Math/Vector.h"
 #include "Render/RenderEnums.h"
+#include "Render/SceneRenderOptions.h"
 #include "Collision/CollisionShape.h"
 
 class UWorld;
@@ -36,6 +37,8 @@ struct FEditorSettings
 	bool bDrawCascadeBounds = false;
 	bool bDrawPSGrid = false;
 	bool bEnableFXAA = false;
+	bool bEnableGammaCorrection = true;
+	FVignettingSettings Vignetting;
 	ELightCullingMode LightCullingMode = ELightCullingMode::Tiled;
 	ERenderingPath RenderingPath = ERenderingPath::Deferred;
 	ELightingModel LightingModel = ELightingModel::Gouraud;

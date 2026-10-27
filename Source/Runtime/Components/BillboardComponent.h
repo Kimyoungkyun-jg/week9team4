@@ -12,7 +12,7 @@ struct FSubUVConstants
 	//float Padding = 0.0f;
 	float Alpha;
 	FVector4 Tint = FVector4(1, 1, 1, 1);	// default 흰색
-	// 1이면 sRGB -> 선형 변환한다. 현재 반투명 패스는 LDR이므로 0을 전달한다.
+	// 선형 LDR 씬에 합성하므로 색 텍스처와 Tint를 디코딩한다.
 	float DecodeSRGB = 1.0f;
 	float Padding[3]{};
 };

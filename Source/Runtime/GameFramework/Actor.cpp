@@ -3,6 +3,8 @@
 #include "Engine/World.h"
 #include "Engine/Level.h"
 #include "Components/SceneComponent.h"
+#include "Camera/CameraComponent.h"
+#include "Camera/MinimalViewInfo.h"
 #include "Components/ParticleSubUVComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/LuaScriptComponent.h"
@@ -28,6 +30,20 @@ AActor::~AActor()
 	{
 		delete Component;
 	}
+}
+
+void AActor::CalcCamera(float DeltaTime, FMinimalViewInfo& OutPOV) const
+{
+	(void)DeltaTime;
+	if (UCameraComponent* Camera = GetComponentByClass<UCameraComponent>();
+		IsValid(Camera) && !Camera->IsBeingDestroyed())
+	{
+		Camera->GetCameraView(OutPOV);
+		return;
+	}
+	OutPOV = FMinimalViewInfo{};
+	OutPOV.Location = GetActorLocation();
+	OutPOV.Rotation = GetActorRotation();
 }
 
 void AActor::BeginPlay()

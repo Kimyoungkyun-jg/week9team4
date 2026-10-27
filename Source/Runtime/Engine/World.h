@@ -160,6 +160,7 @@ private:
 	friend class UPrimitiveComponent;
 	friend class UMovementComponent;
 	friend class UCharacterMovementComponent;
+	friend class APlayerCameraManager;
 	void QueueObjectDeletion(UObject* Object);
 	TArray<UObject*> PendingDeletion;
 	bool bIsTicking = false;
