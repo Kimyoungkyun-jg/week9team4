@@ -11,7 +11,7 @@
 class UCameraModifier;
 
 // 카메라 시점 계산의 기준 대상 정보.
-struct FTViewTarget
+struct FViewTarget
 {
 	AActor* Target = nullptr;
 
@@ -24,7 +24,14 @@ class APlayerCameraManager : public AActor
 	DECLARE_CLASS(APlayerCameraManager, AActor)
 
 public:
-	APlayerCameraManager();
+	APlayerCameraManager() = default;
+	~APlayerCameraManager() override = default;
+
+	APlayerCameraManager(const APlayerCameraManager&) = delete;
+	APlayerCameraManager& operator=(const APlayerCameraManager&) = delete;
+
+	APlayerCameraManager(APlayerCameraManager&&) = delete;
+	APlayerCameraManager& operator=(APlayerCameraManager&&) = delete;
 
 	// 외부에서 매 프레임 호출할 카메라 갱신 진입점.
 	void UpdateCamera(float DeltaTime);
@@ -46,7 +53,7 @@ protected:
 
 	// 카메라 동작 방식과 현재 시점 대상.
 	FName CameraStyle = FName("Default");
-	FTViewTarget ViewTarget;
+	FViewTarget ViewTarget;
 
 	// TODO: Modifier의 추가/제거 및 수명 관리 방식을 정한다.
 	TArray<UCameraModifier*> ModifierList;
