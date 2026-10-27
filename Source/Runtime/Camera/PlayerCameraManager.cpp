@@ -1,40 +1,103 @@
 #include "EnginePCH.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraModifier.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
+#include "Engine/World.h"
+#include <algorithm>
 
-APlayerCameraManager::APlayerCameraManager() = default;
+void APlayerCameraManager::Initialize(APlayerController* InOwner)
+{
+	PCOwner = InOwner;
+}
+
+void APlayerCameraManager::SetViewTarget(AActor* InTarget)
+{
+	if (InTarget && (GUObjectArray.Find(InTarget) == INDEX_NONE || !IsValid(InTarget) || InTarget->IsActorBeingDestroyed() ||
+		InTarget->GetWorld() != GetWorld())) return;
+	ViewTarget = InTarget;
+}
+
+AActor* APlayerCameraManager::GetViewTarget() const
+{
+	return ViewTarget && GUObjectArray.Find(ViewTarget) != INDEX_NONE &&
+		IsValid(ViewTarget) && !ViewTarget->IsActorBeingDestroyed() ? ViewTarget : nullptr;
+}
+
+UCameraModifier* APlayerCameraManager::AddNewCameraModifier(UClass* ModifierClass)
+{
+	if (IsPendingKillPending() || !ModifierClass || !ModifierClass->IsChildOf(UCameraModifier::StaticClass()) ||
+		!ModifierClass->Constructor) return nullptr;
+	UCameraModifier* Modifier = NewObject<UCameraModifier>(this, ModifierClass, NAME_None, EObjectFlags::RF_Transient);
+	if (Modifier) Modifiers.Add(Modifier);
+	return Modifier;
+}
+
+void APlayerCameraManager::RemoveCameraModifier(UCameraModifier* Modifier)
+{
+	const int32 Index = Modifiers.Find(Modifier);
+	if (Index == INDEX_NONE) return;
+	Modifiers.RemoveAt(Index);
+	if (IsValid(Modifier) && GetWorld())
+	{
+		Modifier->MarkAsGarbage();
+		GetWorld()->QueueObjectDeletion(Modifier);
+	}
+}
+
+void APlayerCameraManager::ClearCameraModifiers()
+{
+	while (!Modifiers.IsEmpty()) RemoveCameraModifier(Modifiers.Last());
+}
 
 void APlayerCameraManager::UpdateCamera(float DeltaTime)
 {
-	// TODO: 시점 계산, Modifier 적용, 페이드 갱신을 순서대로 호출한다.
+	if (IsPendingKillPending()) return;
+	AActor* Target = GetViewTarget();
+	if (!Target && PCOwner && GUObjectArray.Find(PCOwner) != INDEX_NONE &&
+		IsValid(PCOwner) && !PCOwner->IsActorBeingDestroyed())
+	{
+		Target = PCOwner->GetPawn();
+		if (!IsValid(Target) || Target->IsActorBeingDestroyed()) Target = nullptr;
+	}
+	if (!Target && GetWorld())
+	{
+		Target = GetWorld()->GetMainCamera();
+		if (!IsValid(Target) || Target->IsActorBeingDestroyed()) Target = nullptr;
+	}
+	if (!Target)
+	{
+		ViewTarget = nullptr;
+		bHasCameraCache = false;
+		return;
+	}
+	ViewTarget = Target;
+
+	FMinimalViewInfo NewPOV;
+	Target->CalcCamera(DeltaTime, NewPOV);
+	if (IsPendingKillPending()) return;
+
+	TArray<UCameraModifier*> OrderedModifiers;
+	for (UCameraModifier* Modifier : Modifiers)
+		if (IsValid(Modifier) && Modifier->IsActive()) OrderedModifiers.Add(Modifier);
+	std::stable_sort(OrderedModifiers.begin(), OrderedModifiers.end(),
+		[](const UCameraModifier* A, const UCameraModifier* B) { return A->GetPriority() < B->GetPriority(); });
+	for (UCameraModifier* Modifier : OrderedModifiers)
+	{
+		if (!IsValid(Modifier) || Modifiers.Find(Modifier) == INDEX_NONE || !Modifier->IsActive()) continue;
+		const bool bStop = Modifier->ModifyCamera(DeltaTime, NewPOV);
+		if (IsPendingKillPending()) return;
+		if (bStop) break;
+	}
+	CameraCachePOV = NewPOV;
+	bHasCameraCache = true;
 }
 
-void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget)
+void APlayerCameraManager::EndPlay()
 {
-	// TODO: 새 대상을 ViewTarget에 지정하고 필요한 전환 상태를 준비한다.
-}
-
-void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color)
-{
-	// TODO: 페이드 색상, 시작/종료 알파, 전체 시간과 남은 시간을 설정한다.
-}
-
-void APlayerCameraManager::StopCameraFade()
-{
-	// TODO: 진행 중인 페이드를 중단하고 페이드 상태를 초기화한다.
-}
-
-void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
-{
-	// TODO: 대상의 카메라 정보를 바탕으로 위치, 회전, FOV를 계산한다.
-}
-
-void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime)
-{
-	// TODO: ModifierList의 보정 효과를 계산된 시점에 적용한다.
-}
-
-void APlayerCameraManager::UpdateCameraFade(float DeltaTime)
-{
-	// TODO: 남은 시간을 줄이고 시작/종료 알파 사이의 FadeAmount를 보간한다.
-	// TODO: 계산된 색상과 알파를 화면 렌더링에 전달한다.
+	ClearCameraModifiers();
+	bHasCameraCache = false;
+	ViewTarget = nullptr;
+	PCOwner = nullptr;
+	Super::EndPlay();
 }
