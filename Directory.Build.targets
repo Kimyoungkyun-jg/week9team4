@@ -1,0 +1,18 @@
+<Project>
+  <!-- Use the native x64 linker to avoid the Hostx86 PDB DLL failure. -->
+  <Target Name="UseNativeX64Linker" BeforeTargets="Link"
+          Condition="'$(Platform)' == 'x64' and Exists('$(VCToolsInstallDir)bin\Hostx64\x64\link.exe')">
+    <PropertyGroup>
+      <LinkToolPath>$(VCToolsInstallDir)bin\Hostx64\x64\</LinkToolPath>
+    </PropertyGroup>
+  </Target>
+  <!-- Scene files are loaded relative to the process working directory. Keep the standalone game folder current. -->
+  <Target Name="CopyGameScenes" AfterTargets="Build" Condition="'$(MSBuildProjectName)' == 'HitoriGame'">
+    <ItemGroup>
+      <GameSceneFiles Include="$(MSBuildThisFileDirectory)Scenes\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GameSceneFiles)"
+          DestinationFiles="@(GameSceneFiles->'$(TargetDir)Scenes\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>
