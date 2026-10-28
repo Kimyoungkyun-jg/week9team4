@@ -23,7 +23,7 @@ function Player:Tick(deltaTime)
         return
     end
 
-    local held = Input.IsKeyDown(KeyCode.T)
+    local held = Input.IsKeyDown(KeyCode.Shift)
     if not held then
         pawn:SetSlomoActive(false)
         self.SlomoRequested = false
