@@ -1,27 +1,18 @@
 #include "EnginePCH.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Camera/CameraModifier.h"
+#include "Camera/CameraModifier_CameraShake.h"
+#include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
-#include "Engine/World.h"
-#include <algorithm>
-
-APlayerCameraManager::APlayerCameraManager()
-{
-	PrimaryActorTick.bCanEverTick = false;
-}
-
-void APlayerCameraManager::Initialize(APlayerController* InOwner)
-{
-	PCOwner = InOwner;
-}
 
 namespace
 {
-	bool IsUsableTarget(const AActor* Target, const UWorld* World)
+	bool IsUsableCameraTarget(AActor* Target)
 	{
-		return Target && GUObjectArray.Find(const_cast<AActor*>(Target)) != INDEX_NONE &&
-			IsValid(Target) && !Target->IsActorBeingDestroyed() && Target->GetWorld() == World;
+		// 프레임 사이에 실제 삭제된 Actor도 역참조하지 않는다.
+		return Target && GUObjectArray.Find(Target) != INDEX_NONE &&
+			IsValid(Target) && !Target->IsActorBeingDestroyed();
 	}
 
 	FQuat SlerpQuat(const FQuat& QuatA, const FQuat& QuatB, float Slerp)
@@ -56,265 +47,251 @@ namespace
 		);
 		return Result.Normalized();
 	}
-}
 
-void APlayerCameraManager::SetViewTarget(AActor* InTarget)
-{
-	SetViewTargetWithBlend(InTarget, 0.0f);
-}
-
-void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewTarget, float BlendTime, EViewTargetBlendFunction BlendFunc, float BlendExp, bool bLockOutgoing)
-{
-	if (IsPendingKillPending() || (NewTarget && !IsUsableTarget(NewTarget, GetWorld()))) return;
-	UWorld::FScopedObjectExecution ObjectScope(GetWorld());
-
-	if (NewTarget == ViewTarget.Target && PendingViewTarget.Target == nullptr)
+	FMinimalViewInfo BlendCameraViews(const FMinimalViewInfo& From, const FMinimalViewInfo& To, float Alpha)
 	{
-		return;
-	}
+		if (Alpha <= 0.0f) return From;
+		if (Alpha >= 1.0f) return To;
 
-	if (BlendTime <= 0.0f || ViewTarget.Target == nullptr)
-	{
-		ViewTarget.Target = NewTarget;
-		if (NewTarget)
-		{
-			NewTarget->CalcCamera(0.0f, ViewTarget.POV);
-		}
-		PendingViewTarget.Target = nullptr;
-		BlendTimeToGo = 0.0f;
-		bHasCameraCache = false;
-		return;
-	}
-
-	// A sequence may be destroyed immediately after requesting its return blend.
-	// Freeze the rendered outgoing view instead of evaluating that Actor again.
-	if (bLockOutgoing && bHasCameraCache) ViewTarget.POV = CameraCachePOV;
-	PendingViewTarget.Target = NewTarget;
-	if (NewTarget)
-	{
-		NewTarget->CalcCamera(0.0f, PendingViewTarget.POV);
-	}
-	BlendTimeToGo = BlendTime;
-	BlendParams.BlendTime = BlendTime;
-	BlendParams.BlendFunction = BlendFunc;
-	BlendParams.BlendExp = BlendExp > 0.0f ? BlendExp : 2.0f;
-	BlendParams.bLockOutgoing = bLockOutgoing;
-}
-
-AActor* APlayerCameraManager::GetViewTarget() const
-{
-	return IsUsableTarget(ViewTarget.Target, GetWorld()) ? ViewTarget.Target : nullptr;
-}
-
-AActor* APlayerCameraManager::GetPendingViewTarget() const
-{
-	return IsUsableTarget(PendingViewTarget.Target, GetWorld()) ? PendingViewTarget.Target : nullptr;
-}
-
-void APlayerCameraManager::UpdateViewTarget(FTViewTarget& OutVT, float DeltaTime)
-{
-	if (!IsUsableTarget(OutVT.Target, GetWorld()))
-	{
-		OutVT.Target = nullptr;
-		if (IsUsableTarget(PCOwner, GetWorld()))
-		{
-			OutVT.Target = PCOwner->GetPawn();
-			if (!IsUsableTarget(OutVT.Target, GetWorld())) OutVT.Target = nullptr;
-		}
-		if (!OutVT.Target && GetWorld())
-		{
-			OutVT.Target = GetWorld()->GetMainCamera();
-			if (!IsUsableTarget(OutVT.Target, GetWorld())) OutVT.Target = nullptr;
-		}
-	}
-
-	if (OutVT.Target)
-	{
-		OutVT.Target->CalcCamera(DeltaTime, OutVT.POV);
-		if (!IsUsableTarget(OutVT.Target, GetWorld())) OutVT.Target = nullptr;
+		auto Blend = [Alpha](float A, float B) { return A + (B - A) * Alpha; };
+		FMinimalViewInfo Result = From;
+		Result.Location = From.Location + (To.Location - From.Location) * Alpha;
+		Result.Rotation = SlerpQuat(From.Rotation.Quaternion(), To.Rotation.Quaternion(), Alpha).ToFRotator();
+		Result.FOV = Blend(From.FOV, To.FOV);
+		Result.AspectRatio = Blend(From.AspectRatio, To.AspectRatio);
+		Result.NearClipPlane = Blend(From.NearClipPlane, To.NearClipPlane);
+		Result.FarClipPlane = Blend(From.FarClipPlane, To.FarClipPlane);
+		Result.OrthoWidth = Blend(From.OrthoWidth, To.OrthoWidth);
+		// 투영 방식은 수치 보간할 수 없으므로 전환 완료 시 도착 대상의 방식을 채택한다.
+		return Result;
 	}
 }
 
-UCameraModifier* APlayerCameraManager::AddNewCameraModifier(UClass* ModifierClass)
+APlayerCameraManager::APlayerCameraManager()
 {
-	if (IsPendingKillPending() || !ModifierClass || !ModifierClass->IsChildOf(UCameraModifier::StaticClass()) ||
-		!ModifierClass->Constructor) return nullptr;
-	UCameraModifier* Modifier = NewObject<UCameraModifier>(this, ModifierClass, NAME_None, EObjectFlags::RF_Transient);
-	if (Modifier) Modifiers.Add(Modifier);
-	return Modifier;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
-void APlayerCameraManager::RemoveCameraModifier(UCameraModifier* Modifier)
+APlayerCameraManager::~APlayerCameraManager()
 {
-	const int32 Index = Modifiers.Find(Modifier);
-	if (Index == INDEX_NONE) return;
-	Modifiers.RemoveAt(Index);
-	if (IsValid(Modifier) && GetWorld())
-	{
-		Modifier->MarkAsGarbage();
-		GetWorld()->QueueObjectDeletion(Modifier);
-	}
-}
-
-void APlayerCameraManager::ClearCameraModifiers()
-{
-	while (!Modifiers.IsEmpty()) RemoveCameraModifier(Modifiers.Last());
-}
-
-void APlayerCameraManager::UpdateCamera(float DeltaTime)
-{
-	if (IsPendingKillPending()) return;
-	UWorld::FScopedObjectExecution ObjectScope(GetWorld());
-	DeltaTime = std::max(0.0f, DeltaTime);
-
-	UpdateCameraFade(DeltaTime);
-	UpdateCameraLetterbox(DeltaTime);
-
-	// 1. 유효하지 않은 타겟 정리
-	if (ViewTarget.Target && (GUObjectArray.Find(ViewTarget.Target) == INDEX_NONE ||
-		!IsValid(ViewTarget.Target) || ViewTarget.Target->IsActorBeingDestroyed()))
-	{
-		ViewTarget.Target = nullptr;
-	}
-	if (PendingViewTarget.Target && (GUObjectArray.Find(PendingViewTarget.Target) == INDEX_NONE ||
-		!IsValid(PendingViewTarget.Target) || PendingViewTarget.Target->IsActorBeingDestroyed()))
-	{
-		PendingViewTarget.Target = nullptr;
-		BlendTimeToGo = 0.0f;
-	}
-
-	FMinimalViewInfo NewPOV;
-
-	// 2. 블렌드 진행 여부 확인
-	if (PendingViewTarget.Target != nullptr && BlendTimeToGo > 0.0f)
-	{
-		BlendTimeToGo = std::max(0.0f, BlendTimeToGo - DeltaTime);
-
-		if (!BlendParams.bLockOutgoing)
-		{
-			UpdateViewTarget(ViewTarget, DeltaTime);
-		}
-		UpdateViewTarget(PendingViewTarget, DeltaTime);
-		if (IsPendingKillPending()) return;
-		if (!PendingViewTarget.Target)
-		{
-			BlendTimeToGo = 0.0f;
-			bHasCameraCache = false;
-			return;
-		}
-
-		const float Duration = std::max(BlendParams.BlendTime, 0.0001f);
-		const float Pct = std::clamp(1.0f - (BlendTimeToGo / Duration), 0.0f, 1.0f);
-		float BlendWeight = Pct;
-
-		switch (BlendParams.BlendFunction)
-		{
-		case VTBlend_Linear:
-			BlendWeight = Pct;
-			break;
-		case VTBlend_Cubic:
-			BlendWeight = Pct * Pct * (3.0f - 2.0f * Pct);
-			break;
-		case VTBlend_EaseIn:
-			BlendWeight = std::pow(Pct, BlendParams.BlendExp);
-			break;
-		case VTBlend_EaseOut:
-			BlendWeight = 1.0f - std::pow(1.0f - Pct, BlendParams.BlendExp);
-			break;
-		case VTBlend_EaseInOut:
-			if (Pct < 0.5f)
-				BlendWeight = 0.5f * std::pow(2.0f * Pct, BlendParams.BlendExp);
-			else
-				BlendWeight = 1.0f - 0.5f * std::pow(2.0f * (1.0f - Pct), BlendParams.BlendExp);
-			break;
-		default:
-			BlendWeight = Pct;
-			break;
-		}
-
-		// POV 보간
-		NewPOV.Location = ViewTarget.POV.Location + (PendingViewTarget.POV.Location - ViewTarget.POV.Location) * BlendWeight;
-
-		const FQuat AQuat = ViewTarget.POV.Rotation.Quaternion();
-		const FQuat BQuat = PendingViewTarget.POV.Rotation.Quaternion();
-		NewPOV.Rotation = SlerpQuat(AQuat, BQuat, BlendWeight).ToFRotator();
-
-		NewPOV.FieldOfView = ViewTarget.POV.FieldOfView + (PendingViewTarget.POV.FieldOfView - ViewTarget.POV.FieldOfView) * BlendWeight;
-		NewPOV.OrthoWidth = ViewTarget.POV.OrthoWidth + (PendingViewTarget.POV.OrthoWidth - ViewTarget.POV.OrthoWidth) * BlendWeight;
-		NewPOV.NearClip = ViewTarget.POV.NearClip + (PendingViewTarget.POV.NearClip - ViewTarget.POV.NearClip) * BlendWeight;
-		NewPOV.FarClip = ViewTarget.POV.FarClip + (PendingViewTarget.POV.FarClip - ViewTarget.POV.FarClip) * BlendWeight;
-		NewPOV.AspectRatio = ViewTarget.POV.AspectRatio + (PendingViewTarget.POV.AspectRatio - ViewTarget.POV.AspectRatio) * BlendWeight;
-		NewPOV.bIsPerspective = PendingViewTarget.POV.bIsPerspective;
-
-		if (BlendTimeToGo <= 0.0f)
-		{
-			ViewTarget = PendingViewTarget;
-			PendingViewTarget.Target = nullptr;
-		}
-	}
-	else
-	{
-		if (PendingViewTarget.Target != nullptr)
-		{
-			ViewTarget = PendingViewTarget;
-			PendingViewTarget.Target = nullptr;
-		}
-		UpdateViewTarget(ViewTarget, DeltaTime);
-		if (!ViewTarget.Target)
-		{
-			bHasCameraCache = false;
-			return;
-		}
-		NewPOV = ViewTarget.POV;
-	}
-
-	if (IsPendingKillPending()) return;
-
-	TArray<UCameraModifier*> OrderedModifiers;
-	for (UCameraModifier* Modifier : Modifiers)
-		if (IsValid(Modifier) && Modifier->IsActive()) OrderedModifiers.Add(Modifier);
-	std::stable_sort(OrderedModifiers.begin(), OrderedModifiers.end(),
-		[](const UCameraModifier* A, const UCameraModifier* B) { return A->GetPriority() < B->GetPriority(); });
-	for (UCameraModifier* Modifier : OrderedModifiers)
-	{
-		if (!IsValid(Modifier) || Modifiers.Find(Modifier) == INDEX_NONE || !Modifier->IsActive()) continue;
-		const bool bStop = Modifier->ModifyCamera(DeltaTime, NewPOV);
-		if (IsPendingKillPending()) return;
-		if (bStop) break;
-	}
-	CameraCachePOV = NewPOV;
-	bHasCameraCache = true;
+	RemoveAllCameraModifiers();
+	FlushRemovedCameraModifiers();
 }
 
 void APlayerCameraManager::EndPlay()
 {
-	ClearCameraModifiers();
-	bHasCameraCache = false;
+	RemoveAllCameraModifiers();
+	bHasValidCameraPOV = false;
 	ViewTarget.Target = nullptr;
-	PendingViewTarget.Target = nullptr;
-	BlendTimeToGo = 0.0f;
+	ClearPendingViewTarget();
 	PCOwner = nullptr;
 	Super::EndPlay();
+}
+
+void APlayerCameraManager::InitializeFor(APlayerController* InController)
+{
+	PCOwner = InController;
+	++ViewTargetRevision;
+	ClearPendingViewTarget();
+	bHasValidCameraPOV = false;
+}
+
+// Performs per-tick camera update.
+// Called once per tick after all other actors have been ticked.(출처: 언리얼)
+void APlayerCameraManager::UpdateCamera(float DeltaTime)
+{
+	if (bIsUpdatingCamera || IsPendingKillPending()) return;
+	UWorld::FScopedObjectExecution ObjectScope(GetWorld());
+	bIsUpdatingCamera = true;
+	struct FScopedCameraUpdate
+	{
+		APlayerCameraManager& Manager;
+		~FScopedCameraUpdate()
+		{
+			Manager.bIsUpdatingCamera = false;
+			Manager.FlushRemovedCameraModifiers();
+		}
+	} CameraUpdateScope{*this};
+
+	UpdateViewTarget(DeltaTime);
+	if (bHasValidCameraPOV && !IsPendingKillPending())
+	{
+		CameraPOV = BaseCameraPOV;
+		ApplyCameraModifiers(DeltaTime, CameraPOV);
+	}
+
+	if (!IsPendingKillPending())
+	{
+		const float EffectDelta = std::isfinite(DeltaTime) ? FMath::Max(DeltaTime, 0.0f) : 0.0f;
+		UpdateCameraFade(EffectDelta);
+		UpdateCameraLetterbox(EffectDelta);
+	}
+}
+
+void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget, float BlendTime)
+{
+	SetViewTargetWithBlend(NewViewTarget, BlendTime, VTBlend_Linear);
+}
+
+void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewViewTarget, float BlendTime, EViewTargetBlendFunction BlendFunc, float BlendExp, bool bInLockOutgoing)
+{
+	if (IsPendingKillPending() || (NewViewTarget && (!IsUsableCameraTarget(NewViewTarget) || NewViewTarget->GetWorld() != GetWorld()))) return;
+	if (!std::isfinite(BlendTime) || BlendTime <= 0.0f ||
+		!bHasValidCameraPOV || !IsUsableCameraTarget(NewViewTarget))
+	{
+		++ViewTargetRevision;
+		ClearPendingViewTarget();
+		ViewTarget.Target = NewViewTarget;
+		bHasValidCameraPOV = false;
+		return;
+	}
+
+	// 매 프레임 같은 요청이 들어와도 타이머를 처음으로 되돌리지 않는다.
+	if ((IsBlending() && PendingViewTarget.Target == NewViewTarget) ||
+		(!IsBlending() && ViewTarget.Target == NewViewTarget)) return;
+
+	++ViewTargetRevision;
+	if (IsBlending() || bInLockOutgoing)
+	{
+		// 전환 중의 블렌딩 결과에서 다시 출발한다. Modifier 적용 후의 POV는 사용하지 않는다.
+		ViewTarget.POV = BaseCameraPOV;
+		bLockOutgoing = true;
+	}
+	PendingViewTarget.Target = NewViewTarget;
+	PendingViewTarget.POV = BaseCameraPOV;
+	BlendParams = {BlendTime, BlendFunc, std::isfinite(BlendExp) && BlendExp > 0.0f ? BlendExp : 2.0f, bInLockOutgoing};
+	BlendDuration = BlendTime;
+	BlendTimeRemaining = BlendTime;
+}
+
+AActor* APlayerCameraManager::GetViewTarget() const
+{
+	return IsUsableCameraTarget(ViewTarget.Target) ? ViewTarget.Target : nullptr;
+}
+
+AActor* APlayerCameraManager::GetPendingViewTarget() const
+{
+	return IsUsableCameraTarget(PendingViewTarget.Target) ? PendingViewTarget.Target : nullptr;
+}
+
+void APlayerCameraManager::ClearPendingViewTarget()
+{
+	PendingViewTarget = FViewTarget{};
+	BlendDuration = 0.0f;
+	BlendTimeRemaining = 0.0f;
+	bLockOutgoing = false;
+}
+
+UCameraModifier* APlayerCameraManager::AddNewCameraModifier(UClass* ModifierClass)
+{
+	if (IsPendingKillPending() || bIsClearingModifiers || !ModifierClass ||	!ModifierClass->IsChildOf(UCameraModifier::StaticClass()) || !ModifierClass->Constructor)
+	{
+		return nullptr;
+	}
+
+	UCameraModifier* Modifier = NewObject<UCameraModifier>(this, ModifierClass, NAME_None, EObjectFlags::RF_Transient);
+	if (!Modifier) return nullptr;
+	Modifier->CameraOwner = this;
+
+	// 같은 우선순위는 추가한 순서를 유지한다.
+	int32 Index = 0;
+	while (Index < ModifierList.Num() && ModifierList[Index]->GetPriority() <= Modifier->GetPriority()) ++Index;
+	ModifierList.Insert(Modifier, Index);
+	return Modifier;
+}
+
+UCameraModifier* APlayerCameraManager::FindCameraModifier(UClass* ModifierClass) const
+{
+	if (!ModifierClass || !ModifierClass->IsChildOf(UCameraModifier::StaticClass())) return nullptr;
+	for (UCameraModifier* Modifier : ModifierList)
+	{
+		if (IsValid(Modifier) && Modifier->IsA(ModifierClass)) return Modifier;
+	}
+	return nullptr;
+}
+
+bool APlayerCameraManager::RemoveCameraModifier(UCameraModifier* Modifier)
+{
+	const int32 Index = ModifierList.Find(Modifier);
+	if (Index == INDEX_NONE) return false;
+	ModifierList.RemoveAt(Index);
+	Modifier->CameraOwner = nullptr;
+	Modifier->MarkAsGarbage();
+
+	// ModifyCamera 안에서 자신이나 다른 Modifier를 제거해도 호출 종료까지 생존한다.
+	if (bIsUpdatingCamera) RemovedModifiers.Add(Modifier);
+	else delete Modifier;
+	return true;
+}
+
+void APlayerCameraManager::RemoveAllCameraModifiers()
+{
+	const bool bWasClearing = bIsClearingModifiers;
+	bIsClearingModifiers = true;
+	const auto Modifiers = ModifierList;
+	for (UCameraModifier* Modifier : Modifiers) RemoveCameraModifier(Modifier);
+	bIsClearingModifiers = bWasClearing;
+}
+
+void APlayerCameraManager::FlushRemovedCameraModifiers()
+{
+	const auto Modifiers = std::move(RemovedModifiers);
+	RemovedModifiers.Reset();
+	for (UCameraModifier* Modifier : Modifiers) delete Modifier;
+}
+
+FCameraShakeHandle APlayerCameraManager::StartCameraShake(const FCameraShakeSettings& Settings, float Scale)
+{
+	if (IsPendingKillPending() || bIsClearingModifiers || !Settings.IsValid() || !std::isfinite(Scale) || Scale <= 0.0f)
+		return {};
+	auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	if (!Modifier)
+		Modifier = Cast<UCameraModifier_CameraShake>(AddNewCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier ? Modifier->AddCameraShake(Settings, Scale) : FCameraShakeHandle{};
+}
+
+bool APlayerCameraManager::StopCameraShake(FCameraShakeHandle Handle, bool bImmediately)
+{
+	auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier && Modifier->StopCameraShake(Handle, bImmediately);
+}
+
+void APlayerCameraManager::StopAllCameraShakes(bool bImmediately)
+{
+	if (auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass())))
+		Modifier->StopAllCameraShakes(bImmediately);
+}
+
+bool APlayerCameraManager::IsCameraShakeActive(FCameraShakeHandle Handle) const
+{
+	const auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier && Modifier->IsCameraShakeActive(Handle);
+}
+
+int32 APlayerCameraManager::GetActiveCameraShakeCount() const
+{
+	const auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier ? Modifier->GetActiveCameraShakeCount() : 0;
 }
 
 void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color, bool bHold, bool bInFadeHUD)
 {
 	FadeColor = Color;
-	FadeAlpha = FVector2(FromAlpha, ToAlpha);
-	FadeTime = Duration;
-	FadeTimeRemaining = Duration;
+	FadeAlpha = FVector2(FMath::Clamp(FromAlpha, 0.0f, 1.0f), FMath::Clamp(ToAlpha, 0.0f, 1.0f));
+	FadeTime = std::isfinite(Duration) ? FMath::Max(Duration, 0.0f) : 0.0f;
+	FadeTimeRemaining = FadeTime;
 	bHoldWhenFinished = bHold;
 	bFadeHUD = bInFadeHUD;
 
-	if (Duration <= 0.0f)
+	if (FadeTime <= 0.0f)
 	{
-		FadeAmount = ToAlpha;
+		FadeAmount = FadeAlpha.Y;
 		FadeTimeRemaining = 0.0f;
 		bEnableFading = bHold;
 		return;
 	}
 
-	FadeAmount = FromAlpha;
+	FadeAmount = FadeAlpha.X;
 	bEnableFading = true;
 }
 
@@ -372,6 +349,98 @@ void APlayerCameraManager::StopLetterbox()
 	CurrentLetterboxRatio = 0.0f;
 	LetterboxTime = 0.0f;
 	LetterboxTimeRemaining = 0.0f;
+}
+
+void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
+{
+	if (IsBlending() && !IsUsableCameraTarget(PendingViewTarget.Target))
+		ClearPendingViewTarget();
+
+	if (!IsUsableCameraTarget(ViewTarget.Target))
+	{
+		if (IsBlending())
+		{
+			// 출발 대상이 사라져도 저장된 POV에서 살아 있는 도착 대상으로 계속 전환한다.
+			ViewTarget.Target = nullptr;
+			bLockOutgoing = true;
+		}
+		else
+		{
+			if (!IsUsableCameraTarget(PCOwner))
+			{
+				ViewTarget.Target = nullptr;
+				bHasValidCameraPOV = false;
+				return;
+			}
+			if (bHasValidCameraPOV) PCOwner->SetFallbackCameraView(BaseCameraPOV);
+			AActor* Pawn = PCOwner->GetPawn();
+			ViewTarget.Target = IsUsableCameraTarget(Pawn) ? Pawn : PCOwner;
+		}
+	}
+
+	const uint64 Revision = ViewTargetRevision;
+	if (!bLockOutgoing)
+	{
+		FMinimalViewInfo View = ViewTarget.POV;
+		ViewTarget.Target->CalcCamera(DeltaTime, View);
+		// CalcCamera 콜백에서 새 요청이 발생하면 그 상태를 덮어쓰지 않는다.
+		if (IsPendingKillPending() || Revision != ViewTargetRevision) return;
+		if (!IsUsableCameraTarget(ViewTarget.Target))
+		{
+			bHasValidCameraPOV = false;
+			return;
+		}
+		ViewTarget.POV = View;
+	}
+
+	if (IsBlending() && IsUsableCameraTarget(PendingViewTarget.Target))
+	{
+		FMinimalViewInfo PendingView = PendingViewTarget.POV;
+		PendingViewTarget.Target->CalcCamera(DeltaTime, PendingView);
+		if (IsPendingKillPending() || Revision != ViewTargetRevision) return;
+		if (IsUsableCameraTarget(PendingViewTarget.Target))
+		{
+			PendingViewTarget.POV = PendingView;
+			const float SafeDeltaTime = std::isfinite(DeltaTime) ? FMath::Max(DeltaTime, 0.0f) : 0.0f;
+			BlendTimeRemaining = FMath::Max(BlendTimeRemaining - SafeDeltaTime, 0.0f);
+			float Alpha = FMath::Clamp(1.0f - BlendTimeRemaining / BlendDuration, 0.0f, 1.0f);
+			switch (BlendParams.BlendFunction)
+			{
+			case VTBlend_Cubic: Alpha = Alpha * Alpha * (3.0f - 2.0f * Alpha); break;
+			case VTBlend_EaseIn: Alpha = std::pow(Alpha, BlendParams.BlendExp); break;
+			case VTBlend_EaseOut: Alpha = 1.0f - std::pow(1.0f - Alpha, BlendParams.BlendExp); break;
+			case VTBlend_EaseInOut:
+				Alpha = Alpha < 0.5f ? 0.5f * std::pow(2.0f * Alpha, BlendParams.BlendExp)
+					: 1.0f - 0.5f * std::pow(2.0f * (1.0f - Alpha), BlendParams.BlendExp); break;
+			default: break;
+			}
+			BaseCameraPOV = BlendCameraViews(ViewTarget.POV, PendingViewTarget.POV, Alpha);
+			if (BlendTimeRemaining <= 0.0f)
+			{
+				ViewTarget = PendingViewTarget;
+				ClearPendingViewTarget();
+			}
+			bHasValidCameraPOV = true;
+			return;
+		}
+	}
+
+	// 도착 대상이 갱신 도중 사라졌다면 전환을 취소한다.
+	ClearPendingViewTarget();
+	BaseCameraPOV = ViewTarget.POV;
+	bHasValidCameraPOV = true;
+}
+
+void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV)
+{
+	// 적용 중 추가된 Modifier는 다음 갱신부터 실행한다.
+	const auto Modifiers = ModifierList;
+	for (UCameraModifier* Modifier : Modifiers)
+	{
+		if (IsPendingKillPending()) break;
+		if (ModifierList.Find(Modifier) == INDEX_NONE || !IsValid(Modifier) || Modifier->IsDisabled()) continue;
+		if (Modifier->ModifyCamera(DeltaTime, InOutPOV)) break;
+	}
 }
 
 void APlayerCameraManager::UpdateCameraFade(float DeltaTime)

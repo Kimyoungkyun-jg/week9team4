@@ -5,7 +5,10 @@
 #include "Engine/Level.h"
 #include "Engine/GameViewportClient.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraActor.h"
 #include "Camera/CameraModifier.h"
+#include "Camera/CameraModifier_HeadBob.h"
+#include "Camera/SpringArmComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/LuaScriptComponent.h"
 #include "Components/BoxComponent.h"
@@ -221,6 +224,89 @@ void CameraAndSequenceTests()
     F.Camera()->EnterLetterbox(1.f, 0.12f);
     F.Camera()->UpdateCamera(0.5f);
     Check(Near(F.Camera()->GetFadeAmount(), 0.5f) && Near(F.Camera()->GetLetterboxRatio(), 0.06f), "camera effects did not advance once");
+}
+
+void BranchCameraIntegrationTests()
+{
+    FWorldFixture F(AInputTestMode::StaticClass());
+    int Managers = 0;
+    for (AActor* Actor : F.World->GetPersistentLevel()->GetActors())
+        if (Cast<APlayerCameraManager>(Actor)) ++Managers;
+    Check(Managers == 1, "merged controller spawned duplicate camera managers");
+
+    auto* Player = F.World->SpawnActor<APlayerPawn>();
+    F.World->Tick(0.f);
+    F.Controller()->Possess(Player);
+    F.World->Tick(0.f);
+    auto* Light = Player->GetFlashlightActor();
+    Check(Light && Light->GetActorEnableCollision(), "legacy flashlight collision policy disabled attack overlaps");
+    Check(Light->GetRootComponent()->GetAttachParent() == Player->GetFlashlightPivot(), "flashlight followed the spring arm camera endpoint");
+    Check(Player->GetCameraComponent()->GetAttachParent() == Player->GetSpringArmComponent()->GetArmEnd(), "player camera lost its spring arm endpoint");
+    auto* Bob = F.Camera()->FindCameraModifier(UCameraModifier_HeadBob::StaticClass());
+    Check(Bob != nullptr, "merged player did not install its Head Bob modifier");
+    F.World->Tick(0.f);
+    Check(F.Camera()->FindCameraModifier(UCameraModifier_HeadBob::StaticClass()) == Bob, "player replaced the Head Bob modifier every tick");
+
+    const auto Press = [&](EKeyCode Key)
+    {
+        F.Controller()->InputKey(static_cast<int>(Key), true);
+        F.Controller()->InputKey(static_cast<int>(Key), false);
+    };
+    F.Controller()->SetIgnoreMoveInput(true);
+    F.Controller()->SetIgnoreLookInput(true);
+    Press(EKeyCode::Q); Press(EKeyCode::F6); Press(EKeyCode::LButton);
+    Check(!Player->IsThirdPersonMode() && F.Camera()->GetActiveCameraShakeCount() == 0 &&
+        !Player->GetFlashlightAttackComponent()->IsAttacking(), "camera or attack shortcuts bypassed cinematic input locks");
+    F.Controller()->SetIgnoreMoveInput(false);
+    F.Controller()->SetIgnoreLookInput(false);
+    Press(EKeyCode::Q); Press(EKeyCode::F6);
+    Check(Player->IsThirdPersonMode() && Player->GetSpringArmComponent()->IsActive(), "Q did not restore the third-person camera after input unlock");
+    Check(F.Camera()->GetActiveCameraShakeCount() == 1, "F6 shake was lost while merging sequencer support");
+    F.Camera()->StopAllCameraShakes(true);
+    Press(EKeyCode::F7);
+    Check(F.Camera()->GetActiveCameraShakeCount() == 1, "F7 Perlin shake was lost while merging sequencer support");
+    F.Camera()->StopAllCameraShakes(true);
+
+    auto* Outgoing = F.World->SpawnActor<ACameraProbe>();
+    auto* Incoming = F.World->SpawnActor<ACameraProbe>();
+    Incoming->SetActorLocation(FVector(100.f, 0.f, 0.f));
+    F.Camera()->SetViewTarget(Outgoing); F.Camera()->UpdateCamera(0.f);
+    Outgoing->Calls = 0;
+    F.World->Tick(0.1f);
+    Check(Outgoing->Calls == 1, "world updated the camera more than once per frame");
+    F.Camera()->SetViewTargetWithBlend(Incoming, 1.f, VTBlend_Cubic, 2.f, true);
+    F.Camera()->UpdateCamera(0.25f);
+    Check(Near(F.Camera()->GetBaseCameraPOV().Location.X, 15.625f), "sequencer cubic return blend became linear");
+    F.Camera()->SetViewTargetWithBlend(Player, 1.f, VTBlend_Linear, 2.f, true);
+    F.Camera()->UpdateCamera(0.f);
+    Check(Near(F.Camera()->GetBaseCameraPOV().Location.X, 15.625f), "interrupted blend restarted at the outgoing actor");
+    F.Camera()->UpdateCamera(1.f);
+
+    F.Camera()->FadeOut(1.f, FLinearColor(0.f, 0.f, 0.f, 1.f), true, false);
+    F.Camera()->EnterLetterbox(1.f, 0.12f);
+    F.Camera()->UpdateCamera(0.5f);
+    FGameViewportClient Viewport;
+    Viewport.SetWorld(F.World);
+    const FSceneView View = Viewport.CalcSceneView({0.f, 0.f, 1280.f, 720.f});
+    Check(View.bCameraFade && !View.bFadeHUD && Near(View.FadeAmount, 0.5f) && Near(View.LetterboxRatio, 0.06f), "merged viewport dropped world-only fade or letterbox");
+    Check((View.ViewLocation - F.Camera()->GetCameraPOV().Location).SizeSquared() < 0.00001f,
+        "viewport bypassed the camera modifier output");
+    Check(Viewport.BeginSIEMode(), "SIE could not copy the merged camera view");
+    const FSceneView SIEView = Viewport.CalcSceneView({0.f, 0.f, 1280.f, 720.f});
+    Check((SIEView.ViewLocation - View.ViewLocation).SizeSquared() < 0.00001f,
+        "SIE started from a different camera view");
+    Viewport.EndSIEMode();
+    const FVector Saved = F.Camera()->GetBaseCameraPOV().Location;
+    F.Controller()->UnPossess(); F.Camera()->UpdateCamera(0.f);
+    Check(F.Camera()->GetViewTarget() == F.Controller() && (F.Camera()->GetBaseCameraPOV().Location - Saved).SizeSquared() < 0.00001f,
+        "UnPossess lost the saved camera view");
+    auto* RemovedPawn = F.World->SpawnActor<ATickProbe>();
+    RemovedPawn->SetActorLocation(FVector(42.f, 8.f, 5.f));
+    F.Controller()->Possess(RemovedPawn); F.Camera()->UpdateCamera(0.f);
+    RemovedPawn->Destroy(); F.World->FlushPendingDestruction();
+    F.Camera()->UpdateCamera(0.f);
+    Check(F.Controller()->GetPawn() == nullptr && Near(F.Camera()->GetBaseCameraPOV().Location.X, 42.f),
+        "validated view-target getter broke destroyed pawn camera preservation");
 }
 
 void LuaAndAttackTests()
@@ -524,7 +610,7 @@ int main()
         FRenderDevice Device;
         Check(Device.GetDevice() != nullptr, "D3D11 initialization failed");
         RenderCommand::Init(&Device);
-        TimeAndInputTests(); CameraAndSequenceTests(); LuaAndAttackTests(); SlomoResourceTests(); PacmanSceneTests(); PacmanSkyLightTests();
+        TimeAndInputTests(); CameraAndSequenceTests(); BranchCameraIntegrationTests(); LuaAndAttackTests(); SlomoResourceTests(); PacmanSceneTests(); PacmanSkyLightTests();
         UAssetManager::Shutdown();
         FRenderResourceManager::Shutdown();
         std::cout << "PASS " << Checks << " main merge integration checks\n";

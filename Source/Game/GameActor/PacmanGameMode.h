@@ -28,7 +28,8 @@ public:
 	void EndPlay() override;
 	void Tick(float DeltaTime) override;
 	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying && !bIntroPlaying; }
-	bool WantsMouseCapture() const { return !bResultShown && !bIntroPlaying; }
+	bool AllowsCameraModeToggle() const override { return false; }
+	bool WantsMouseCapture() const override { return !bResultShown && !bIntroPlaying; }
 	int32 GetCollectedCoinCount() const { return GetCoinCount(); }
 	int32 GetMaxCoinCount() const { return MaxCoinCount; }
 	int32 GetPlayerLife() const;

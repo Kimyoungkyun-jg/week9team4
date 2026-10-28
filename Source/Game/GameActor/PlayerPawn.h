@@ -7,6 +7,9 @@
 class AFlashlightActor;
 class UCapsuleComponent;
 class UHeadBobComponent;
+class USpringArmComponent;
+
+enum class EPlayerCameraMode : uint8 { FirstPerson, ThirdPerson };
 class UFlashlightAttackComponent;
 
 class APlayerPawn : public ACharacter
@@ -35,6 +38,12 @@ public:
 	void BeginPlay() override;
 	void EndPlay() override;
 	void Tick(float DeltaTime) override;
+	void AddControllerPitchInput(float Value) override;
+	void ToggleCameraMode() override;
+	void SetCameraMode(EPlayerCameraMode NewMode);
+	bool IsThirdPersonMode() const { return CameraMode == EPlayerCameraMode::ThirdPerson; }
+	USpringArmComponent* GetSpringArmComponent() const;
+	USceneComponent* GetFlashlightPivot() const;
 	void PrimaryAction() override;
 	bool IsInputSuppressed() const override;
 	UFlashlightAttackComponent* GetFlashlightAttackComponent() const { return FlashlightAttack; }
@@ -74,6 +83,9 @@ private:
 	int32 Life = 3;
 	FVector PlayerStartLocation = FVector::ZeroVector;
 	FRotator PlayerStartRotation;
-	FVector PlayerStartCameraLocation = FVector::ZeroVector;
-	FRotator PlayerStartCameraRotation;
+	FVector PlayerStartArmLocation = FVector::ZeroVector;
+	float PlayerStartViewPitch = 0.0f;
+	float ViewPitch = 0.0f;
+	EPlayerCameraMode CameraMode = EPlayerCameraMode::FirstPerson;
+	bool bCameraControlSuspended = false;
 };

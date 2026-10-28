@@ -39,6 +39,8 @@
 
 #include "UObject/UObjectGlobals.h"
 
+#include "Camera/PlayerCameraManager.h"
+
 namespace
 {
 	inline void WritePerObjectConstants(uint8* Dest, const FMatrix& LocalToWorld, const FMatrix& WorldToLocal,

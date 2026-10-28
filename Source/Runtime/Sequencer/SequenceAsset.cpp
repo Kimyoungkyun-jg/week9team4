@@ -448,7 +448,7 @@ void FLevelSequenceAsset::EvaluateWorldAtFrame(
 
 								ActivePOV.Location = PrevPOV.Location + (ActivePOV.Location - PrevPOV.Location) * Alpha;
 								ActivePOV.Rotation = LerpRotatorShortest(PrevPOV.Rotation, ActivePOV.Rotation, Alpha);
-								ActivePOV.FieldOfView = PrevPOV.FieldOfView + (ActivePOV.FieldOfView - PrevPOV.FieldOfView) * Alpha;
+								ActivePOV.FOV = PrevPOV.FOV + (ActivePOV.FOV - PrevPOV.FOV) * Alpha;
 							}
 						}
 

@@ -48,6 +48,21 @@ void UCameraComponent::UpdateZoom(float DeltaTime)
     Transform.Location += Transform.GetForward() * WheelSpeed * WheelDelta * DeltaTime;
 }
 
+// 컴포넌트의 월드 위치·회전과 투영 설정을 OutView에 복사하여 기본 시점을 제공한다.
+void UCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& OutView) const
+{
+    OutView.Location = GetWorldLocation();
+    OutView.Rotation = GetWorldRotation();
+
+    OutView.FOV = GetFieldOfView();
+    OutView.AspectRatio = GetAspectRatio();
+    OutView.NearClipPlane = GetNearZ();
+    OutView.FarClipPlane = GetFarZ();
+
+    OutView.bIsOrthogonal = GetIsOrthogonal();
+    OutView.OrthoWidth = GetOrthoWidth();
+}
+
 
 // 화면 좌표를 투영 모드에 맞는 월드 광선으로 역투영한다.
 FRay UCameraComponent::DeProjection(FVector2 MousePos, float ScreenW, float ScreenH)
@@ -107,80 +122,41 @@ FRay UCameraComponent::DeProjection(FVector2 MousePos, float ScreenW, float Scre
 // Actor::CalcCamera와 시퀀서가 사용하는 공통 카메라 뷰.
 void UCameraComponent::GetCameraView(FMinimalViewInfo& OutView) const
 {
-	OutView.Location = GetWorldLocation();
-	OutView.Rotation = GetWorldRotation();
-	OutView.FieldOfView = FieldOfView;
-	OutView.AspectRatio = AspectRatio;
-	OutView.NearClip = NearClipPlane;
-	OutView.FarClip = FarClipPlane;
-	OutView.OrthoWidth = OrthoWidth;
-	OutView.bIsPerspective = !bIsOrthogonal;
+	GetCameraView(0.0f, OutView);
 }
 
 // 카메라 Transform의 역변환으로 View 행렬을 만든다.
 FMatrix UCameraComponent::GetViewMatrix() const
 {
-    //return GetWorldMatrix().Inverse();
-
-    FVector WorldLocation = GetWorldLocation();
-    FRotator WorldRotation = GetWorldRotation();
-
-    FQuat WorldQuat = WorldRotation.Quaternion();
-    FMatrix RotationMatrix = WorldQuat.ToFMatrix();
-
-    FMatrix InverseTranslation = FMatrix::MakeTranslation(WorldLocation * -1.0f);
-    FMatrix InverseRotation = RotationMatrix.GetTransposed();
-
-    return InverseTranslation * InverseRotation;
+    FMinimalViewInfo View;
+    GetCameraView(0.0f, View);
+    return View.GetViewMatrix();
 }
 
 // 시야각·종횡비·클리핑 거리로 원근 행렬을 만든다.
 FMatrix UCameraComponent::GetPerspectiveMatrix() const
 {
-	const float HalfFOV = FMath::DegreesToRadians(FieldOfView) * 0.5f;
-
-	const float YScale = 1.0f / tan(HalfFOV);
-	const float XScale = YScale / AspectRatio;
-
-    const float ZScale = FarClipPlane / (FarClipPlane - NearClipPlane);
-    const float ZOffset = -NearClipPlane * FarClipPlane /(FarClipPlane - NearClipPlane);
-
-    //Forward가 X인 좌표
-	return FMatrix(
-		0.0f, 0.0f, ZScale, 1.0f,
-		XScale, 0.0f, 0.0f, 0.0f,
-		0.0f, YScale, 0.0f, 0.0f,
-		0.0f, 0.0f, ZOffset, 0.0f
-	);
+    FMinimalViewInfo View;
+    GetCameraView(0.0f, View);
+    View.bIsOrthogonal = false;
+    return View.GetProjectionMatrix();
 }
 
 // 직교 폭·종횡비·클리핑 거리로 직교 행렬을 만든다.
 FMatrix UCameraComponent::GetOrthogonalMatrix() const
 {
-    const float Width = OrthoWidth;
-    const float Height = Width / AspectRatio;
-
-    const float XScale = 2.0f / Width;
-    const float YScale = 2.0f / Height;
-
-    const float ZScale = 1.0f / (FarClipPlane - NearClipPlane);
-    const float ZOffset = -NearClipPlane / (FarClipPlane - NearClipPlane);
-
-    return FMatrix(
-        0.0f, 0.0f, ZScale, 0.0f,
-        XScale, 0.0f, 0.0f, 0.0f,
-        0.0f, YScale, 0.0f, 0.0f,
-        0.0f, 0.0f, ZOffset, 1.0f
-    );
+    FMinimalViewInfo View;
+    GetCameraView(0.0f, View);
+    View.bIsOrthogonal = true;
+    return View.GetProjectionMatrix();
 }
 
 // 투영 모드에 대응하는 행렬을 선택한다.
 FMatrix UCameraComponent::GetProjectionMatrix() const
 {
-    if (bIsOrthogonal)
-        return GetOrthogonalMatrix();  // 직교 투영
-     
-    return GetPerspectiveMatrix();     // 원근 투영
+    FMinimalViewInfo View;
+    GetCameraView(0.0f, View);
+    return View.GetProjectionMatrix();
 }
 
 // 행 벡터 규약으로 View와 Projection을 곱한다.

@@ -55,6 +55,9 @@ void FSettingsPanel::OnRender()
 	ImGui::Checkbox("Draw Primitives", &Settings.bDrawPrimitives);
 	ImGui::Checkbox("Cache Shadows", &Settings.bCacheShadows);
 	ImGui::Checkbox("Draw Bounding Box", &Settings.bDrawBoundingBox);
+	ImGui::Checkbox("Draw Spring Arm Camera", &Settings.bDrawSpringArmCamera);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Editor/SIE views only. Cyan: camera; yellow: view direction; green/red: clear/blocked arm; gray: desired endpoint.");
 	ImGui::Checkbox("Show Object UUID", &Settings.bShowUUID);
 	const char* RenderingPaths[] = { "Forward", "Deferred" };
 	int RenderingPathIndex = static_cast<int>(Settings.RenderingPath);
@@ -311,6 +314,7 @@ bool FSettingsPanel::SaveSettings() const
 	File << "CacheShadows=" << Settings.bCacheShadows << "\n";
 	File << "PcfMode=" << static_cast<uint32_t>(Settings.PcfMode) << "\n";
 	File << "DrawBoundingBox=" << Settings.bDrawBoundingBox << "\n";
+	File << "DrawSpringArmCamera=" << Settings.bDrawSpringArmCamera << "\n";
 	File << "ShowUUID=" << Settings.bShowUUID << "\n";
 	File << "DrawBatchLine=" << Settings.bDrawBatchLine << "\n";
 	File << "DrawCascadeBounds=" << Settings.bDrawCascadeBounds << "\n";
@@ -479,6 +483,7 @@ bool FSettingsPanel::LoadSettings()
 						Settings.PcfMode = static_cast<EPcfMode>(Mode);
 				}
 				else if (Key == "DrawBoundingBox") Settings.bDrawBoundingBox = std::stoi(ValueStr);
+				else if (Key == "DrawSpringArmCamera") Settings.bDrawSpringArmCamera = std::stoi(ValueStr);
 				else if (Key == "ShowUUID") Settings.bShowUUID = std::stoi(ValueStr);
 				else if (Key == "DrawBatchLine") Settings.bDrawBatchLine = std::stoi(ValueStr);
 				else if (Key == "DrawCascadeBounds") Settings.bDrawCascadeBounds = std::stoi(ValueStr);

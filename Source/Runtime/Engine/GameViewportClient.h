@@ -23,6 +23,7 @@ class APlayerCameraManager;
 class FWidgetRenderer;
 
 struct FWorldContext;
+struct FMinimalViewInfo;
 
 // 게임 뷰포트 클라이언트 클래스
 class FGameViewportClient : public FViewportClient
@@ -114,7 +115,6 @@ private:
 	UGameInstance* GameInstance = nullptr;
 	UEngine* Engine = nullptr;
 	UCameraComponent* CameraComponent = nullptr;
-	APlayerCameraManager* ActiveCameraManager = nullptr;
 	bool bSIEMode = false;
 	bool bPreviousMainCameraExternalInputManaged = false;
 	bool bSIEKeyDown[256]{};
@@ -123,6 +123,7 @@ private:
 	float SIEWheelDelta = 0.0f;
 	bool bExitRequested = false;
 	bool bSIEModeRequested = false;
+	bool TryGetViewInfo(FMinimalViewInfo& OutView) const;
 
 	// 렌더 타깃 버퍼
 	uint32 Width = 0;

@@ -279,7 +279,7 @@ void ALevelSequenceActor::RestorePlayerCameraViewTarget()
 
 	if (APlayerController* PC = CurrentWorld->GetPlayerController())
 	{
-		if (PC->GetViewTarget() == this)
+		if (APlayerCameraManager* Manager = PC->GetPlayerCameraManager(); Manager && Manager->IsViewTarget(this))
 		{
 			AActor* Fallback = PreviousCameraTarget;
 			if (!Fallback || GUObjectArray.Find(Fallback) == INDEX_NONE || !IsValid(Fallback) || Fallback->IsActorBeingDestroyed())

@@ -223,6 +223,7 @@ public:
 	virtual void RegisterAllComponents();
 	// Parameter : 바로 다시 Register 할껀지
 	virtual void UnregisterAllComponents();
+
 protected:
 	virtual void OnDefaultSubobjectCreated(UObject* Subobject) override;
 

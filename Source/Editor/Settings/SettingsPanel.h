@@ -32,6 +32,7 @@ struct FEditorSettings
 	EPcfMode PcfMode = EPcfMode::Sample8;
 	bool bDrawBoundingBox = false;
 	bool bDrawAllCollision = false;
+	bool bDrawSpringArmCamera = true;
 	bool bShowUUID = false;
 	bool bDrawBatchLine = true;
 	bool bDrawCascadeBounds = false;

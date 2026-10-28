@@ -8,6 +8,9 @@
 #include "Audio/SoundManager.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/HeadBobComponent.h"
+#include "Camera/CameraModifier_HeadBob.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Camera/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CharacterMovementComponent.h"
 #include "GameFramework/GameHUD.h"
@@ -19,6 +22,23 @@
 
 APlayerPawn::APlayerPawn()
 {
+	auto* SpringArm = CreateDefaultSubobject<USpringArmComponent>("SpringArm");
+	// Pacman's authored walls block Pawn but ignore Camera; ghosts only overlap
+	// Pawn. Reuse that response table for this query without changing map assets.
+	SpringArm->ProbeChannel = ECollisionChannel::Pawn;
+	SpringArm->SetupAttachment(GetCapsuleComponent());
+	auto* ArmEnd = CreateDefaultSubobject<USceneComponent>("ArmEnd");
+	ArmEnd->SetupAttachment(SpringArm);
+	SpringArm->SetArmEnd(ArmEnd);
+	auto* FlashlightPivot = CreateDefaultSubobject<USceneComponent>("FlashlightPivot");
+	FlashlightPivot->SetupAttachment(GetCapsuleComponent());
+	if (auto* Camera = GetCameraComponent())
+	{
+		SpringArm->SetRelativeLocation(Camera->GetRelativeLocation());
+		FlashlightPivot->SetRelativeLocation(Camera->GetRelativeLocation());
+		Camera->SetupAttachment(ArmEnd);
+		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator());
+	}
 	CreateDefaultSubobject<UHeadBobComponent>("HeadBob");
 	FlashlightAttack = CreateDefaultSubobject<UFlashlightAttackComponent>("FlashlightAttack");
 	auto* Script = CreateDefaultSubobject<ULuaScriptComponent>("PlayerScript");
@@ -34,7 +54,14 @@ APlayerPawn::APlayerPawn()
 
 void APlayerPawn::BeginPlay()
 {
+	// Old scenes can still attach CameraComponent directly to the capsule. Capture
+	// the authored first-person anchor before ACharacter removes spawn Pitch.
 	UCameraComponent* Camera = GetCameraComponent();
+	const FVector CameraAnchor = Camera && GetCapsuleComponent() ?
+		GetCapsuleComponent()->GetWorldMatrix().Inverse().TransformPosition(Camera->GetWorldLocation()) : FVector::ZeroVector;
+	ViewPitch = FMath::Clamp(GetActorRotation().Pitch, -89.0f, 89.0f);
+	if (auto* Pivot = GetFlashlightPivot())
+		Pivot->SetRelativeLocationAndRotation(CameraAnchor, FRotator(ViewPitch, 0.0f, 0.0f));
 	UWorld* PawnWorld = GetWorld();
 	// Lua BeginPlay runs inside Super::BeginPlay, so its flashlight must exist first.
 	if (Camera && PawnWorld && (PawnWorld->GetWorldType() == EWorldType::PIE || PawnWorld->GetWorldType() == EWorldType::Game))
@@ -42,7 +69,7 @@ void APlayerPawn::BeginPlay()
 		FlashlightActor = PawnWorld->SpawnActor<AFlashlightActor>();
 		if (FlashlightActor)
 		{
-			FlashlightActor->AttachToComponent(Camera);
+			FlashlightActor->AttachToComponent(GetFlashlightPivot());
 			FlashlightActor->SetActorRelativeLocation({0.35f, 0.28f, -0.2f});
 			FlashlightActor->SetActorRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
 		}
@@ -51,11 +78,31 @@ void APlayerPawn::BeginPlay()
 	ResetWalkingEffects();
 	PlayerStartLocation = GetActorLocation();
 	PlayerStartRotation = GetActorRotation();
-	if (Camera)
+	PlayerStartViewPitch = ViewPitch;
+	PlayerStartArmLocation = CameraAnchor;
+	if (auto* SpringArm = GetSpringArmComponent())
 	{
-		PlayerStartCameraLocation = Camera->GetRelativeLocation();
-		PlayerStartCameraRotation = Camera->GetRelativeRotation();
+		SpringArm->SetRelativeLocationAndRotation(CameraAnchor, FRotator(ViewPitch, 0.0f, 0.0f));
+		auto* ArmEnd = Cast<USceneComponent>(FindComponentByName(FName("ArmEnd")));
+		if (ArmEnd)
+		{
+			ArmEnd->SetupAttachment(SpringArm);
+			SpringArm->SetArmEnd(ArmEnd);
+			if (Camera)
+			{
+				Camera->SetupAttachment(ArmEnd);
+				Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator());
+			}
+		}
 	}
+	if (auto* Pivot = GetFlashlightPivot())
+	{
+		// The light follows the original eye/hand anchor, independently of the
+		// camera endpoint, camera lag, and the hit sequence's arm reset.
+		Pivot->SetupAttachment(GetCapsuleComponent());
+		Pivot->SetRelativeLocationAndRotation(CameraAnchor, FRotator(ViewPitch, 0.0f, 0.0f));
+	}
+	SetCameraMode(EPlayerCameraMode::FirstPerson);
 
 	SetActorEnableCollision(true);
 	auto* CollisionComponent = GetCapsuleComponent();
@@ -146,6 +193,10 @@ void APlayerPawn::SetSlomoActive(bool bActive)
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	// Future per-frame mode features belong here; the arm itself ticks ONLY in
+	// PostUpdateWork, after movement and before PlayerCameraManager computes POV.
+	// if (IsThirdPersonMode()) { /* TODO: third-person per-frame features. */ }
+	// else { /* TODO: first-person per-frame features. */ }
 	UWorld* PawnWorld = GetWorld();
 	const bool bPlaying = PawnWorld && !PawnWorld->IsPaused() &&
 		(PawnWorld->GetWorldType() == EWorldType::Game || PawnWorld->GetWorldType() == EWorldType::PIE);
@@ -174,13 +225,76 @@ void APlayerPawn::Tick(float DeltaTime)
 	}
 
 	// Camera effects use the completed grounded move, never input or a respawn teleport.
-	if (bPlaying && Bob) Bob->UpdateBob(DeltaTime, FrameMovement, bStep);
+	if (bPlaying && Bob)
+	{
+		Bob->UpdateBob(DeltaTime, FrameMovement, bStep, bGrounded);
+		if (auto* Controller = GetController())
+		{
+			if (auto* Manager = Controller->GetPlayerCameraManager(); IsValid(Manager) && !Manager->IsActorBeingDestroyed())
+			{
+				if (!Manager->FindCameraModifier(UCameraModifier_HeadBob::StaticClass()))
+					Manager->AddNewCameraModifier(UCameraModifier_HeadBob::StaticClass());
+			}
+		}
+	}
 	if (!bStep) return;
 	static constexpr const char* Steps[] = {"Assets/Sounds/footstep00.wav", "Assets/Sounds/footstep01.wav",
 		"Assets/Sounds/footstep02.wav", "Assets/Sounds/footstep03.wav", "Assets/Sounds/footstep04.wav"};
 	const int Index = std::uniform_int_distribution<int>(0, 4)(FootstepRandom);
 	if (UGameInstance* Instance = PawnWorld->GetGameInstance())
 		if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->PlaySFX(Steps[Index], 0.5f);
+}
+
+USpringArmComponent* APlayerPawn::GetSpringArmComponent() const
+{
+	return Cast<USpringArmComponent>(FindComponentByName(FName("SpringArm")));
+}
+
+USceneComponent* APlayerPawn::GetFlashlightPivot() const
+{
+	// Resolve inside this pawn after scene load/PIE duplication, like ArmEnd.
+	return Cast<USceneComponent>(FindComponentByName(FName("FlashlightPivot")));
+}
+
+void APlayerPawn::AddControllerPitchInput(float Value)
+{
+	if (bCameraControlSuspended || !std::isfinite(Value)) return;
+	ViewPitch = FMath::Clamp(ViewPitch + Value, -89.0f, 89.0f);
+	if (auto* SpringArm = GetSpringArmComponent())
+		SpringArm->SetRelativeRotation(FRotator(ViewPitch, 0.0f, 0.0f));
+	if (auto* Pivot = GetFlashlightPivot())
+		Pivot->SetRelativeRotation(FRotator(ViewPitch, 0.0f, 0.0f));
+}
+
+void APlayerPawn::ToggleCameraMode()
+{
+	SetCameraMode(IsThirdPersonMode() ? EPlayerCameraMode::FirstPerson : EPlayerCameraMode::ThirdPerson);
+}
+
+void APlayerPawn::SetCameraMode(EPlayerCameraMode NewMode)
+{
+	// The hit sequence keeps its camera ownership and Head Bob suspension.
+	if (bCameraControlSuspended || (NewMode != EPlayerCameraMode::FirstPerson && NewMode != EPlayerCameraMode::ThirdPerson)) return;
+	// Also guard direct calls, not just Q input. First-person restoration remains
+	// available for BeginPlay, respawn, and cinematic release in restricted modes.
+	const UWorld* PawnWorld = GetWorld();
+	const AGameMode* Mode = PawnWorld ? PawnWorld->GetGameMode() : nullptr;
+	if (NewMode == EPlayerCameraMode::ThirdPerson && Mode && !Mode->AllowsCameraModeToggle()) return;
+	CameraMode = NewMode;
+	if (auto* SpringArm = GetSpringArmComponent())
+	{
+		if (IsThirdPersonMode())
+		{
+			SpringArm->Activate(true);
+			// TODO: third-person model visibility and mode-specific settings.
+		}
+		else
+		{
+			SpringArm->Deactivate();
+			// TODO: first-person model visibility and mode-specific settings.
+		}
+	}
+	// TODO: smooth mode transitions; keep immediate endpoint reset when interrupted.
 }
 
 UHeadBobComponent* APlayerPawn::GetHeadBobComponent() const
@@ -198,6 +312,23 @@ void APlayerPawn::SetHeadBobSuspended(bool bSuspended)
 {
 	FootstepCadence.Reset();
 	if (auto* Bob = GetHeadBobComponent()) Bob->SetSuspended(bSuspended);
+	if (bCameraControlSuspended == bSuspended) return;
+	bCameraControlSuspended = bSuspended;
+	if (auto* SpringArm = GetSpringArmComponent())
+	{
+		if (bSuspended)
+		{
+			SpringArm->Deactivate();
+			// Existing hit code drives Camera relative to the pawn root. Remove the
+			// inherited view offset/Pitch while it owns that transform.
+			SpringArm->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator());
+		}
+		else
+		{
+			SpringArm->SetRelativeLocationAndRotation(PlayerStartArmLocation, FRotator(ViewPitch, 0.0f, 0.0f));
+			SetCameraMode(CameraMode);
+		}
+	}
 }
 
 void APlayerPawn::SetLife(int32 InLife)
@@ -222,13 +353,20 @@ void APlayerPawn::RespawnAtPlayerStart()
 	}
 	SetActorLocation(PlayerStartLocation);
 	SetActorRotation(PlayerStartRotation);
+	ViewPitch = PlayerStartViewPitch;
+	if (auto* SpringArm = GetSpringArmComponent())
+	{
+		SpringArm->SetRelativeLocationAndRotation(PlayerStartArmLocation, FRotator(ViewPitch, 0.0f, 0.0f));
+		SpringArm->ResetArmEnd();
+	}
+	if (auto* Pivot = GetFlashlightPivot())
+		Pivot->SetRelativeLocationAndRotation(PlayerStartArmLocation, FRotator(ViewPitch, 0.0f, 0.0f));
 	if (UCameraComponent* Camera = GetCameraComponent())
 	{
-		Camera->SetRelativeLocation(PlayerStartCameraLocation);
-		Camera->SetRelativeRotation(PlayerStartCameraRotation);
+		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator());
 	}
-	// Keep cinematic suspension until the game mode releases camera ownership.
-	if (auto* Bob = GetHeadBobComponent()) Bob->Rebase();
+	SetCameraMode(CameraMode);
+	// ResetWalkingEffects clears modifier input without releasing cinematic suspension.
 	if (auto* CollisionComponent = GetCapsuleComponent()) CollisionComponent->UpdateOverlaps();
 }
 

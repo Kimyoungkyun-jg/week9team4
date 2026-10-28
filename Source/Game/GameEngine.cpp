@@ -7,6 +7,7 @@
 #include "GameActor/MainMenuGameMode.h"
 #include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
+#include "GameActor/SpringArmTestGameMode.h"
 #include "GameActor/PacmanHUD.h"
 
 #include "Engine/GameInstance.h"
@@ -53,6 +54,7 @@ namespace
 		(void)AMainMenuGameMode::StaticClass();
 		(void)AMainMenuHUD::StaticClass();
 		(void)APacmanGameMode::StaticClass();
+		(void)ASpringArmTestGameMode::StaticClass();
 		(void)APacmanHUD::StaticClass();
 		(void)ASampleHUD::StaticClass();
 		(void)ADirectionalLightActor::StaticClass();
@@ -117,8 +119,8 @@ void UGameEngine::Tick(float DeltaTime)
 	FGameViewportClient& Viewport = *GameContext->GameViewport;
 	Viewport.ProcessPendingSceneChange();
 	FWindow* Window = GetEngineLoop().GetMainWindow();
-	const APacmanGameMode* PacmanMode = Cast<APacmanGameMode>(GameContext->World()->GetGameMode());
-	const bool bGameplay = PacmanMode && PacmanMode->WantsMouseCapture();
+	const AGameMode* Mode = GameContext->World()->GetGameMode();
+	const bool bGameplay = Mode && Mode->WantsMouseCapture();
 	bool bRecaptureClick = false;
 	if (!bGameplay) bMouseCaptureReleasedByUser = false;
 	if (Window)

@@ -2,6 +2,7 @@
 
 #include "GameFramework/Actor.h"
 #include "Input/InputSystem.h"
+#include "CameraTypes.h"
 
 #include "Camera/PlayerCameraManager.h"
 
@@ -34,6 +35,8 @@ public:
 	void InputKey(int32 Key, bool bDown);
 	void InputAxis(EGameInputAxis Axis, float Delta);
 	void ClearInputState();
+	void CalcCamera(float DeltaTime, FMinimalViewInfo& OutView) const override;
+	void SetFallbackCameraView(const FMinimalViewInfo& InView) { FallbackCameraView = InView; }
 
 	// 입력 잠금 기능 (언리얼 규격)
 	void SetIgnoreMoveInput(bool bNewMoveInput);
@@ -55,6 +58,8 @@ private:
 	float MouseAxisX = 0.0f;
 	float MouseAxisY = 0.0f;
 	float LookSensitivity = 0.1f;
+	UClass* PlayerCameraManagerClass = nullptr;
+	FMinimalViewInfo FallbackCameraView;
 
 	int32 IgnoreMoveInputCount = 0;
 	int32 IgnoreLookInputCount = 0;

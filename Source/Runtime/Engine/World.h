@@ -100,6 +100,8 @@ public:
 	// bReportInitialPenetration=true: 초기 침투를 모두 보존하고, 이후 Hit도 첫 비침투 블록까지 수집한다.
 	bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation, bool bReportInitialPenetration = false);
 	bool LineTraceByChannel(const FRay& Ray, float Distance, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
+	// Query-only sphere: closest Block response, including initial penetration; no Hit/Overlap dispatch.
+	bool SphereSweepSingleByChannel(const FVector& Start, const FVector& End, float Radius, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
 	bool OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeometry& Geometry, TArray<UPrimitiveComponent*>& OutComponents);
 	void RegisterCollisionComponent(UPrimitiveComponent* Component);
 	void UnregisterCollisionComponent(UPrimitiveComponent* Component);
@@ -163,6 +165,7 @@ private:
 	FCollisionQueryStats CollisionQueryStats;
 	void UpdateCollisionIndex();
 	friend class AActor;
+	friend class APlayerCameraManager;
 	friend class UActorComponent;
 	friend class USceneComponent;
 	friend class UPrimitiveComponent;

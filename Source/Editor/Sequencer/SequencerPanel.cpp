@@ -1106,7 +1106,7 @@ void FSequencerPanel::SyncPilotedCameraToViewport()
 	Client->SetViewportType(ELevelViewportType::Perspective);
 	Client->SetViewLocation(POV.Location);
 	Client->SetViewRotation(POV.Rotation);
-	Client->SetViewFOV(POV.FieldOfView);
+	Client->SetViewFOV(POV.FOV);
 	LastPilotViewLocation = POV.Location;
 	LastPilotViewRotation = POV.Rotation;
 	LastPilotFrame = CurrentFrame;
@@ -1125,7 +1125,7 @@ void FSequencerPanel::SyncCameraToActiveViewport()
 		{
 			Client->SetViewLocation(EvaluatedCameraPOV.Location);
 			Client->SetViewRotation(EvaluatedCameraPOV.Rotation);
-			Client->SetViewFOV(EvaluatedCameraPOV.FieldOfView);
+			Client->SetViewFOV(EvaluatedCameraPOV.FOV);
 		}
 	}
 }
