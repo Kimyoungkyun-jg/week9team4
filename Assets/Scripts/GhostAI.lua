@@ -37,8 +37,28 @@ function GhostAI:BeginPlay()
     self.RepathTimer = 0.0
     self.RepathInterval = 0.3       -- BFS 재계산 간격 (초)
 
+    self:BindFlashlightHit()
+
     -- 초기 순찰 시작
     self.AI:MoveToNextPatrol()
+end
+
+function GhostAI:BindFlashlightHit()
+    self.Ghost = AGhostActor.Cast(self.Owner)
+    if self.FlashlightHitHandle then
+        self.Ghost.OnFlashlightHit:Remove(self.FlashlightHitHandle)
+    end
+    self.FlashlightHitHandle = self.Ghost.OnFlashlightHit:Add(self, self.HandleFlashlightHit)
+end
+
+function GhostAI:HandleFlashlightHit()
+    if self.State == "Patrol" or self.State == "Return" then
+        self:EnterAlert()
+    end
+end
+
+function GhostAI:OnReload()
+    self:BindFlashlightHit()
 end
 
 -- Alert 상태 진입 및 코루틴 시작
@@ -90,7 +110,7 @@ function GhostAI:Tick(dt)
         local world = self.Owner:GetWorld()
         if world and world.GetGameMode then
             local gm = world:GetGameMode()
-            if gm and gm.IsResolvingGhostHit and gm:IsResolvingGhostHit() then
+            if gm and not gm:AllowsPlayerControllerInput() then
                 return
             end
         end
@@ -164,6 +184,10 @@ function GhostAI:Tick(dt)
 end
 
 function GhostAI:EndPlay()
+    if self.FlashlightHitHandle then
+        self.Ghost.OnFlashlightHit:Remove(self.FlashlightHitHandle)
+        self.FlashlightHitHandle = nil
+    end
     Log("[GhostAI] EndPlay: " .. self.Owner:GetName())
 end
 

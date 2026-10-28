@@ -100,18 +100,50 @@ void FGameViewportClient::ClearWidgetOverlays()
 	bUIBlockingClick = false;
 }
 
-void FGameViewportClient::RenderUI()
+void FGameViewportClient::RenderUI(const FSceneView& View)
 {
 	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
-	if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
+
+	const bool bHasFade = View.bCameraFade && View.FadeAmount > 0.0f;
+	const bool bHasLetterbox = View.LetterboxRatio > 0.0f;
+	if ((!WidgetRoot && WidgetOverlays.IsEmpty() && !bHasFade && !bHasLetterbox) || !ViewTargets.SceneColor) return;
+
 	if (!WidgetRenderer)
 	{
 		WidgetRenderer = MakeUnique<FWidgetRenderer>();
 		if (!WidgetRenderer->Init()) { WidgetRenderer.reset(); return; }
 	}
-	WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
+
+	// 1. [bFadeHUD == false] 3D 월드만 페이드: UI 그리기 전에 페이드 적용 (UI는 정상 표시)
+	if (bHasFade && !View.bFadeHUD)
+	{
+		WidgetRenderer->DrawFadeOverlay(
+			View.FadeColor,
+			View.FadeAmount,
+			ViewTargets.SceneColor.get()
+		);
+	}
+
+	// 2. UI 위젯 렌더링
+	if (WidgetRoot)
+		WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
 	for (const FWidgetOverlay& Overlay : WidgetOverlays)
 		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
+	if (View.LetterboxRatio > 0.0f)
+	{
+		WidgetRenderer->DrawLetterboxOverlay(View.LetterboxRatio, ViewTargets.SceneColor.get());
+	}
+
+	// 3. [bFadeHUD == true] UI까지 전체 페이드: UI를 모두 덮어씌움
+	if (bHasFade && View.bFadeHUD)
+	{
+		WidgetRenderer->DrawFadeOverlay(
+			View.FadeColor,
+			View.FadeAmount,
+			ViewTargets.SceneColor.get()
+		);
+	}
+
 	OnUIRendered.Broadcast();
 }
 
@@ -222,6 +254,39 @@ void FGameViewportClient::SetFocusedTextInput(UTextInputWidget* Input)
 	if (FocusedTextInput) FocusedTextInput->SetFocused(false);
 	FocusedTextInput = Input;
 	if (FocusedTextInput) FocusedTextInput->SetFocused(true);
+}
+
+bool FGameViewportClient::TryGetViewInfo(FMinimalViewInfo& OutView) const
+{
+	if (!World) return false;
+	const auto IsUsableTarget = [](AActor* Target)
+	{
+		return Target && GUObjectArray.Find(Target) != INDEX_NONE &&
+			IsValid(Target) && !Target->IsActorBeingDestroyed();
+	};
+	if (!bSIEMode)
+	{
+		APlayerController* Controller = World->GetPlayerController();
+		if (IsUsableTarget(Controller))
+			if (APlayerCameraManager* Manager = Controller->GetPlayerCameraManager())
+				if (const FMinimalViewInfo* CachedPOV = Manager->GetCameraCachePOV())
+				{
+					OutView = *CachedPOV;
+					return true;
+				}
+	}
+	else if (CameraComponent && GUObjectArray.Find(CameraComponent) != INDEX_NONE &&
+		IsValid(CameraComponent) && !CameraComponent->IsBeingDestroyed())
+	{
+		CameraComponent->GetCameraView(OutView);
+		return true;
+	}
+
+	AActor* Fallback = bSIEMode ? static_cast<AActor*>(World->GetMainCamera()) : World->GetPlayerPawn();
+	if (!IsUsableTarget(Fallback)) Fallback = World->GetMainCamera();
+	if (!IsUsableTarget(Fallback)) return false;
+	Fallback->CalcCamera(0.0f, OutView);
+	return IsUsableTarget(Fallback);
 }
 
 UButtonWidget* FGameViewportClient::HitTestButton(bool* bBlocked) const
@@ -407,58 +472,23 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 
 	const float Aspect = static_cast<float>(Width) / static_cast<float>(Height);
 	FMinimalViewInfo POV;
-	bool bHasPOV = false;
-	if (bSIEMode)
-	{
-		if (CameraComponent && GUObjectArray.Find(CameraComponent) != INDEX_NONE &&
-			IsValid(CameraComponent) && !CameraComponent->IsBeingDestroyed())
-		{
-			CameraComponent->GetCameraView(POV);
-			bHasPOV = true;
-		}
-	}
-	else if (World)
-	{
-		if (APlayerController* Controller = World->GetPlayerController())
-			if (APlayerCameraManager* Manager = Controller->GetPlayerCameraManager())
-				if (const FMinimalViewInfo* CachedPOV = Manager->GetCameraCachePOV())
-				{
-					POV = *CachedPOV;
-					bHasPOV = true;
-				}
-	}
-	if (!bHasPOV && World)
-	{
-		const auto IsUsableTarget = [](AActor* Target)
-		{
-			return Target && GUObjectArray.Find(Target) != INDEX_NONE &&
-				IsValid(Target) && !Target->IsActorBeingDestroyed();
-		};
-		AActor* Fallback = bSIEMode ? static_cast<AActor*>(World->GetMainCamera()) :
-			static_cast<AActor*>(World->GetPlayerPawn());
-		if (!IsUsableTarget(Fallback)) Fallback = World->GetMainCamera();
-		if (IsUsableTarget(Fallback))
-		{
-			Fallback->CalcCamera(0.0f, POV);
-			bHasPOV = true;
-		}
-	}
+	const bool bHasPOV = TryGetViewInfo(POV);
 	if (!bHasPOV)
 	{
 		POV.Location = FVector(-5.0f, -10.0f, 10.0f);
 		POV.Rotation = FRotator(30.0f, 45.0f, 0.0f);
-		POV.FarClip = 1000.0f;
+		POV.FarClipPlane = 1000.0f;
 	}
 
 	OutView.ViewLocation = POV.Location;
 	OutView.ViewRotation = POV.Rotation;
 	OutView.ViewForward = POV.Rotation.Quaternion().GetForwardVector();
-	OutView.FieldOfView = std::isfinite(POV.FieldOfView) ? std::clamp(POV.FieldOfView, 1.0f, 179.0f) : 60.0f;
+	OutView.FieldOfView = std::isfinite(POV.FOV) ? std::clamp(POV.FOV, 1.0f, 179.0f) : 60.0f;
 	OutView.AspectRatio = Aspect;
-	OutView.NearClip = std::isfinite(POV.NearClip) ? std::max(POV.NearClip, 0.001f) : 0.1f;
-	OutView.FarClip = std::isfinite(POV.FarClip) ? std::max(POV.FarClip, OutView.NearClip + 0.001f) : 10000.0f;
+	OutView.NearClip = std::isfinite(POV.NearClipPlane) ? std::max(POV.NearClipPlane, 0.001f) : 0.1f;
+	OutView.FarClip = std::isfinite(POV.FarClipPlane) ? std::max(POV.FarClipPlane, OutView.NearClip + 0.001f) : 10000.0f;
 	OutView.OrthoWidth = std::isfinite(POV.OrthoWidth) ? std::max(POV.OrthoWidth, 0.001f) : 16.0f;
-	OutView.bIsPerspective = POV.bIsPerspective;
+	OutView.bIsPerspective = !POV.bIsOrthogonal;
 	OutView.bIsWireframe = false;
 	if (World && World->GetPersistentLevel())
 	{
@@ -472,8 +502,18 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 				{ bHasEffectsTrack = true; break; }
 			if (!bHasEffectsTrack) return false;
 			const FSequenceCameraEffects Effects = FLevelSequenceAsset::EvaluateCameraEffects(Sequence->GetSequenceData(), Sequence->GetCurrentFrame());
-			OutView.FadeOpacity = Effects.FadeOpacity;
-			OutView.LetterboxSize = Effects.LetterboxSize;
+			OutView.FadeOpacity = 0.0f;
+			OutView.LetterboxSize = 0.0f;
+			if (Effects.FadeOpacity > 0.0f)
+			{
+				OutView.bCameraFade = true;
+				OutView.FadeAmount = std::max(OutView.FadeAmount, Effects.FadeOpacity);
+				OutView.FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			}
+			if (Effects.LetterboxSize > 0.0f)
+			{
+				OutView.LetterboxRatio = std::max(OutView.LetterboxRatio, Effects.LetterboxSize);
+			}
 			return true;
 		};
 		bool bApplied = false;
@@ -488,13 +528,36 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 	}
 	OutView.ViewMatrix = FMatrix::MakeTranslation(POV.Location * -1.0f) *
 		POV.Rotation.Quaternion().ToFMatrix().GetTransposed();
-	OutView.ProjectionMatrix = POV.bIsPerspective
+	OutView.ProjectionMatrix = !POV.bIsOrthogonal
 		? Perspective(FMath::DegreesToRadians(OutView.FieldOfView), Aspect, OutView.NearClip, OutView.FarClip)
 		: Ortho(OutView.OrthoWidth, Aspect, OutView.NearClip, OutView.FarClip);
 	OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
 
 	OutView.Frustum = ExtractFrustumPlanes(OutView.ViewProjectionMatrix);
+
 	OutView.FrustumCorners = GenerateFrustumCorners(OutView.ViewProjectionMatrix.Inverse());
+
+	// 플레이어 컨트롤러의 카메라 매니저로부터 카메라 페이드 정보 수집
+	if (World)
+	{
+		if (APlayerController* PC = World->GetPlayerController())
+		{
+			if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+			{
+				if (PCM->HasActiveFade())
+				{
+					OutView.bCameraFade = true;
+					OutView.bFadeHUD = PCM->IsFadeHUD();
+					OutView.FadeColor = PCM->GetFadeColor();
+					OutView.FadeAmount = std::max(OutView.FadeAmount, PCM->GetFadeAmount());
+				}
+				if (PCM->GetLetterboxRatio() > 0.0f)
+				{
+					OutView.LetterboxRatio = std::max(OutView.LetterboxRatio, PCM->GetLetterboxRatio());
+				}
+			}
+		}
+	}
 
 	return OutView;
 }
@@ -508,39 +571,53 @@ bool FGameViewportClient::BeginSIEMode()
 {
 	if (bSIEMode)
 		return true;
-	if (!World || !World->GetMainCamera() ||
-		GUObjectArray.Find(World->GetMainCamera()) == INDEX_NONE ||
-		!IsValid(World->GetMainCamera()) || World->GetMainCamera()->IsActorBeingDestroyed())
+	if (!World)
 		return false;
 
-	FMinimalViewInfo POV;
-	bool bHasPOV = false;
-	if (APlayerController* Controller = World->GetPlayerController())
-		if (APlayerCameraManager* Manager = Controller->GetPlayerCameraManager())
-			if (const FMinimalViewInfo* CachedPOV = Manager->GetCameraCachePOV())
-			{
-				POV = *CachedPOV;
-				bHasPOV = true;
-			}
-	if (!bHasPOV)
+	ACameraActor* MainCameraActor = World->GetMainCamera();
+
+	if (!IsValid(MainCameraActor) || MainCameraActor->IsActorBeingDestroyed())
 	{
-		if (!CameraComponent || GUObjectArray.Find(CameraComponent) == INDEX_NONE ||
-			!IsValid(CameraComponent) || CameraComponent->IsBeingDestroyed()) CameraComponent = FindPlayerCamera();
-		if (!CameraComponent) return false;
-		CameraComponent->GetCameraView(POV);
+		return false;
 	}
-	UCameraComponent* MainCamera = World->GetMainCamera()->GetCameraComponent();
-	if (!MainCamera || !SetCameraWorldPose(*MainCamera, POV.Location, POV.Rotation)) return false;
-	MainCamera->SetFieldOfView(POV.FieldOfView);
-	MainCamera->SetNearZ(POV.NearClip);
-	MainCamera->SetFarZ(POV.FarClip);
-	MainCamera->SetIsOrthogonal(!POV.bIsPerspective);
-	MainCamera->SetOrthoWidth(POV.OrthoWidth);
+
+	UCameraComponent* MainCamera =	MainCameraActor->GetCameraComponent();
+
+	if (!IsValid(MainCamera) || MainCamera->IsBeingDestroyed())
+	{
+		return false;
+	}
+
+	FMinimalViewInfo CurrentView;
+
+	// 아직 bSIEMode가 false이므로 Manager의 POV를 우선 조회한다.
+	if (!TryGetViewInfo(CurrentView))
+	{
+		return false;
+	}
+
+	if (!SetCameraWorldPose(*MainCamera, CurrentView.Location, CurrentView.Rotation))
+	{
+		return false;
+	}
+
+	MainCamera->SetFieldOfView(CurrentView.FOV);
+	MainCamera->SetNearZ(CurrentView.NearClipPlane);
+	MainCamera->SetFarZ(CurrentView.FarClipPlane);
+	MainCamera->SetIsOrthogonal(CurrentView.bIsOrthogonal);
+	MainCamera->SetOrthoWidth(CurrentView.OrthoWidth);
+
+	if (Width > 0 && Height > 0)
+	{
+		MainCamera->SetAspectRatio(static_cast<float>(Width) / static_cast<float>(Height));
+	}
+
 	bPreviousMainCameraExternalInputManaged = MainCamera->IsExternalInputManaged();
 	MainCamera->SetExternalInputManaged(true);
 	CameraComponent = MainCamera;
 	bSIEMode = true;
 	LostFocus();
+
 	return true;
 }
 

@@ -7,6 +7,7 @@
 #include "Render/SceneView.h"
 #include "Render/SceneRenderData.h"
 #include "Render/SceneViewTargets.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Core/Delegates/Delegate.h"
 #include <functional>
 
@@ -18,9 +19,11 @@ class UCanvasWidget;
 class UWidget;
 class UButtonWidget;
 class UTextInputWidget;
+class APlayerCameraManager;
 class FWidgetRenderer;
 
 struct FWorldContext;
+struct FMinimalViewInfo;
 
 // 게임 뷰포트 클라이언트 클래스
 class FGameViewportClient : public FViewportClient
@@ -72,7 +75,7 @@ public:
 	bool RemoveWidgetOverlay(uint64 Handle);
 	void ClearWidgetOverlays();
 	UWidget* FindWidget(const FString& WidgetName) const;
-	void RenderUI();
+	void RenderUI(const FSceneView& View);
 	TMulticastDelegate<> OnUIRendered;
 	bool ProcessUIKey(int32 Key, bool bDown);
 	bool BindButtonAction(const FString& WidgetName, std::function<void()> Callback);
@@ -120,6 +123,7 @@ private:
 	float SIEWheelDelta = 0.0f;
 	bool bExitRequested = false;
 	bool bSIEModeRequested = false;
+	bool TryGetViewInfo(FMinimalViewInfo& OutView) const;
 
 	// 렌더 타깃 버퍼
 	uint32 Width = 0;

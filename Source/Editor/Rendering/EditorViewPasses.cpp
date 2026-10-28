@@ -25,6 +25,8 @@
 #include "Components/RectLightComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/BoxComponent.h"
+#include "Camera/CameraComponent.h"
+#include "Camera/SpringArmComponent.h"
 #include "Render/LineBatcher.h"
 #include "Text/TextRenderer.h"
 #include "Text/Font.h"
@@ -64,6 +66,7 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 {
 	if (bIsPIE || !ViewClient || !Resources.Settings) return;
 	ConfigureCollisionOverlay(Resources);
+	ConfigureSpringArmCameraOverlay(Resources);
 	if (Resources.MapTiles && Resources.MapTileEditor && Resources.EditorWorld)
 		Overlays.EditorMapTiles = [this]
 		{
@@ -106,6 +109,7 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 void FEditorViewPasses::ConfigureSIEOverlays(const FEditorOverlayResources& Resources)
 {
 	ConfigureCollisionOverlay(Resources);
+	ConfigureSpringArmCameraOverlay(Resources);
 	const FViewportSettings ViewportSetting{ 0, 0, Color->GetWidth(), Color->GetHeight(), 0.0f, 1.0f };
 	if (ShouldRenderOutline(Resources.Outline, View.ViewLocation))
 		Overlays.SIEOutline = [this, ViewportSetting]
@@ -126,6 +130,88 @@ void FEditorViewPasses::ConfigureCollisionOverlay(const FEditorOverlayResources&
 	OverlayResources = Resources;
 	if (Resources.bAllowCollisionDebug && Resources.Settings && Resources.Settings->bDrawAllCollision)
 		Overlays.CollisionLines = [this] { RenderCollisionLines(); };
+}
+
+void FEditorViewPasses::ConfigureSpringArmCameraOverlay(const FEditorOverlayResources& Resources)
+{
+	// Only editor viewports and the detached SIE camera call this path. The
+	// player's game view must never see a debug body enclosing its own camera.
+	if (Resources.Settings && Resources.Settings->bDrawSpringArmCamera && Resources.Lines && Resources.ActiveWorld)
+		Overlays.SpringArmCameraLines = [this] { RenderSpringArmCameraLines(); };
+}
+
+void FEditorViewPasses::RenderSpringArmCameraLines()
+{
+	FLineBatcher* Lines = OverlayResources.Lines;
+	UWorld* World = OverlayResources.ActiveWorld;
+	if (!Lines || !World || !World->GetPersistentLevel()) return;
+	Lines->BeginFrame();
+	const FVector4 CameraColor(0.0f, 0.9f, 1.0f, 1.0f);
+	const FVector4 DirectionColor(1.0f, 0.85f, 0.1f, 1.0f);
+	const FVector4 DesiredColor(0.6f, 0.6f, 0.6f, 1.0f);
+	for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+	{
+		if (!IsValid(Actor) || Actor->IsActorBeingDestroyed()) continue;
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			auto* Arm = Cast<USpringArmComponent>(Component);
+			if (!IsValid(Arm) || Arm->IsBeingDestroyed() || !Arm->IsActive()) continue;
+			const USceneComponent* End = Arm->GetArmEnd();
+			if (!End) continue;
+			const UCameraComponent* Camera = nullptr;
+			for (UActorComponent* Candidate : Actor->GetComponents())
+				if (auto* C = Cast<UCameraComponent>(Candidate); IsValid(C) && !C->IsBeingDestroyed() && C->GetAttachParent() == End)
+				{
+					Camera = C;
+					break;
+				}
+			if (!Camera) continue;
+			const FVector Offset = Arm->TargetOffset;
+			const bool bFiniteOffset = std::isfinite(Offset.X) && std::isfinite(Offset.Y) && std::isfinite(Offset.Z);
+			const FVector Start = Arm->GetWorldLocation() + (bFiniteOffset ? Offset : FVector::ZeroVector);
+			const FVector EndPosition = End->GetWorldLocation();
+			const FVector Desired = Arm->GetUnfixedCameraPosition();
+			const FVector4 ArmColor = Arm->IsCollisionFixApplied() ? FVector4(1.0f, 0.2f, 0.15f, 1.0f) : FVector4(0.2f, 1.0f, 0.3f, 1.0f);
+			Lines->AddLine(Start, Desired, DesiredColor);
+			Lines->AddLine(Start, EndPosition, ArmColor);
+			Lines->AddBox(FBox(Start - FVector(0.06f), Start + FVector(0.06f)), DirectionColor);
+			if (Arm->IsCollisionFixApplied())
+				Lines->AddBox(FBox(Desired - FVector(0.08f), Desired + FVector(0.08f)), DesiredColor);
+
+			// Pure overlay geometry: no PrimitiveComponent, collider, or gameplay
+			// overlap is created. Probe size stays in world units, like the sweep.
+			const float Radius = std::isfinite(Arm->ProbeSize) ? std::max(0.0f, Arm->ProbeSize) : 0.15f;
+			constexpr int Segments = 24;
+			for (int Plane = 0; Plane < 3; ++Plane)
+				for (int I = 0; I < Segments; ++I)
+				{
+					FVector A = EndPosition, B = EndPosition;
+					const int U = Plane, V = (Plane + 1) % 3;
+					const float AngleA = 2.0f * PI * I / Segments;
+					const float AngleB = 2.0f * PI * (I + 1) / Segments;
+					A[U] += Radius * std::cos(AngleA); A[V] += Radius * std::sin(AngleA);
+					B[U] += Radius * std::cos(AngleB); B[V] += Radius * std::sin(AngleB);
+					Lines->AddLine(A, B, ArmColor);
+				}
+			FMinimalViewInfo CameraView;
+			Camera->GetCameraView(0.0f, CameraView);
+			Lines->AddOrientedBox(FBox(FVector(-0.16f, -0.12f, -0.1f), FVector(0.08f, 0.12f, 0.1f)),
+				FTransform(CameraView.Rotation, CameraView.Location).GetLocalMatrix(), CameraColor);
+			Lines->AddLine(CameraView.Location, CameraView.Location + CameraView.Rotation.Quaternion().GetForwardVector() * 0.8f, DirectionColor);
+			// Short frustum uses the actual camera FOV/aspect, without changing its
+			// real clipping planes or any PlayerCameraManager/Modifier state.
+			CameraView.NearClipPlane = 0.12f;
+			CameraView.FarClipPlane = 0.8f;
+			CameraView.FOV = std::isfinite(CameraView.FOV) ? std::clamp(CameraView.FOV, 1.0f, 179.0f) : 60.0f;
+			CameraView.AspectRatio = std::isfinite(CameraView.AspectRatio) && CameraView.AspectRatio > 0.001f ? CameraView.AspectRatio : 16.0f / 9.0f;
+			CameraView.OrthoWidth = std::isfinite(CameraView.OrthoWidth) && CameraView.OrthoWidth > 0.001f ? CameraView.OrthoWidth : 1.0f;
+			const FFrustumCorners Corners = GenerateFrustumCorners((CameraView.GetViewMatrix() * CameraView.GetProjectionMatrix()).Inverse());
+			constexpr int Edges[][2] = { {0,1}, {1,3}, {3,2}, {2,0}, {4,5}, {5,7}, {7,6}, {6,4}, {0,4}, {1,5}, {2,6}, {3,7} };
+			for (const auto& Edge : Edges)
+				Lines->AddLine(Corners.Corners[Edge[0]], Corners.Corners[Edge[1]], CameraColor);
+		}
+	}
+	Lines->OnRender(View.ViewProjectionMatrix);
 }
 
 void FEditorViewPasses::RenderCollisionLines()
@@ -296,6 +382,7 @@ bool FEditorViewPasses::AddPasses(FRenderGraphBuilder& Graph, FSceneRenderer& Sc
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorMapTiles", Overlays.EditorMapTiles) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGrid", Overlays.EditorGrid) ||
 		!AddOverlay(Graph, FinalColor, {}, "CollisionLines", Overlays.CollisionLines) ||
+		!AddOverlay(Graph, FinalColor, {}, "SpringArmCameraDebug", Overlays.SpringArmCameraLines) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorOutline", Overlays.EditorOutline) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "EditorGizmo", Overlays.EditorGizmo, ERenderGraphLoadAction::Clear) ||
 		!AddOverlay(Graph, FinalColor, DepthRef, "SIEOutline", Overlays.SIEOutline) ||

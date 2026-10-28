@@ -4,6 +4,7 @@
 #include "Core/EngineLog.h"
 #include <commdlg.h>
 #include "Serialization/JsonArchive.h"
+#include "GameFramework/WorldSettings.h"
  
 FString FEditorFileUtils::CurrentScenePath = "";
 
@@ -13,6 +14,7 @@ bool FEditorFileUtils::NewScene(UWorld* World)
 		return false;
 
 	World->ClearWorld();
+	World->SpawnActor<AWorldSettings>();
 
 	// 라인 트래커도 삭제
 	World->GetPathTracker().ClearPath();

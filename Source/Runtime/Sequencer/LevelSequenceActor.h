@@ -17,6 +17,8 @@ class ALevelSequenceActor : public AActor
 		PROPERTY(bLoopSequence)
 		PROPERTY(PlayRate)
 		PROPERTY(bOverridePlayerCamera)
+		PROPERTY(bDisablePlayerInput)
+		PROPERTY(RestoreBlendTime)
 	REFLECT_END()
 
 	LUA_BIND_START(ALevelSequenceActor)
@@ -28,6 +30,9 @@ class ALevelSequenceActor : public AActor
 		LUA_FUNC(GetCurrentFrame)
 		LUA_FUNC(SetSequenceAssetPath)
 		LUA_FUNC(GetSequenceAssetPath)
+		LUA_FUNC(SetOnFinishedCallback)
+		LUA_FUNC(SetRestoreBlendTime)
+		LUA_FUNC(GetRestoreBlendTime)
 	LUA_BIND_END()
 
 public:
@@ -53,6 +58,12 @@ public:
 	void SetSequenceAssetPath(const FString& InPath) { SequenceAssetPath = InPath; bAssetLoaded = false; }
 	const FString& GetSequenceAssetPath() const { return SequenceAssetPath; }
 
+	void SetOnFinishedCallback(const sol::function& InCallback) { LuaFinishedCallback = InCallback; }
+	void SetRestoreBlendTime(float InBlendTime) { RestoreBlendTime = std::max(0.0f, InBlendTime); }
+	float GetRestoreBlendTime() const { return RestoreBlendTime; }
+	void SetDisablePlayerInput(bool bDisable) { bDisablePlayerInput = bDisable; }
+	bool GetDisablePlayerInput() const { return bDisablePlayerInput; }
+
 	bool ReloadSequenceAsset();
 	const FLevelSequenceData& GetSequenceData() const { return SequenceData; }
 
@@ -76,12 +87,15 @@ private:
 	void RestoreActorStates();
 	void ApplyFrameEvaluation(float EvalFrame, float PrevEvalFrame, bool bTriggerAudio);
 	void RestorePlayerCameraViewTarget();
+	void RestorePlayerInput();
 
 	FString SequenceAssetPath;
 	bool bAutoPlay = true;
 	bool bLoopSequence = false;
 	float PlayRate = 1.0f;
 	bool bOverridePlayerCamera = true;
+	bool bDisablePlayerInput = true;
+	float RestoreBlendTime = 0.0f;
 
 	FLevelSequenceData SequenceData;
 	bool bAssetLoaded = false;
@@ -94,7 +108,9 @@ private:
 	FMinimalViewInfo ActiveCameraPOV{};
 	bool bHasActiveCameraCut = false;
 	bool bOverrodeCameraTarget = false;
+	bool bInputDisabledBySequence = false;
 	AActor* PreviousCameraTarget = nullptr;
 	TArray<FActorState> SavedActorStates;
 	TArray<AActor*> SpawnedSequenceActors;
+	sol::function LuaFinishedCallback;
 };

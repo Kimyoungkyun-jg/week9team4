@@ -3,6 +3,7 @@
 #include "GhostAIComponent.h"
 #include "PacmanGameMode.h"
 #include "PlayerPawn.h"
+#include "FlashlightCollision.h"
 #include "Core/EngineLog.h"
 
 #include "Asset/AssetManager.h"
@@ -12,6 +13,8 @@
 #include "Components/LuaScriptComponent.h"
 #include "GameFramework/Actor/MapActor.h"
 #include "Engine/World.h"
+#include "Engine/GameInstance.h"
+#include "Audio/SoundManager.h"
 #include "Engine/Level.h"
 #include "Render/Material.h"
 #include "Render/Texture2D.h"
@@ -31,6 +34,17 @@ AGhostActor::AGhostActor()
 	CapsuleComponent->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
 	CapsuleComponent->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Overlap);
 	CapsuleComponent->SetGenerateOverlapEvents(true);
+	HurtCapsule = CreateDefaultSubobject<UCapsuleComponent>("FlashlightHurtCapsule");
+	HurtCapsule->SetupAttachment(GetRootComponent());
+	HurtCapsule->SetRelativeLocation(FVector(0.0f, 0.0f, 0.5f));
+	HurtCapsule->SetCapsuleSize(0.12f, 0.5f);
+	HurtCapsule->SetCollisionObjectType(ECollisionChannel::WorldDynamic);
+	HurtCapsule->SetCollisionResponseToAllChannels(ECollisionResponse::Ignore);
+	HurtCapsule->SetCollisionResponseToChannel(FlashlightAttackChannel, ECollisionResponse::Overlap);
+	HurtCapsule->SetGenerateOverlapEvents(true);
+	HurtCapsule->SetCollisionEnabled(true);
+	HitReactionPivot = CreateDefaultSubobject<USceneComponent>("HitReactionPivot");
+	HitReactionPivot->SetupAttachment(GetRootComponent());
 
 	// 순찰 시 사용할 탐지 박스 콜라이더
 	PatrolDetectionBox = CreateDefaultSubobject<UBoxComponent>("PatrolDetectionBox");
@@ -53,14 +67,14 @@ AGhostActor::AGhostActor()
 	ChaseDetectionBox->SetGenerateOverlapEvents(true);
 
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>("BodyMesh");
-	BodyMesh->SetupAttachment(GetRootComponent());
+	BodyMesh->SetupAttachment(HitReactionPivot);
 	BodyMesh->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Ghost/Ghost_Body.obj"));
 	BodyMesh->SetRelativeScale3D(FVector(0.4f));
 	BodyMesh->SetCollisionEnabled(false);
 	BodyMesh->SetReceiveSpecular(false);
 
 	EyesMesh = CreateDefaultSubobject<UStaticMeshComponent>("EyesMesh");
-	EyesMesh->SetupAttachment(GetRootComponent());
+	EyesMesh->SetupAttachment(HitReactionPivot);
 	EyesMesh->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Ghost/Ghost_Eyes.obj"));
 	EyesMesh->SetRelativeScale3D(FVector(0.4f));
 	EyesMesh->SetCollisionEnabled(false);
@@ -77,6 +91,9 @@ AGhostActor::AGhostActor()
 void AGhostActor::BeginPlay()
 {
 	Super::BeginPlay();
+	// Older scenes store these meshes directly under the root.
+	BodyMesh->SetupAttachment(HitReactionPivot);
+	EyesMesh->SetupAttachment(HitReactionPivot);
 
 	// MapActor가 있다면 바닥 타일 높이에 맞춰 위치 보정
 	UWorld* World = GetWorld();
@@ -131,6 +148,7 @@ void AGhostActor::BeginPlay()
 
 void AGhostActor::EndPlay()
 {
+	if (IsHitStopped()) CustomTimeDilation = TimeDilationBeforeHitStop;
 	if (CapsuleComponent)
 	{
 		CapsuleComponent->OnComponentBeginOverlap.RemoveAll(this);
@@ -140,7 +158,7 @@ void AGhostActor::EndPlay()
 
 void AGhostActor::OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, UPrimitiveComponent* OtherComp)
 {
-	if (!OtherComp) return;
+	if (!OtherComp || !CanDealContactDamage()) return;
 	AActor* OtherActor = OtherComp->GetOwner();
 	if (!OtherActor) return;
 
@@ -158,6 +176,31 @@ void AGhostActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	if (bHitFrozen) return;
+	if (ReactionPhase == EReactionPhase::HitStop)
+	{
+		ReactionRemaining -= GetWorld()->GetDeltaSeconds();
+		if (ReactionRemaining <= 0.0f)
+		{
+			CustomTimeDilation = TimeDilationBeforeHitStop;
+			HitReactionPivot->SetRelativeRotation(FRotator());
+			ReactionPhase = EReactionPhase::Recoil;
+			ReactionRemaining = StaggerDuration;
+		}
+	}
+	if (ReactionPhase == EReactionPhase::Recoil)
+	{
+		ReactionRemaining = std::max(0.0f, ReactionRemaining - DeltaTime);
+		const float Elapsed = StaggerDuration - ReactionRemaining;
+		const float Rise = std::min(1.0f, Elapsed / 0.07f);
+		const float Recover = std::clamp(ReactionRemaining / std::max(0.001f, StaggerDuration - 0.07f), 0.0f, 1.0f);
+		const float Angle = 35.0f * Rise * Recover;
+		const FVector LocalDirection = GetActorQuat().Inverse().RotateVector(ReactionDirection);
+		// Tilting local +Z toward the incoming push direction requires +Pitch
+		// for +X and -Roll for +Y in this engine's rotation convention.
+		HitReactionPivot->SetRelativeRotation(FRotator(Angle * LocalDirection.X, 0.0f, -Angle * LocalDirection.Y));
+		if (ReactionRemaining <= 0.0f) FinishHitReaction();
+		return;
+	}
 
 	// 이동(Root 위치)을 방해하지 않도록 메쉬에만 로컬 Z Bobbing 애니메이션 적용
 	RunningTime += DeltaTime;
@@ -296,4 +339,43 @@ void AGhostActor::ResetToHome()
 	{
 		AIComponent->MoveToNextPatrol();
 	}
+	if (IsStaggered()) FinishHitReaction();
+}
+
+void AGhostActor::ReceiveFlashlightHit(const FVector& Direction, float HitStopSeconds, float RecoilSeconds)
+{
+	if (!CanReceiveFlashlightHit()) return;
+	// Re-entering the reaction restarts it without replacing the saved response
+	// with the temporary Ignore used while the ghost is reacting.
+	if (!IsStaggered())
+		ContactResponseBeforeHit = CapsuleComponent->GetCollisionSettings().GetResponse(ECollisionChannel::Pawn);
+	if (!IsHitStopped()) TimeDilationBeforeHitStop = CustomTimeDilation;
+	StaggerDuration = std::max(0.1f, RecoilSeconds);
+	ReactionDirection = FVector(Direction.X, Direction.Y, 0.0f).GetSafeNormal();
+	if (HitStopSeconds > 0.0f)
+	{
+		ReactionPhase = EReactionPhase::HitStop;
+		ReactionRemaining = HitStopSeconds;
+		CustomTimeDilation = 0.0f;
+	}
+	else
+	{
+		CustomTimeDilation = TimeDilationBeforeHitStop;
+		HitReactionPivot->SetRelativeRotation(FRotator());
+		ReactionPhase = EReactionPhase::Recoil;
+		ReactionRemaining = StaggerDuration;
+	}
+	CapsuleComponent->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ECollisionResponse::Ignore);
+	if (UWorld* World = GetWorld())
+		if (UGameInstance* Instance = World->GetGameInstance())
+			if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->PlaySFX("Assets/Sounds/ghostheart.wav");
+	OnFlashlightHit.Broadcast();
+}
+
+void AGhostActor::FinishHitReaction()
+{
+	if (IsHitStopped()) CustomTimeDilation = TimeDilationBeforeHitStop;
+	ReactionPhase = EReactionPhase::None;
+	HitReactionPivot->SetRelativeRotation(FRotator());
+	CapsuleComponent->SetCollisionResponseToChannel(ECollisionChannel::Pawn, ContactResponseBeforeHit);
 }

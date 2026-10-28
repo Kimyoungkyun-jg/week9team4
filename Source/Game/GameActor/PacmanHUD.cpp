@@ -2,7 +2,9 @@
 #include "PacmanHUD.h"
 
 #include "CoinActor.h"
+#include "FlashlightActor.h"
 #include "PacmanGameMode.h"
+#include "PlayerPawn.h"
 #include "ScoreboardUI.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
@@ -87,9 +89,10 @@ void APacmanHUD::Tick(float DeltaTime)
 	if (bResultScreenOpen) LayoutResultScreen();
 	if (bNameEntryOpen) LayoutNameEntry();
 	if (bScoreboardOpen) ScoreboardUI::Layout(*this);
+	if (FindWidget("Button3")) LayoutCreditScreen();
 	UWorld* World = GetWorld();
 	UMinimapWidget* Minimap = Cast<UMinimapWidget>(FindWidget("Minimap"));
-	if (Minimap) LayoutGameUI();
+	if (Minimap || FindWidget("BatteryPanel")) LayoutGameUI();
 	if (!World || !Minimap || !World->GetPersistentLevel()) return;
 	const AMapActor* Map = nullptr;
 	for (AActor* Actor : World->GetPersistentLevel()->GetActors())
@@ -155,16 +158,23 @@ void APacmanHUD::OnWidgetShown(const FString& Path)
 		BindButton("SaveScore", [this] { SaveScore(); });
 		return;
 	}
+	if (Path == "Assets/UI/Creadit.ui.json")
+	{
+		bScoreboardOpen = false;
+		LayoutCreditScreen();
+		BindButton("Button3", [this]
+		{
+			if (FGameViewportClient* Viewport = GetGameViewport())
+				Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+		});
+		return;
+	}
 	if (Path != "Assets/UI/Scoreboard.ui.json") return;
 	bNameEntryOpen = false;
 	bScoreboardOpen = true;
 	ScoreboardUI::Layout(*this);
 	ScoreboardUI::Populate(*this, ClearSeconds);
-	BindButton("BackToMenu", [this]
-	{
-		if (FGameViewportClient* Viewport = GetGameViewport())
-			Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
-	});
+	BindButton("BackToMenu", [this] { ShowWidget("Assets/UI/Creadit.ui.json"); });
 }
 
 void APacmanHUD::LayoutGameUI()
@@ -199,6 +209,74 @@ void APacmanHUD::LayoutGameUI()
 	LayoutText("Life", 88.0f, 50.0f);
 	LayoutIcon("Coin", 170.0f);
 	LayoutText("Coins", 226.0f, 70.0f);
+
+	if (UTextWidget* SlomoLabel = Cast<UTextWidget>(FindWidget("SlomoLabel")))
+	{
+		SlomoLabel->SetAnchor({1.0f, 1.0f});
+		SlomoLabel->SetPivot({1.0f, 1.0f});
+		SlomoLabel->SetPosition({-32.0f * Scale, -50.0f * Scale});
+		SlomoLabel->SetSize({220.0f * Scale, 26.0f * Scale});
+		SlomoLabel->SetFontSize(20.0f * Scale);
+	}
+	if (UImageWidget* SlomoBarBG = Cast<UImageWidget>(FindWidget("SlomoBarBG")))
+	{
+		SlomoBarBG->SetAnchor({1.0f, 1.0f});
+		SlomoBarBG->SetPivot({1.0f, 1.0f});
+		SlomoBarBG->SetPosition({-32.0f * Scale, -24.0f * Scale});
+		SlomoBarBG->SetSize({204.0f * Scale, 18.0f * Scale});
+	}
+	if (UImageWidget* SlomoBar = Cast<UImageWidget>(FindWidget("SlomoBar")))
+	{
+		SlomoBar->SetAnchor({1.0f, 1.0f});
+		SlomoBar->SetPivot({1.0f, 1.0f});
+		float GaugeRatio = 1.0f;
+		if (UWorld* World = GetWorld())
+		{
+			if (APlayerPawn* PlayerPawn = Cast<APlayerPawn>(World->GetPlayerPawn()))
+			{
+				GaugeRatio = PlayerPawn->GetMaxSlomoGauge() > 0.0f ?
+					(PlayerPawn->GetSlomoGauge() / PlayerPawn->GetMaxSlomoGauge()) : 0.0f;
+			}
+		}
+		GaugeRatio = std::clamp(GaugeRatio, 0.0f, 1.0f);
+		const float FullWidth = 200.0f * Scale;
+		SlomoBar->SetPosition({(-34.0f - (1.0f - GaugeRatio) * 200.0f) * Scale, -26.0f * Scale});
+		SlomoBar->SetSize({FullWidth * GaugeRatio, 14.0f * Scale});
+	}
+
+	UCanvasWidget* BatteryPanel = Cast<UCanvasWidget>(FindWidget("BatteryPanel"));
+	if (!BatteryPanel) return;
+	BatteryPanel->SetPosition({32.0f * Scale, -32.0f * Scale});
+	BatteryPanel->SetSize({240.0f * Scale, 56.0f * Scale});
+
+	float BatteryFraction = 0.0f;
+	if (UWorld* World = GetWorld())
+		if (const auto* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
+			if (const AFlashlightActor* Flashlight = Player->GetFlashlightActor())
+				BatteryFraction = Flashlight->GetGaugeFraction();
+
+	const auto LayoutBatteryWidget = [this, Scale](const char* Name, FVector2 Position, FVector2 Size)
+	{
+		if (UWidget* Widget = FindWidget(Name))
+		{
+			Widget->SetPosition(Position * Scale);
+			Widget->SetSize(Size * Scale);
+		}
+	};
+	LayoutBatteryWidget("BatteryLabel", {0.0f, 0.0f}, {240.0f, 20.0f});
+	LayoutBatteryWidget("BatteryFrame", {0.0f, 26.0f}, {144.0f, 28.0f});
+	LayoutBatteryWidget("BatteryBackground", {2.0f, 28.0f}, {140.0f, 24.0f});
+	LayoutBatteryWidget("BatteryFill", {4.0f, 30.0f}, {136.0f * BatteryFraction, 20.0f});
+	LayoutBatteryWidget("BatteryCap", {144.0f, 34.0f}, {5.0f, 12.0f});
+	LayoutBatteryWidget("BatteryPercent", {160.0f, 22.0f}, {80.0f, 34.0f});
+	if (auto* Label = Cast<UTextWidget>(FindWidget("BatteryLabel")))
+		Label->SetFontSize(16.0f * Scale);
+	if (auto* Percent = Cast<UTextWidget>(FindWidget("BatteryPercent")))
+	{
+		Percent->SetFontSize(28.0f * Scale);
+		const int32 Percentage = static_cast<int32>(std::ceil(BatteryFraction * 100.0f));
+		Percent->SetText(std::to_string(Percentage) + "%");
+	}
 }
 
 void APacmanHUD::LayoutResultScreen()
@@ -226,6 +304,29 @@ void APacmanHUD::LayoutResultScreen()
 		Image->SetPivot({0, 0});
 		Image->SetPosition({(Width - ArtWidth * Scale) * 0.5f, (Height - ArtHeight * Scale) * 0.5f});
 		Image->SetSize({ArtWidth * Scale, ArtHeight * Scale});
+	}
+}
+
+void APacmanHUD::LayoutCreditScreen()
+{
+	FGameViewportClient* Viewport = GetGameViewport();
+	if (!Viewport) return;
+	const float Width = static_cast<float>(Viewport->GetWidth());
+	const float Height = static_cast<float>(Viewport->GetHeight());
+	if (Width <= 0.0f || Height <= 0.0f) return;
+	const float Scale = std::min(Width / 1672.0f, Height / 941.0f);
+	if (UButtonWidget* Button = Cast<UButtonWidget>(FindWidget("Button3")))
+	{
+		Button->SetPosition({0, 0});
+		Button->SetSize({Width, Height});
+		Button->SetText("");
+		Button->SetBackgroundColor({0, 0, 0, 1});
+		Button->SetHoverBackgroundColor({0, 0, 0, 1});
+	}
+	if (UImageWidget* Image = Cast<UImageWidget>(FindWidget("Image1")))
+	{
+		Image->SetPosition({(Width - 1672.0f * Scale) * 0.5f, (Height - 941.0f * Scale) * 0.5f});
+		Image->SetSize({1672.0f * Scale, 941.0f * Scale});
 	}
 }
 

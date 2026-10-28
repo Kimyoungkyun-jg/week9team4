@@ -18,6 +18,7 @@ public:
 	ATestPawn();
 	void BeginPlay() override;
 	void FireProjectile();
+	void PrimaryAction() override { FireProjectile(); }
 
 	static constexpr int32 ProjectilePoolSize = 16;
 	const std::array<AProjectileActor*, ProjectilePoolSize>& GetProjectiles() const { return Projectiles; }

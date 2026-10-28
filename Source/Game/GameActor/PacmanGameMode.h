@@ -10,6 +10,13 @@ class APacmanGameMode : public AGameMode
 		PROPERTY(LifeCount)
 	REFLECT_END()
 	LUA_BIND_START(APacmanGameMode)
+		UserType["Cast"] = [](AGameMode* Mode) { return Cast<APacmanGameMode>(Mode); };
+		LUA_FUNC(HasGameplayStarted)
+		LUA_FUNC(HasResultCinematicStarted)
+		LUA_FUNC(HasClearCinematicStarted)
+		LUA_DELEGATE(OnGameplayStarted)
+		LUA_DELEGATE(OnResultCinematicStarted)
+		LUA_DELEGATE(OnClearCinematicStarted)
 		LUA_FUNC(GetCollectedCoinCount)
 		LUA_FUNC(GetMaxCoinCount)
 		LUA_FUNC(GetPlayerLife)
@@ -22,8 +29,9 @@ public:
 	void BeginPlay() override;
 	void EndPlay() override;
 	void Tick(float DeltaTime) override;
-	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying; }
-	bool WantsMouseCapture() const { return !bResultShown; }
+	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying && !bIntroPlaying; }
+	bool AllowsCameraModeToggle() const override { return false; }
+	bool WantsMouseCapture() const override { return !bResultShown && !bIntroPlaying; }
 	int32 GetCollectedCoinCount() const { return GetCoinCount(); }
 	int32 GetMaxCoinCount() const { return MaxCoinCount; }
 	int32 GetPlayerLife() const;
@@ -31,6 +39,12 @@ public:
 	void StartGhostHit(class AGhostActor* Ghost, class APlayerPawn* Player);
 	double GetClearSeconds() const { return ClearSeconds; }
 	void ShowGameResult(bool bCleared);
+	bool HasGameplayStarted() const { return bGameplayStarted; }
+	bool HasResultCinematicStarted() const { return bResultCinematicStarted; }
+	bool HasClearCinematicStarted() const { return bClearCinematicStarted; }
+	TMulticastDelegate<> OnGameplayStarted;
+	TMulticastDelegate<> OnResultCinematicStarted;
+	TMulticastDelegate<> OnClearCinematicStarted;
 
 private:
 	int32 MaxCoinCount = 0;
@@ -38,6 +52,11 @@ private:
 	class ULuaScriptComponent* ScriptComponent = nullptr;
 	class UImageWidget* FadeImage = nullptr;
 	class ALevelSequenceActor* ResultSequenceActor = nullptr;
+	class ALevelSequenceActor* IntroSequenceActor = nullptr;
+	bool bIntroPlaying = false;
+	bool bGameplayStarted = false;
+	bool bResultCinematicStarted = false;
+	bool bClearCinematicStarted = false;
 	uint64 FadeOverlayHandle = 0;
 	float FadeElapsed = 0.0f;
 	bool bPendingClear = false;
@@ -64,7 +83,10 @@ private:
 	void BeginResultFade(bool bCleared);
 	void OnResultFadeRendered();
 	void OnResultSequenceFinished();
+	void PlayIntroSequence();
+	void OnIntroSequenceFinished();
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 	void ReleaseGhostHitCamera();
+	class APlayerCameraManager* GetPlayerCameraManager() const;
 };

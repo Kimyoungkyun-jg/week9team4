@@ -47,21 +47,29 @@ inline sol::object PushComponentToLua(lua_State* L, UActorComponent* Comp)
 class UWorld;
 class ULevel;
 struct FMinimalViewInfo;
+sol::object PushWorldToLua(lua_State* L, UWorld* World);
 
 class AActor : public UObject
 {
 	DECLARE_CLASS(AActor, UObject)
 	REFLECT_START(ClassName)
 		PROPERTY(bActorEnableCollision)
+		PROPERTY(CustomTimeDilation)
 		REFLECT_END()
 
 	LUA_BIND_START(AActor)
+		LUA_PROP(CustomTimeDilation)
 		LUA_FUNC(Destroy)
 		LUA_FUNC(GetRootComponent)
 		LUA_FUNC(GetName)
+		UserType["GetWorld"] = [](AActor& Self, sol::this_state s) -> sol::object {
+			return PushWorldToLua(s.lua_state(), Self.GetWorld());
+		};
 		LUA_FUNC(GetActorLocation)
 		LUA_FUNC(GetActorRotation)
 		LUA_FUNC(GetActorScale3D)
+		LUA_FUNC(GetCustomTimeDilation)
+		LUA_FUNC(SetCustomTimeDilation)
 		UserType["SetActorLocation"] = [](AActor& Self, const FVector& Loc, sol::optional<bool> bSweep) {
 			Self.SetActorLocation(Loc, bSweep.value_or(false));
 		};
@@ -177,6 +185,9 @@ public:
 
 	// UE와 같이 기본값은 bCanEverTick = false. 생성자에서 Target = this
 	FActorTickFunction PrimaryActorTick;
+	// Applied once by each Actor/Component tick function, using the component's owner.
+	// Attachment to another Actor does not inherit its time dilation.
+	float CustomTimeDilation = 1.0f;
 
 	using Super::Serialize;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
@@ -206,9 +217,13 @@ public:
 		return OutComponents;
 	}
 
+	void SetCustomTimeDilation(float InDilation) { CustomTimeDilation = std::max(0.0f, InDilation); }
+	float GetCustomTimeDilation() const { return CustomTimeDilation; }
+
 	virtual void RegisterAllComponents();
 	// Parameter : 바로 다시 Register 할껀지
 	virtual void UnregisterAllComponents();
+
 protected:
 	virtual void OnDefaultSubobjectCreated(UObject* Subobject) override;
 
@@ -224,5 +239,4 @@ private:
 	bool bHasEndedPlay = false;
 	bool bIsEndingPlay = false;
 	bool bActorIsBeingDestroyed = false;
-
 };

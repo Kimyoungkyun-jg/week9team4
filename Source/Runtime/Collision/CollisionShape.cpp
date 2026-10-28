@@ -136,6 +136,7 @@ FDistance Distance(const FCollisionGeometry& A, const FCollisionGeometry& B)
     if (AnalyticDistance(A, B, Analytic)) return Analytic;
     FSimplex S; S.push_back(Support(A, B, FVector(1, 0, 0)));
     FVector Closest = S[0].P, PA = S[0].A, PB = S[0].B;
+    FVector SeparatingNormal = (A.Center - B.Center).GetSafeNormal(SMALL_NUMBER, FVector(1, 0, 0));
     for (int Iter = 0; Iter < 64; ++Iter)
     {
         float Best = FLT_MAX;
@@ -158,8 +159,11 @@ FDistance Distance(const FCollisionGeometry& A, const FCollisionGeometry& B)
             Reduced.push_back(S[I]);
         }
         S = Reduced;
+        // Chaos GJK uses a unit search direction. Passing a tiny closest-point
+        // vector to Support would make GetSafeNormal substitute the X axis.
+        if (Best > 1.e-12f) SeparatingNormal = Closest / std::sqrt(Best);
         if (Best <= 1.e-10f || S.size() >= 4) break;
-        const FSupport Next = Support(A, B, -Closest);
+        const FSupport Next = Support(A, B, -SeparatingNormal);
         if (Best - Closest.Dot(Next.P) <= 1.e-7f * std::max(1.0f, Best)) break;
         bool Duplicate = false;
         for (const FSupport& V : S) if ((V.P - Next.P).SizeSquared() < 1.e-12f) Duplicate = true;
@@ -167,7 +171,7 @@ FDistance Distance(const FCollisionGeometry& A, const FCollisionGeometry& B)
         S.push_back(Next);
     }
     const float D = Closest.Size();
-    return { D, D > 1.e-6f ? Closest / D : (A.Center - B.Center).GetSafeNormal(SMALL_NUMBER, FVector(1, 0, 0)), PA, PB, S };
+    return { D, SeparatingNormal, PA, PB, S };
 }
 
 // EPA is needed only for an initially penetrating pair, not ordinary shape casts.
@@ -177,7 +181,6 @@ void Penetration(const FCollisionGeometry& A, const FCollisionGeometry& B, const
     if (AnalyticDistance(A, B, Analytic))
     {
         Hit.PenetrationDepth = std::max(0.f, -Analytic.Distance);
-        Hit.bStartPenetrating = Hit.PenetrationDepth > ContactTolerance;
         Hit.Normal = Hit.ImpactNormal = Analytic.Normal;
         Hit.ImpactPoint = Analytic.PointB;
         return;
@@ -189,7 +192,15 @@ void Penetration(const FCollisionGeometry& A, const FCollisionGeometry& B, const
         Candidates.push_back(P);
     };
     for (const auto& Point : DistanceResult.Simplex) AddPoint(Point);
-    auto AddDirection = [&](const FVector& D) { if (D.SizeSquared() > 1.e-12f) { AddPoint(Support(A, B, D)); AddPoint(Support(A, B, -D)); } };
+    auto AddDirection = [&](const FVector& D)
+    {
+        const float SizeSq = D.SizeSquared();
+        if (SizeSq > 1.e-12f)
+        {
+            const FVector Direction = D / std::sqrt(SizeSq);
+            AddPoint(Support(A, B, Direction)); AddPoint(Support(A, B, -Direction));
+        }
+    };
     // Extend the terminal GJK simplex in its missing dimensions. At most 14
     // unique points (1,001 tetrahedra), instead of 26 points / 14,950 combinations.
     const auto& Simplex = DistanceResult.Simplex;
@@ -234,8 +245,7 @@ void Penetration(const FCollisionGeometry& A, const FCollisionGeometry& B, const
         const FSupport Next = Support(A, B, Face.N);
         if (Next.P.Dot(Face.N) - Face.D < ContactTolerance || Iter == 79)
         {
-            Hit.PenetrationDepth = Face.D;
-            Hit.bStartPenetrating = Face.D > ContactTolerance;
+            Hit.PenetrationDepth = std::max(0.f, Face.D);
             Hit.Normal = Hit.ImpactNormal = -Face.N;
             std::vector<FSupport> Triangle{ V[Face.A], V[Face.B], V[Face.C] };
             double W[4]; FVector P;
@@ -334,6 +344,7 @@ bool OverlapCollisionGeometry(const FCollisionGeometry& A, const FCollisionGeome
     if (Hit)
     {
         *Hit = FHitResult(0.f); Hit->Location = A.Center; Hit->ImpactPoint = D.PointB;
+        Hit->bStartPenetrating = true;
         Hit->Normal = Hit->ImpactNormal = D.Normal;
         Penetration(A, B, D, *Hit);
     }
@@ -354,8 +365,14 @@ bool SweepCollisionGeometry(const FCollisionGeometry& Moving, const FVector& Del
         {
             Hit.Time = Time; Hit.Distance = Delta.Size() * Time; Hit.Location = Current.Center;
             Hit.ImpactPoint = D.PointB; Hit.Normal = Hit.ImpactNormal = Time > 0.f ? SeparatingNormal : D.Normal;
-            if (Time == 0.f) Penetration(Moving, Target, D, Hit);
-            if (Time == 0.f && bReportInitialPenetration && Hit.bStartPenetrating) return true;
+            if (Time == 0.f)
+            {
+                // Initial query contact and MTD depth are separate, as in UE's
+                // ConvertOverlappedShapeToImpactHit. Zero depth is still initial.
+                Hit.bStartPenetrating = true;
+                Penetration(Moving, Target, D, Hit);
+                if (bReportInitialPenetration) return true;
+            }
             // A touching pair may move apart or tangentially. An initial penetration
             // also permits movement out of the surface, leaving resolution to movement.
             if (Time == 0.f && Delta.Dot(Hit.Normal) >= -1.e-7f) return false;

@@ -32,20 +32,6 @@ AActor::~AActor()
 	}
 }
 
-void AActor::CalcCamera(float DeltaTime, FMinimalViewInfo& OutPOV) const
-{
-	(void)DeltaTime;
-	if (UCameraComponent* Camera = GetComponentByClass<UCameraComponent>();
-		IsValid(Camera) && !Camera->IsBeingDestroyed())
-	{
-		Camera->GetCameraView(OutPOV);
-		return;
-	}
-	OutPOV = FMinimalViewInfo{};
-	OutPOV.Location = GetActorLocation();
-	OutPOV.Rotation = GetActorRotation();
-}
-
 void AActor::BeginPlay()
 {
 	if (IsPendingKillPending() || bHasBegunPlay || bHasEndedPlay || !World || !World->HasBegunPlay()) return;
@@ -415,6 +401,25 @@ void AActor::UnregisterAllComponents()
 		if (Components.Find(Component) != INDEX_NONE && IsValid(Component) && Component->IsRegistered())
 			Component->UnregisterComponent();
 	}
+}
+
+void AActor::CalcCamera(float DeltaTime, FMinimalViewInfo& OutView) const
+{
+	TArray<UCameraComponent*> Cameras = GetComponentsByClass<UCameraComponent>();
+
+	for (UCameraComponent* CameraComponent : Cameras)
+	{
+		if (IsValid(CameraComponent) && CameraComponent->IsActive())
+		{
+			CameraComponent->GetCameraView(DeltaTime, OutView);
+			return;
+		}
+	}
+
+	// 활성 카메라가 없으면 Actor 기준 기본 시점을 제공.
+	OutView = FMinimalViewInfo{};
+	OutView.Location = GetActorLocation();
+	OutView.Rotation = GetActorRotation();
 }
 
 bool AActor::TryGetActorBounds(FBox& OutBounds) const
