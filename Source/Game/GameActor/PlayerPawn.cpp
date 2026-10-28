@@ -6,9 +6,12 @@
 #include "Audio/SoundManager.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/HeadBobComponent.h"
+#include "Camera/CameraModifier_HeadBob.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CharacterMovementComponent.h"
 #include "GameFramework/GameHUD.h"
+#include "GameFramework/PlayerController.h"
 #include <algorithm>
 #include <string>
 
@@ -75,7 +78,18 @@ void APlayerPawn::Tick(float DeltaTime)
 	const bool bMoved = bPlaying && (!Bob || !Bob->IsSuspended()) && FrameMovement.SizeSquared() > 0.00000001f;
 	const bool bStep = FootstepCadence.Advance(DeltaTime, bMoved);
 	// Camera effects use the completed grounded move, never input or a respawn teleport.
-	if (bPlaying && Bob) Bob->UpdateBob(DeltaTime, FrameMovement, bStep);
+	if (bPlaying && Bob)
+	{
+		Bob->UpdateBob(DeltaTime, FrameMovement, bStep, bGrounded);
+		if (auto* Controller = GetController())
+		{
+			if (auto* Manager = Controller->GetPlayerCameraManager(); IsValid(Manager) && !Manager->IsActorBeingDestroyed())
+			{
+				if (!Manager->FindCameraModifier(UCameraModifier_HeadBob::StaticClass()))
+					Manager->AddNewCameraModifier(UCameraModifier_HeadBob::StaticClass());
+			}
+		}
+	}
 	if (!bStep) return;
 	static constexpr const char* Steps[] = {"Assets/Sounds/footstep00.wav", "Assets/Sounds/footstep01.wav",
 		"Assets/Sounds/footstep02.wav", "Assets/Sounds/footstep03.wav", "Assets/Sounds/footstep04.wav"};
@@ -126,8 +140,7 @@ void APlayerPawn::RespawnAtPlayerStart()
 		Camera->SetRelativeLocation(PlayerStartCameraLocation);
 		Camera->SetRelativeRotation(PlayerStartCameraRotation);
 	}
-	// Keep cinematic suspension until the game mode releases camera ownership.
-	if (auto* Bob = GetHeadBobComponent()) Bob->Rebase();
+	// ResetWalkingEffects clears modifier input without releasing cinematic suspension.
 	if (auto* CollisionComponent = GetCapsuleComponent()) CollisionComponent->UpdateOverlaps();
 }
 

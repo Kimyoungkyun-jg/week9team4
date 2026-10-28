@@ -3,10 +3,18 @@
 #include "Components/ActorComponent.h"
 #include "Math/EngineMath.h"
 
-class UCameraComponent;
+struct FHeadBobMovementState
+{
+	bool bGrounded = false;
+	bool bWalking = false;
+	bool bStep = false;
+	float ForwardWeight = 0.0f;
+	uint64 UpdateSerial = 0;
+	uint64 ResetSerial = 0;
+};
 
-// Optional camera effect. The caller supplies completed movement and its footstep pulse
-// after movement simulation; this component never moves the pawn or plays game audio.
+// Pawn supplies completed movement and footsteps. The Modifier reads these settings
+// and inputs; this component never changes the CameraComponent transform.
 class UHeadBobComponent : public UActorComponent
 {
 	DECLARE_CLASS(UHeadBobComponent, UActorComponent)
@@ -15,33 +23,30 @@ class UHeadBobComponent : public UActorComponent
 		PROPERTY(Amplitude)
 		PROPERTY(ForwardMultiplier)
 		PROPERTY(Duration)
+		PROPERTY(IdleAmplitude)
+		PROPERTY(IdleFrequency)
+		PROPERTY(StateBlendTime)
 	REFLECT_END()
 public:
 	bool bEnabled = true;
 	float Amplitude = 0.04f;
 	float ForwardMultiplier = 1.5f;
 	float Duration = 0.24f;
+	// Idle breathing: distance units and cycles per second (Hz).
+	float IdleAmplitude = 0.006f;
+	float IdleFrequency = 0.25f;
+	float StateBlendTime = 0.3f;
 
 	void BeginPlay() override;
 	void EndPlay() override;
-	void UpdateBob(float DeltaTime, const FVector& CompletedMovement, bool bStep);
+	void UpdateBob(float DeltaTime, const FVector& CompletedMovement, bool bStep, bool bGrounded = true);
 	void Reset();
-	// Remove the effect before a cinematic takes ownership of the camera.
-	// Resume after the caller restores the camera; its current position becomes the base.
+	// Suppress both Idle and Walk effects while a cinematic owns the camera.
 	void SetSuspended(bool bValue);
 	bool IsSuspended() const { return bSuspended; }
-	// Call after explicitly restoring/teleporting the camera, including while suspended.
-	void Rebase();
+	const FHeadBobMovementState& GetMovementState() const { return MovementState; }
 
 private:
-	UCameraComponent* GetCamera() const;
-	void ClearPulse();
-	FVector BaseLocation = FVector::ZeroVector;
-	float Offset = 0.f;
-	float StartOffset = 0.f;
-	float StepAmplitude = 0.f;
-	float Elapsed = 0.f;
-	bool bActivePulse = false;
-	bool bReturning = false;
+	FHeadBobMovementState MovementState;
 	bool bSuspended = false;
 };
