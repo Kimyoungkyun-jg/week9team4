@@ -14,7 +14,7 @@ function PacmanGameMode:Tick()
     end
 
     
-	local maxCoins = 50
+	local maxCoins = 1
     if maxCoins > 0 and self.Mode:GetCollectedCoinCount() >= maxCoins then
         self.Mode:ShowGameResult(true)
         self.ResultShown = true
