@@ -9470,9 +9470,11 @@
                     "Name": "ALevelSequenceActor_1",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -9739,9 +9741,11 @@
                     "Name": "ALevelSequenceActor_0",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -9930,9 +9934,11 @@
                     "Name": "ALevelSequenceActor_2",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10121,9 +10127,11 @@
                     "Name": "ALevelSequenceActor_3",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10280,9 +10288,11 @@
                     "Name": "ALevelSequenceActor_4",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10471,9 +10481,11 @@
                     "Name": "ALevelSequenceActor_5",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10662,9 +10674,11 @@
                     "Name": "ALevelSequenceActor_6",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10821,9 +10835,11 @@
                     "Name": "ALevelSequenceActor_7",
                     "Properties": {
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/NewSequence.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": true,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -11051,6 +11067,170 @@
                         "bActorEnableCollision": false
                     },
                     "RootComponent": "CameraComponent"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": -1.920879602432251
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Pacman/pacman_grab.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 180.0
+                                    },
+                                    "Scale": {
+                                        "X": 20.0,
+                                        "Y": 20.0,
+                                        "Z": 20.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_4",
+                    "Properties": {
+                        "bActorEnableCollision": false
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 1.0818620920181274,
+                                        "Y": 0.4927063286304474,
+                                        "Z": -0.4768209755420685
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": -90.0
+                                    },
+                                    "Scale": {
+                                        "X": 0.30000001192092896,
+                                        "Y": 0.30000001192092896,
+                                        "Z": 0.30000001192092896
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Flashlight/Flashlight.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_5",
+                    "Properties": {
+                        "bActorEnableCollision": false
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}
