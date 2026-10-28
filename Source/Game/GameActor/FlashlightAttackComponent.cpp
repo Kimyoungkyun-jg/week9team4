@@ -9,6 +9,7 @@
 #include "Audio/SoundManager.h"
 #include "GameFramework/GameMode.h"
 #include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include <algorithm>
 #include <cmath>
 
@@ -73,6 +74,7 @@ bool UFlashlightAttackComponent::TryStartAttack()
 void UFlashlightAttackComponent::CancelAttack()
 {
 	EndHitStop();
+	StopHitCameraShake();
 	const bool bWasAttacking = IsAttacking();
 	Phase = EFlashlightAttackPhase::Idle;
 	PhaseElapsed = 0.0f;
@@ -136,6 +138,40 @@ void UFlashlightAttackComponent::BeginHitStop()
 	Player->CustomTimeDilation = 0.0f;
 	// The flashlight is attached to the player but is a separate Actor.
 	Light->CustomTimeDilation = 0.0f;
+	StartHitCameraShake();
+}
+
+void UFlashlightAttackComponent::StartHitCameraShake()
+{
+	StopHitCameraShake();
+	if (!bHitCameraShakeEnabled) return;
+	auto* Controller = GetWorld() ? GetWorld()->GetPlayerController() : nullptr;
+	if (!Live(Controller) || Controller->GetPawn() != GetOwner()) return;
+	auto* CameraManager = Controller->GetPlayerCameraManager();
+	if (!Live(CameraManager) || !CameraManager->IsViewTarget(GetOwner())) return;
+
+	FCameraShakeSettings Settings;
+	Settings.Pattern = ECameraShakePattern::PerlinNoise;
+	Settings.Seed = ++HitCameraShakeSeed;
+	Settings.Duration = HitCameraShakeDuration;
+	Settings.BlendInTime = std::min(0.01f, HitCameraShakeDuration * 0.1f);
+	Settings.BlendOutTime = HitCameraShakeDuration * 0.75f;
+	Settings.LocationAmplitude = HitCameraShakeLocationAmplitude;
+	Settings.LocationFrequency = FVector(HitCameraShakeFrequency, HitCameraShakeFrequency, HitCameraShakeFrequency);
+	Settings.RotationAmplitude = HitCameraShakeRotationAmplitude;
+	Settings.RotationFrequency = Settings.LocationFrequency;
+	// The manager advances with World delta, even while the player's delta is zero.
+	HitCameraShakeHandle = CameraManager->StartCameraShake(Settings, HitCameraShakeScale);
+}
+
+void UFlashlightAttackComponent::StopHitCameraShake()
+{
+	if (!HitCameraShakeHandle.IsValid()) return;
+	auto* Controller = GetWorld() ? GetWorld()->GetPlayerController() : nullptr;
+	if (Live(Controller))
+		if (auto* CameraManager = Controller->GetPlayerCameraManager(); Live(CameraManager))
+			CameraManager->StopCameraShake(HitCameraShakeHandle, true);
+	HitCameraShakeHandle = {};
 }
 
 void UFlashlightAttackComponent::SetPlayerTimeDilation(float Dilation)
