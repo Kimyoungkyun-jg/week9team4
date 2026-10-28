@@ -782,7 +782,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	}
 	constexpr EKeyCode Keys[] = { EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
 		EKeyCode::E, EKeyCode::Q, EKeyCode::Space, EKeyCode::Shift,
-		EKeyCode::Backspace, EKeyCode::Enter};
+		EKeyCode::Backspace, EKeyCode::Enter, EKeyCode::F6, EKeyCode::F7};
 	for (EKeyCode Key : Keys)
 	{
 		const bool bTextEditKey = Key == EKeyCode::Backspace || Key == EKeyCode::Enter;

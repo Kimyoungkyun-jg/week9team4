@@ -200,6 +200,32 @@ void APlayerController::InputKey(int32 Key, bool bDown)
 	bKeyDown[Key] = bDown;
 	UWorld* World = GetWorld();
 	const AGameMode* Mode = World ? World->GetGameMode() : nullptr;
+	if (bPressed &&
+		(Key == static_cast<int32>(EKeyCode::F6) || Key == static_cast<int32>(EKeyCode::F7)) &&
+		IsValid(PlayerCameraManager) && !PlayerCameraManager->IsActorBeingDestroyed() &&
+		(!World || !World->IsPaused()))
+	{
+		const bool bSineWave = Key == static_cast<int32>(EKeyCode::F6);
+		FCameraShakeSettings Settings;
+		Settings.Pattern = bSineWave
+			? ECameraShakePattern::SineWave
+			: ECameraShakePattern::PerlinNoise;
+		Settings.Duration = 3.0f;
+		Settings.BlendInTime = 0.1f;
+		Settings.BlendOutTime = 0.25f;
+		// Use small pitch/yaw offsets to compare the LMS examples without heavy shake.
+		Settings.LocationAmplitude = FVector::ZeroVector;
+		Settings.LocationFrequency = FVector::ZeroVector;
+		Settings.RotationAmplitude = FRotator(0.35f, 0.2f, 0.0f);
+		// Sine uses cycles/sec; Perlin uses lattice units/sec, so the values differ.
+		Settings.RotationFrequency = bSineWave
+			? FVector(2.2f, 1.1f, 0.0f)
+			: FVector(5.0f, 3.5f, 0.0f);
+		Settings.FOVAmplitude = 0.0f;
+		PlayerCameraManager->StopAllCameraShakes(true);
+		PlayerCameraManager->StartCameraShake(Settings);
+	}
+
 	if (bPressed && Key == static_cast<int32>(EKeyCode::Q) &&
 		IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed() &&
 		(!World || !World->IsPaused()) &&
