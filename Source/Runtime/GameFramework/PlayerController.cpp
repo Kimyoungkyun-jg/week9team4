@@ -198,6 +198,16 @@ void APlayerController::InputKey(int32 Key, bool bDown)
 	if (Key < 0 || Key >= 256) return;
 	const bool bPressed = bDown && !bKeyDown[Key];
 	bKeyDown[Key] = bDown;
+	UWorld* World = GetWorld();
+	const AGameMode* Mode = World ? World->GetGameMode() : nullptr;
+	if (bPressed && Key == static_cast<int32>(EKeyCode::Q) &&
+		IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed() &&
+		(!World || !World->IsPaused()) &&
+		(!Mode || (Mode->AllowsPlayerControllerInput() && Mode->AllowsCameraModeToggle())))
+	{
+		PossessedPawn->ToggleCameraMode();
+	}
+	
 	if (Key == static_cast<int32>(EKeyCode::Space) && IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed())
 	{
 		if (!bDown) PossessedPawn->StopJumping();
