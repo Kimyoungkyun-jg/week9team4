@@ -30,6 +30,7 @@ public:
 	void ClearInputState();
 	APlayerCameraManager* GetPlayerCameraManager() const { return PlayerCameraManager; }
 	void CalcCamera(float DeltaTime, FMinimalViewInfo& OutView) override;
+	void SetFallbackCameraView(const FMinimalViewInfo& InView) { FallbackCameraView = InView; }
 private:
 	APawn* PossessedPawn = nullptr;
 	AGameHUD* HUD = nullptr;

@@ -236,7 +236,7 @@ bool FGameViewportClient::TryGetViewInfo(FMinimalViewInfo& OutView) const
 		{
 			APlayerCameraManager* Manager =	PC->GetPlayerCameraManager();
 
-			if (IsValid(Manager) &&	!Manager->IsActorBeingDestroyed())
+			if (IsValid(Manager) &&	!Manager->IsActorBeingDestroyed() && Manager->HasValidCameraPOV())
 			{
 				OutView = Manager->GetCameraPOV();
 				return true;

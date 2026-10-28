@@ -1,9 +1,11 @@
 #include "EnginePCH.h"
 #include "Camera/PlayerCameraManager.h"
+#include "GameFramework/PlayerController.h"
 
 void APlayerCameraManager::InitializeFor(APlayerController* InController)
 {
 	PCOwner = InController;
+	bHasValidCameraPOV = false;
 }
 
 // Performs per-tick camera update.
@@ -32,15 +34,26 @@ void APlayerCameraManager::StopCameraFade()
 
 void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
 {
-	// TODO: 대상의 카메라 정보를 바탕으로 위치, 회전, FOV를 계산한다.
+    if (!IsValid(ViewTarget.Target) || ViewTarget.Target->IsActorBeingDestroyed())
+    {
+        if (!IsValid(PCOwner) || PCOwner->IsActorBeingDestroyed())
+        {
+            SetViewTarget(nullptr);
+            return;
+        }
 
-	if (!IsValid(ViewTarget.Target) || ViewTarget.Target->IsActorBeingDestroyed())
-	{
-		SetViewTarget(nullptr);
-		return;
-	}
+        // 사라진 Actor를 다시 조회하지 않고,
+        // 이미 계산된 시점을 Controller에 보관한다.
+        if (bHasValidCameraPOV)
+        {
+            PCOwner->SetFallbackCameraView(ViewTarget.POV);
+        }
 
-	ViewTarget.Target->CalcCamera(DeltaTime, ViewTarget.POV);
+        SetViewTarget(PCOwner);
+    }
+
+    ViewTarget.Target->CalcCamera(DeltaTime, ViewTarget.POV);
+    bHasValidCameraPOV = true;
 }
 
 void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime)

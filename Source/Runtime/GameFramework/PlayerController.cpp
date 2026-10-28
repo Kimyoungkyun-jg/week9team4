@@ -6,6 +6,7 @@
 #include "GameFramework/TestPawn.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraActor.h"
 #include <cstring>
 
 APlayerController::APlayerController()
@@ -24,6 +25,24 @@ void APlayerController::BeginPlay()
 
 	if (!World) { return; }
 
+	// 기본 카메라가 없어도 사용할 수 있는 초기 시점.
+	FallbackCameraView = FMinimalViewInfo{};
+	FallbackCameraView.Location = GetActorLocation();
+	FallbackCameraView.Rotation = GetActorRotation();
+
+	// 기본 카메라가 있으면 그 시점을 초기값으로 사용.
+	ACameraActor* MainCamera = World->GetMainCamera();
+
+	if (IsValid(MainCamera) && !MainCamera->IsActorBeingDestroyed())
+	{
+		UCameraComponent* Camera = MainCamera->GetCameraComponent();
+
+		if (IsValid(Camera) && !Camera->IsBeingDestroyed())
+		{
+			Camera->GetCameraView(0.0f, FallbackCameraView);
+		}
+	}
+
 	UClass* ManagerClass = PlayerCameraManagerClass;
 
 	if (!ManagerClass || !ManagerClass->IsChildOf(APlayerCameraManager::StaticClass()) || !ManagerClass->Constructor)
@@ -33,10 +52,22 @@ void APlayerController::BeginPlay()
 
 	PlayerCameraManager = Cast<APlayerCameraManager>(World->SpawnActor(ManagerClass));
 
-	if (PlayerCameraManager)
+	if (IsValid(PlayerCameraManager) &&	!PlayerCameraManager->IsActorBeingDestroyed())
 	{
 		PlayerCameraManager->InitializeFor(this);
-		PlayerCameraManager->SetViewTarget(GetPawn());
+
+		APawn* Pawn = GetPawn();
+		AActor* InitialTarget = this;
+
+		if (IsValid(Pawn) && !Pawn->IsActorBeingDestroyed())
+		{
+			InitialTarget = Pawn;
+		}
+
+		PlayerCameraManager->SetViewTarget(InitialTarget);
+
+		// 첫 화면 출력 전에 POV를 준비한다.
+		PlayerCameraManager->UpdateCamera(0.0f);
 	}
 }
 
@@ -88,7 +119,7 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 
 void APlayerController::GetPlayerViewCamera(FVector& OutLocation, FRotator& OutRotation) const
 {
-	if (IsValid(PlayerCameraManager) && !PlayerCameraManager->IsActorBeingDestroyed())
+	if (IsValid(PlayerCameraManager) && !PlayerCameraManager->IsActorBeingDestroyed() && PlayerCameraManager->HasValidCameraPOV())
 	{
 		const FMinimalViewInfo& View = PlayerCameraManager->GetCameraPOV();
 		OutLocation = View.Location;
@@ -126,46 +157,39 @@ void APlayerController::UnPossess()
 {
 	APawn* OldPawn = PossessedPawn;
 
+	const bool bViewingOldPawn =
+	{ 
+		OldPawn != nullptr && 
+		IsValid(PlayerCameraManager) && 
+		!PlayerCameraManager->IsActorBeingDestroyed() && 
+		PlayerCameraManager->GetViewTarget() == OldPawn 
+	};
+
+	if (bViewingOldPawn && PlayerCameraManager->HasValidCameraPOV())
+	{
+		// 정상 해제·파괴 상황 모두 마지막 계산 시점을 보존.
+		FallbackCameraView = PlayerCameraManager->GetCameraPOV();
+	}
+	else if (IsValid(OldPawn) && !OldPawn->IsActorBeingDestroyed())
+	{
+		// Manager가 아직 계산하지 않았다면 살아 있는 Pawn에서 얻는다.
+		OldPawn->CalcCamera(0.0f, FallbackCameraView);
+	}
+
+		
+
 	if (IsValid(OldPawn))
 	{
-		if (!OldPawn->IsActorBeingDestroyed())
-		{
-			FMinimalViewInfo SavedView{};
-
-			// 활성 카메라가 없는 Pawn도 기본 위치·회전을 제공한다.
-			SavedView.Location = OldPawn->GetActorLocation();
-			SavedView.Rotation = OldPawn->GetActorRotation();
-
-			// 활성카메라가 있으면 해당 카메라의 설정으로 변경
-			OldPawn->CalcCamera(0.0f, SavedView);
-
-			FallbackCameraView = SavedView;
-		}
 		OldPawn->UnPossessed();
 	}
 
 	PossessedPawn = nullptr;
 
-	if (!IsPendingKillPending() && OldPawn && IsValid(PlayerCameraManager) && PlayerCameraManager->GetViewTarget() == OldPawn)
+	// 콜백 실행 중 대상이 바뀌었을 수도 있으므로 다시 확인.
+	if (!IsPendingKillPending() && OldPawn && IsValid(PlayerCameraManager) && !PlayerCameraManager->IsActorBeingDestroyed() && PlayerCameraManager->GetViewTarget() == OldPawn)
 	{
 		PlayerCameraManager->SetViewTarget(this);
 	}
-
-/*
-	if (OldPawn)
-	{
-		OldPawn->UnPossessed();
-	}
-
-	PossessedPawn = nullptr;
-
-	// 현재 카메라 시점을 계산하는 기준 Actor가 이전의 Actor인지 체크
-	// UnPossess 과정에서 기존 Pawn이 ViewTarget이면 PlayerController 자신으로 되돌린다.
-	if (OldPawn && IsValid(PlayerCameraManager) && PlayerCameraManager->GetViewTarget() == OldPawn)
-	{
-		// ToFo: CalcCamera() 재정의 필요
-		PlayerCameraManager->SetViewTarget(this);
-	}*/
 }
 
 void APlayerController::InputKey(int32 Key, bool bDown)

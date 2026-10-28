@@ -50,6 +50,7 @@ public:
 
 	AActor* GetViewTarget() const { return ViewTarget.Target; }
 	const FMinimalViewInfo& GetCameraPOV() const { return ViewTarget.POV; }
+	bool HasValidCameraPOV() const { return bHasValidCameraPOV; }
 
 protected:
 	void UpdateViewTarget(float DeltaTime);
@@ -71,4 +72,5 @@ protected:
 
 	// TODO: Modifier의 추가/제거 및 수명 관리 방식을 정한다.
 	TArray<UCameraModifier*> ModifierList;
+	bool bHasValidCameraPOV = false;
 };
