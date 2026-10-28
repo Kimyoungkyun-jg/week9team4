@@ -2,6 +2,7 @@
 #include "PacmanHUD.h"
 
 #include "CoinActor.h"
+#include "PlayerPawn.h"
 #include "PacmanGameMode.h"
 #include "ScoreboardUI.h"
 #include "Engine/Level.h"
@@ -199,6 +200,40 @@ void APacmanHUD::LayoutGameUI()
 	LayoutText("Life", 88.0f, 50.0f);
 	LayoutIcon("Coin", 170.0f);
 	LayoutText("Coins", 226.0f, 70.0f);
+
+	if (UTextWidget* SlomoLabel = Cast<UTextWidget>(FindWidget("SlomoLabel")))
+	{
+		SlomoLabel->SetAnchor({1.0f, 1.0f});
+		SlomoLabel->SetPivot({1.0f, 1.0f});
+		SlomoLabel->SetPosition({-32.0f * Scale, -50.0f * Scale});
+		SlomoLabel->SetSize({220.0f * Scale, 26.0f * Scale});
+		SlomoLabel->SetFontSize(20.0f * Scale);
+	}
+	if (UImageWidget* SlomoBarBG = Cast<UImageWidget>(FindWidget("SlomoBarBG")))
+	{
+		SlomoBarBG->SetAnchor({1.0f, 1.0f});
+		SlomoBarBG->SetPivot({1.0f, 1.0f});
+		SlomoBarBG->SetPosition({-32.0f * Scale, -24.0f * Scale});
+		SlomoBarBG->SetSize({204.0f * Scale, 18.0f * Scale});
+	}
+	if (UImageWidget* SlomoBar = Cast<UImageWidget>(FindWidget("SlomoBar")))
+	{
+		SlomoBar->SetAnchor({1.0f, 1.0f});
+		SlomoBar->SetPivot({1.0f, 1.0f});
+		float GaugeRatio = 1.0f;
+		if (UWorld* World = GetWorld())
+		{
+			if (APlayerPawn* PlayerPawn = Cast<APlayerPawn>(World->GetPlayerPawn()))
+			{
+				GaugeRatio = PlayerPawn->GetMaxSlomoGauge() > 0.0f ? 
+					(PlayerPawn->GetSlomoGauge() / PlayerPawn->GetMaxSlomoGauge()) : 0.0f;
+			}
+		}
+		GaugeRatio = std::clamp(GaugeRatio, 0.0f, 1.0f);
+		const float FullWidth = 200.0f * Scale;
+		SlomoBar->SetPosition({(-34.0f - (1.0f - GaugeRatio) * 200.0f) * Scale, -26.0f * Scale});
+		SlomoBar->SetSize({FullWidth * GaugeRatio, 14.0f * Scale});
+	}
 }
 
 void APacmanHUD::LayoutResultScreen()

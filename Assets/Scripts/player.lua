@@ -36,20 +36,25 @@ function Player:Tick(deltaTime)
     end
     --]]
     local bKeyDown = Input.IsKeyDown(KeyCode.T)
-    if bKeyDown and not self.bIsSlomo then
+    local curGauge = self.Owner:GetSlomoGauge()
+
+    -- 게이지가 있고 T키를 누르고 있을 때 슬로우모션 활성화
+    if bKeyDown and curGauge > 0.0 and not self.bIsSlomo then
         self.bIsSlomo = true
+        self.Owner:SetSlomoActive(true)
         local world = self.Owner:GetWorld()
         local worldDilation = self.SlomoDilation
         local playerDilation = (worldDilation > 0.0) and (1.0 / worldDilation) or 1.0
         world:SetWorldTimeDilation(worldDilation)
         self.Owner:SetCustomTimeDilation(playerDilation)
-        Log("Slomo On")
-    elseif not bKeyDown and self.bIsSlomo then
+        Log("Slomo On (Gauge: " .. tostring(math.floor(curGauge)) .. ")")
+    elseif (not bKeyDown or curGauge <= 0.0) and self.bIsSlomo then
         self.bIsSlomo = false
+        self.Owner:SetSlomoActive(false)
         local world = self.Owner:GetWorld()
         world:SetWorldTimeDilation(1.0)
         self.Owner:SetCustomTimeDilation(1.0)
-        Log("Slomo Off")
+        Log("Slomo Off (Gauge: " .. tostring(math.floor(curGauge)) .. ")")
     end
 
     -- 키보드 F 키: FadeOut / FadeIn 토글 테스트

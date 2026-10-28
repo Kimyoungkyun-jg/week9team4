@@ -78,6 +78,28 @@ void APlayerPawn::Tick(float DeltaTime)
 	const FVector FrameMovement = bGrounded ? Movement->GetLastGroundedDisplacement() : FVector::ZeroVector;
 	const bool bMoved = bPlaying && (!Bob || !Bob->IsSuspended()) && FrameMovement.SizeSquared() > 0.00000001f;
 	const bool bStep = FootstepCadence.Advance(DeltaTime, bMoved);
+	// 슬로우 모션 게이지 소모 및 회복 처리 (초당 25 소모 / 12.5 회복)
+	if (bPlaying)
+	{
+		if (bIsSlomoActive)
+		{
+			SlomoGauge = std::max(0.0f, SlomoGauge - SlomoDrainRate * DeltaTime);
+			if (SlomoGauge <= 0.0f)
+			{
+				bIsSlomoActive = false;
+				if (PawnWorld)
+				{
+					PawnWorld->SetWorldTimeDilation(1.0f);
+					SetCustomTimeDilation(1.0f);
+				}
+			}
+		}
+		else
+		{
+			SlomoGauge = std::min(MaxSlomoGauge, SlomoGauge + SlomoRecoverRate * DeltaTime);
+		}
+	}
+
 	// Camera effects use the completed grounded move, never input or a respawn teleport.
 	if (bPlaying && Bob) Bob->UpdateBob(DeltaTime, FrameMovement, bStep);
 	if (!bStep) return;
@@ -138,6 +160,12 @@ void APlayerPawn::RespawnAtPlayerStart()
 void APlayerPawn::EndPlay()
 {
 	ResetWalkingEffects();
+	bIsSlomoActive = false;
+	if (UWorld* PawnWorld = GetWorld())
+	{
+		PawnWorld->SetWorldTimeDilation(1.0f);
+	}
+	SetCustomTimeDilation(1.0f);
 	if (FlashlightActor)
 	{
 		FlashlightActor->Destroy();

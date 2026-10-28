@@ -158,6 +158,104 @@
                     "ZOrder": 0,
                     "bVisible": true
                 }
+            },
+            {
+                "Children": [],
+                "Class": "UTextWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        1.0
+                    ],
+                    "Color": [
+                        0.4,
+                        0.8,
+                        1.0,
+                        1.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 22.0,
+                    "Pivot": [
+                        1.0,
+                        1.0
+                    ],
+                    "Position": [
+                        -32.0,
+                        -50.0
+                    ],
+                    "Size": [
+                        200.0,
+                        28.0
+                    ],
+                    "Text": "SLOW MOTION [T]",
+                    "WidgetName": "SlomoLabel",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        1.0
+                    ],
+                    "Pivot": [
+                        1.0,
+                        1.0
+                    ],
+                    "Position": [
+                        -32.0,
+                        -24.0
+                    ],
+                    "Size": [
+                        204.0,
+                        18.0
+                    ],
+                    "TexturePath": "WhiteTexture",
+                    "Tint": [
+                        0.1,
+                        0.1,
+                        0.15,
+                        0.8
+                    ],
+                    "WidgetName": "SlomoBarBG",
+                    "ZOrder": 1,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        1.0
+                    ],
+                    "Pivot": [
+                        1.0,
+                        1.0
+                    ],
+                    "Position": [
+                        -34.0,
+                        -26.0
+                    ],
+                    "Size": [
+                        200.0,
+                        14.0
+                    ],
+                    "TexturePath": "WhiteTexture",
+                    "Tint": [
+                        0.2,
+                        0.7,
+                        1.0,
+                        0.95
+                    ],
+                    "WidgetName": "SlomoBar",
+                    "ZOrder": 2,
+                    "bVisible": true
+                }
             }
         ],
         "Class": "UCanvasWidget",

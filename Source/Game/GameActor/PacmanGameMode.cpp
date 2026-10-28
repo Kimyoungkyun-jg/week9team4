@@ -569,6 +569,22 @@ void APacmanGameMode::OnIntroSequenceFinished()
 		}
 	}
 
+	// 1번 방식(시퀀서/씬 배치 기반): 인트로 연출용 IntroPacman 액터가 월드에 존재하면 종료 시 자동 파괴
+	if (UWorld* World = GetWorld())
+	{
+		if (ULevel* Level = World->GetPersistentLevel())
+		{
+			for (AActor* Actor : Level->GetActors())
+			{
+				if (Actor && Actor->GetName() == "IntroPacman")
+				{
+					World->DestroyActor(Actor);
+					break;
+				}
+			}
+		}
+	}
+
 	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
 	{
 		CameraManager->StopCameraFade();

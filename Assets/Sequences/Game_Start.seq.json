@@ -21,6 +21,46 @@
                 1.0,
                 1.0
             ]
+        },
+        {
+            "ActorName": "AStaticMeshActor_4",
+            "ClassName": "AStaticMeshActor",
+            "InitialFOV": 60.0,
+            "Location": [
+                0.0,
+                0.0,
+                -1.9059576988220215
+            ],
+            "Rotation": [
+                0.0,
+                180.0,
+                0.0
+            ],
+            "Scale": [
+                20.0,
+                20.0,
+                20.0
+            ]
+        },
+        {
+            "ActorName": "AStaticMeshActor_5",
+            "ClassName": "AStaticMeshActor",
+            "InitialFOV": 60.0,
+            "Location": [
+                1.0315526723861694,
+                0.5235838294029236,
+                -0.48470890522003174
+            ],
+            "Rotation": [
+                0.0,
+                -90.0,
+                0.0
+            ],
+            "Scale": [
+                0.30000001192092896,
+                0.30000001192092896,
+                0.30000001192092896
+            ]
         }
     ],
     "StartFrame": 0,
@@ -58,7 +98,7 @@
             "TransformKeys": [
                 {
                     "Frame": 0,
-                    "InterpMode": 1,
+                    "InterpMode": 0,
                     "Location": [
                         1.9158395528793335,
                         0.010554462671279907,
@@ -77,7 +117,7 @@
                 },
                 {
                     "Frame": 23,
-                    "InterpMode": 1,
+                    "InterpMode": 0,
                     "Location": [
                         -0.07543712854385376,
                         2.202749729156494,
@@ -96,7 +136,7 @@
                 },
                 {
                     "Frame": 45,
-                    "InterpMode": 1,
+                    "InterpMode": 0,
                     "Location": [
                         -1.2596932649612427,
                         0.09089494496583939,
@@ -115,7 +155,7 @@
                 },
                 {
                     "Frame": 68,
-                    "InterpMode": 1,
+                    "InterpMode": 0,
                     "Location": [
                         0.028483398258686066,
                         -1.68015456199646,
@@ -134,7 +174,7 @@
                 },
                 {
                     "Frame": 90,
-                    "InterpMode": 1,
+                    "InterpMode": 0,
                     "Location": [
                         -0.5662287473678589,
                         0.004281619563698769,
@@ -153,7 +193,7 @@
                 }
             ],
             "VisibilityKeys": [],
-            "bConstantSpeed": false,
+            "bConstantSpeed": true,
             "bExpanded": true,
             "bMuted": false,
             "bSmoothPath": true
@@ -193,6 +233,84 @@
             "TrackType": 5,
             "TransformKeys": [],
             "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "AStaticMeshActor_4",
+            "TrackName": "IntroPacman Visibility",
+            "TrackType": 4,
+            "TransformKeys": [],
+            "VisibilityKeys": [
+                {
+                    "Frame": 0,
+                    "bHiddenInGame": false,
+                    "bVisible": true
+                },
+                {
+                    "Frame": 90,
+                    "bHiddenInGame": true,
+                    "bVisible": false
+                }
+            ],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "AStaticMeshActor_5",
+            "TrackName": "IntroPacman Visibility Copy",
+            "TrackType": 4,
+            "TransformKeys": [],
+            "VisibilityKeys": [
+                {
+                    "Frame": 0,
+                    "bHiddenInGame": false,
+                    "bVisible": true
+                },
+                {
+                    "Frame": 90,
+                    "bHiddenInGame": true,
+                    "bVisible": false
+                }
+            ],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "AStaticMeshActor_4",
+            "TrackName": "IntroPacman Visibility Copy Copy",
+            "TrackType": 4,
+            "TransformKeys": [],
+            "VisibilityKeys": [
+                {
+                    "Frame": 0,
+                    "bHiddenInGame": false,
+                    "bVisible": true
+                },
+                {
+                    "Frame": 90,
+                    "bHiddenInGame": true,
+                    "bVisible": false
+                }
+            ],
             "bConstantSpeed": false,
             "bExpanded": true,
             "bMuted": false,
