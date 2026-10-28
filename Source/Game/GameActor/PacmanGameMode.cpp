@@ -372,12 +372,17 @@ void APacmanGameMode::BeginResultFade(bool bCleared)
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	if (!HUD) return;
 
-	APlayerController* PC = World->GetPlayerController();
-	APlayerCameraManager* CameraManager = PC ? PC->GetPlayerCameraManager() : nullptr;
-	if (CameraManager)
+	FadeOverlayHandle = HUD->AddOverlay("Assets/UI/ResultFade.ui.json", true);
+	FadeImage = Cast<UImageWidget>(HUD->FindWidget("ResultFade"));
+	if (!FadeOverlayHandle || !FadeImage)
 	{
-		CameraManager->FadeOut(0.4f, FLinearColor(0.0f, 0.0f,0.0f, 1.0f), true, true);
+		if (FadeOverlayHandle) HUD->RemoveOverlay(FadeOverlayHandle);
+		FadeOverlayHandle = 0;
+		FadeImage = nullptr;
+		return;
 	}
+	if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+		FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 
 	bPendingClear = bCleared;
 	CommitGameResult(bCleared);
