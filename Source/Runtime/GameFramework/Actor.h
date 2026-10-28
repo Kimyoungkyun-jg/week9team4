@@ -46,6 +46,7 @@ inline sol::object PushComponentToLua(lua_State* L, UActorComponent* Comp)
 
 class UWorld;
 class ULevel;
+struct FMinimalViewInfo;
 
 class AActor : public UObject
 {
@@ -207,6 +208,8 @@ public:
 	virtual void RegisterAllComponents();
 	// Parameter : 바로 다시 Register 할껀지
 	virtual void UnregisterAllComponents();
+
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutView);
 protected:
 	virtual void OnDefaultSubobjectCreated(UObject* Subobject) override;
 

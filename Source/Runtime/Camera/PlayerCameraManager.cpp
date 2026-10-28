@@ -1,14 +1,23 @@
 #include "EnginePCH.h"
 #include "Camera/PlayerCameraManager.h"
 
+void APlayerCameraManager::InitializeFor(APlayerController* InController)
+{
+	PCOwner = InController;
+}
+
+// Performs per-tick camera update.
+// Called once per tick after all other actors have been ticked.(출처: 언리얼)
 void APlayerCameraManager::UpdateCamera(float DeltaTime)
 {
 	// TODO: 시점 계산, Modifier 적용, 페이드 갱신을 순서대로 호출한다.
+
+	UpdateViewTarget(DeltaTime);
 }
 
 void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget)
 {
-	// TODO: 새 대상을 ViewTarget에 지정하고 필요한 전환 상태를 준비한다.
+	ViewTarget.Target = NewViewTarget;
 }
 
 void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color)
@@ -24,6 +33,14 @@ void APlayerCameraManager::StopCameraFade()
 void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
 {
 	// TODO: 대상의 카메라 정보를 바탕으로 위치, 회전, FOV를 계산한다.
+
+	if (!IsValid(ViewTarget.Target) || ViewTarget.Target->IsActorBeingDestroyed())
+	{
+		SetViewTarget(nullptr);
+		return;
+	}
+
+	ViewTarget.Target->CalcCamera(DeltaTime, ViewTarget.POV);
 }
 
 void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime)

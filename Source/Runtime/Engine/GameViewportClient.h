@@ -20,6 +20,7 @@ class UTextInputWidget;
 class FWidgetRenderer;
 
 struct FWorldContext;
+struct FMinimalViewInfo;
 
 // 게임 뷰포트 클라이언트 클래스
 class FGameViewportClient : public FViewportClient
@@ -118,6 +119,7 @@ private:
 	float SIEWheelDelta = 0.0f;
 	bool bExitRequested = false;
 	bool bSIEModeRequested = false;
+	bool TryGetViewInfo(FMinimalViewInfo& OutView) const;
 
 	// 렌더 타깃 버퍼
 	uint32 Width = 0;

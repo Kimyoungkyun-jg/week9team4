@@ -5,11 +5,54 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/TestPawn.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include <cstring>
 
 APlayerController::APlayerController()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	PlayerCameraManagerClass = APlayerCameraManager::StaticClass();
+}
+
+void APlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (IsPendingKillPending() || IsValid(PlayerCameraManager)) { return; }
+
+	UWorld* World = GetWorld();
+
+	if (!World) { return; }
+
+	UClass* ManagerClass = PlayerCameraManagerClass;
+
+	if (!ManagerClass || !ManagerClass->IsChildOf(APlayerCameraManager::StaticClass()) || !ManagerClass->Constructor)
+	{
+		ManagerClass = APlayerCameraManager::StaticClass();
+	}
+
+	PlayerCameraManager = Cast<APlayerCameraManager>(World->SpawnActor(ManagerClass));
+
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->InitializeFor(this);
+		PlayerCameraManager->SetViewTarget(GetPawn());
+	}
+}
+
+void APlayerController::EndPlay()
+{
+	APlayerCameraManager* Manager = PlayerCameraManager;
+	PlayerCameraManager = nullptr;
+
+	if (IsValid(Manager))
+	{
+		Manager->InitializeFor(nullptr);
+		Manager->SetViewTarget(nullptr);
+		Manager->Destroy();
+	}
+
+	Super::EndPlay();
 }
 
 void APlayerController::Tick(float DeltaTime)
@@ -45,6 +88,17 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 
 void APlayerController::GetPlayerViewCamera(FVector& OutLocation, FRotator& OutRotation) const
 {
+	if (IsValid(PlayerCameraManager) && !PlayerCameraManager->IsActorBeingDestroyed())
+	{
+		const FMinimalViewInfo& View = PlayerCameraManager->GetCameraPOV();
+		OutLocation = View.Location;
+		OutRotation = View.Rotation;
+		return;
+	}
+
+	OutLocation = FallbackCameraView.Location;
+	OutRotation = FallbackCameraView.Rotation;
+
 	if (!IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
 	OutLocation = PossessedPawn->GetActorLocation();
 	OutRotation = PossessedPawn->GetActorRotation();
@@ -61,13 +115,57 @@ void APlayerController::Possess(APawn* InPawn)
 	if (PossessedPawn == InPawn) return;
 	UnPossess();
 	PossessedPawn = InPawn;
+	if (IsValid(PlayerCameraManager))
+	{
+		PlayerCameraManager->SetViewTarget(PossessedPawn);
+	}
 	if (PossessedPawn) PossessedPawn->PossessedBy(this);
 }
 
 void APlayerController::UnPossess()
 {
-	if (PossessedPawn) PossessedPawn->UnPossessed();
+	APawn* OldPawn = PossessedPawn;
+
+	if (IsValid(OldPawn))
+	{
+		if (!OldPawn->IsActorBeingDestroyed())
+		{
+			FMinimalViewInfo SavedView{};
+
+			// 활성 카메라가 없는 Pawn도 기본 위치·회전을 제공한다.
+			SavedView.Location = OldPawn->GetActorLocation();
+			SavedView.Rotation = OldPawn->GetActorRotation();
+
+			// 활성카메라가 있으면 해당 카메라의 설정으로 변경
+			OldPawn->CalcCamera(0.0f, SavedView);
+
+			FallbackCameraView = SavedView;
+		}
+		OldPawn->UnPossessed();
+	}
+
 	PossessedPawn = nullptr;
+
+	if (!IsPendingKillPending() && OldPawn && IsValid(PlayerCameraManager) && PlayerCameraManager->GetViewTarget() == OldPawn)
+	{
+		PlayerCameraManager->SetViewTarget(this);
+	}
+
+/*
+	if (OldPawn)
+	{
+		OldPawn->UnPossessed();
+	}
+
+	PossessedPawn = nullptr;
+
+	// 현재 카메라 시점을 계산하는 기준 Actor가 이전의 Actor인지 체크
+	// UnPossess 과정에서 기존 Pawn이 ViewTarget이면 PlayerController 자신으로 되돌린다.
+	if (OldPawn && IsValid(PlayerCameraManager) && PlayerCameraManager->GetViewTarget() == OldPawn)
+	{
+		// ToFo: CalcCamera() 재정의 필요
+		PlayerCameraManager->SetViewTarget(this);
+	}*/
 }
 
 void APlayerController::InputKey(int32 Key, bool bDown)
@@ -103,4 +201,9 @@ void APlayerController::ClearInputState()
 	}
 	std::memset(bKeyDown, 0, sizeof(bKeyDown));
 	MouseAxisX = MouseAxisY = 0.0f;
+}
+
+void APlayerController::CalcCamera(float DeltaTime, FMinimalViewInfo& OutView)
+{
+	OutView = FallbackCameraView;
 }

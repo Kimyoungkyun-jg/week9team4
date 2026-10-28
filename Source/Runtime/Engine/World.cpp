@@ -38,6 +38,8 @@
 
 #include "UObject/UObjectGlobals.h"
 
+#include "Camera/PlayerCameraManager.h"
+
 namespace
 {
 	inline void WritePerObjectConstants(uint8* Dest, const FMatrix& LocalToWorld, const FMatrix& WorldToLocal,
@@ -154,6 +156,17 @@ void UWorld::Tick(float DeltaTime)
 			for (ULevel* Level : Levels)
 			{
 				PathTracker.Tick(Level->GetActors(), DeltaTime);
+			}
+
+			// 이동 관련 갱신이 끝난 후 카메라 시점 계산.
+			if (IsValid(PlayerController) && !PlayerController->IsActorBeingDestroyed())
+			{
+				APlayerCameraManager* Manager = PlayerController->GetPlayerCameraManager();
+
+				if (IsValid(Manager) && !Manager->IsActorBeingDestroyed())
+				{
+					Manager->UpdateCamera(DeltaTime);
+				}
 			}
 		}
 	}

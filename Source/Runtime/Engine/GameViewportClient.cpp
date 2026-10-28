@@ -9,6 +9,7 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/ViewportCameraMovement.h"
+#include "Camera/PlayerCameraManager.h"
 #include <cmath>
 #include "Math/Frustum.h"
 #include "Render/RenderCommand.h"
@@ -219,6 +220,55 @@ void FGameViewportClient::SetFocusedTextInput(UTextInputWidget* Input)
 	if (FocusedTextInput) FocusedTextInput->SetFocused(true);
 }
 
+bool FGameViewportClient::TryGetViewInfo(FMinimalViewInfo& OutView) const
+{
+	if (!World)
+	{
+		return false;
+	}
+
+	// 일반 게임에서는 Manager가 계산한 결과를 사용한다.
+	if (!bSIEMode)
+	{
+		APlayerController* PC = World->GetPlayerController();
+
+		if (IsValid(PC) && !PC->IsActorBeingDestroyed())
+		{
+			APlayerCameraManager* Manager =	PC->GetPlayerCameraManager();
+
+			if (IsValid(Manager) &&	!Manager->IsActorBeingDestroyed())
+			{
+				OutView = Manager->GetCameraPOV();
+				return true;
+			}
+		}
+	}
+
+	// SIE에서는 자유 카메라를 사용한다.
+	// Manager가 없을 때도 기존 컴포넌트 경로를 사용한다.
+	UCameraComponent* ViewCamera = CameraComponent;
+
+	if (!IsValid(ViewCamera) && !bSIEMode)
+	{
+		ViewCamera = FindPlayerCamera();
+	}
+		
+	if (!IsValid(ViewCamera))
+	{
+		ACameraActor* MainCamera = World->GetMainCamera();
+
+		if (IsValid(MainCamera) && !MainCamera->IsActorBeingDestroyed())
+		{
+			ViewCamera = MainCamera->GetCameraComponent();
+		}
+	}
+
+	if (!IsValid(ViewCamera) || ViewCamera->IsBeingDestroyed()) { return false; }
+
+	ViewCamera->GetCameraView(0.0f, OutView);
+	return true;
+}
+
 UButtonWidget* FGameViewportClient::HitTestButton(bool* bBlocked) const
 {
 	if (bBlocked) *bBlocked = false;
@@ -397,47 +447,34 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 		static_cast<uint32>(std::max(InViewRect.Height, 1.0f))
 	);
 
-	const float Aspect = static_cast<float>(Width) / static_cast<float>(Height);
+	FMinimalViewInfo CameraView;
 
-	if (!CameraComponent && World)
+	if (!TryGetViewInfo(CameraView))
 	{
-		CameraComponent = FindPlayerCamera();
-		if (!CameraComponent && World->GetMainCamera())
-			CameraComponent = World->GetMainCamera()->GetCameraComponent();
+		CameraView.Location = FVector(-5.0f, -10.0f, 10.0f);
+		CameraView.Rotation = FRotator(30.0f, 45.0f, 0.0f);
+		CameraView.FarClipPlane = 1000.0f;
 	}
 
-	if (CameraComponent)
-	{
-		CameraComponent->SetAspectRatio(Aspect);
+	CameraView.AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
+	OutView.ViewLocation = CameraView.Location;
+	OutView.ViewRotation = CameraView.Rotation;
+	OutView.ViewForward = CameraView.Rotation.Quaternion().GetForwardVector();
 
-		OutView.ViewLocation = CameraComponent->GetWorldLocation();
-		OutView.ViewRotation = CameraComponent->GetWorldRotation();
-		OutView.ViewForward = OutView.ViewRotation.Quaternion().GetForwardVector();
-		OutView.ViewMatrix = CameraComponent->GetViewMatrix();
-		OutView.ProjectionMatrix = CameraComponent->GetProjectionMatrix();
-		OutView.ViewProjectionMatrix = CameraComponent->GetViewProjectionMatrix();
-		OutView.FieldOfView = CameraComponent->GetFieldOfView();
-		OutView.AspectRatio = Aspect;
-		OutView.NearClip = CameraComponent->GetNearZ();
-		OutView.FarClip = CameraComponent->GetFarZ();
-		OutView.OrthoWidth = CameraComponent->GetOrthoWidth();
-		OutView.bIsPerspective = !CameraComponent->GetIsOrthogonal();
-		OutView.bIsWireframe = false;
-	}
-	else
-	{
-		OutView.ViewLocation = FVector(-5.0f, -10.0f, 10.0f);
-		OutView.ViewRotation = FRotator(30.0f, 45.0f, 0.0f);
-		OutView.ViewForward = OutView.ViewRotation.Quaternion().GetForwardVector();
-		OutView.FieldOfView = 60.0f;
-		OutView.AspectRatio = Aspect;
-		OutView.NearClip = 0.1f;
-		OutView.FarClip = 1000.0f;
-		OutView.bIsPerspective = true;
-		OutView.bIsWireframe = false;
-	}
+	OutView.FieldOfView = CameraView.FOV;
+	OutView.AspectRatio = CameraView.AspectRatio;
+	OutView.NearClip = CameraView.NearClipPlane;
+	OutView.FarClip = CameraView.FarClipPlane;
+	OutView.OrthoWidth = CameraView.OrthoWidth;
+	OutView.bIsPerspective = !CameraView.bIsOrthogonal;
+	OutView.bIsWireframe = false;
+
+	OutView.ViewMatrix = CameraView.GetViewMatrix();
+	OutView.ProjectionMatrix = CameraView.GetProjectionMatrix();
+	OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
 
 	OutView.Frustum = ExtractFrustumPlanes(OutView.ViewProjectionMatrix);
+
 	OutView.FrustumCorners = GenerateFrustumCorners(OutView.ViewProjectionMatrix.Inverse());
 
 	return OutView;
@@ -452,27 +489,53 @@ bool FGameViewportClient::BeginSIEMode()
 {
 	if (bSIEMode)
 		return true;
-	if (!World || !World->GetMainCamera())
+	if (!World)
 		return false;
 
-	if (!CameraComponent) CameraComponent = FindPlayerCamera();
-	if (!CameraComponent) return false;
+	ACameraActor* MainCameraActor = World->GetMainCamera();
 
-	UCameraComponent* MainCamera = World->GetMainCamera()->GetCameraComponent();
-	if (!MainCamera || MainCamera == CameraComponent) return false;
-	if (!SetCameraWorldPose(*MainCamera, CameraComponent->GetWorldLocation(),
-		CameraComponent->GetWorldRotation())) return false;
+	if (!IsValid(MainCameraActor) || MainCameraActor->IsActorBeingDestroyed())
+	{
+		return false;
+	}
 
-	MainCamera->SetFieldOfView(CameraComponent->GetFieldOfView());
-	MainCamera->SetNearZ(CameraComponent->GetNearZ());
-	MainCamera->SetFarZ(CameraComponent->GetFarZ());
-	MainCamera->SetIsOrthogonal(CameraComponent->GetIsOrthogonal());
-	MainCamera->SetOrthoWidth(CameraComponent->GetOrthoWidth());
+	UCameraComponent* MainCamera =	MainCameraActor->GetCameraComponent();
+
+	if (!IsValid(MainCamera) || MainCamera->IsBeingDestroyed())
+	{
+		return false;
+	}
+
+	FMinimalViewInfo CurrentView;
+
+	// 아직 bSIEMode가 false이므로 Manager의 POV를 우선 조회한다.
+	if (!TryGetViewInfo(CurrentView))
+	{
+		return false;
+	}
+
+	if (!SetCameraWorldPose(*MainCamera, CurrentView.Location, CurrentView.Rotation))
+	{
+		return false;
+	}
+
+	MainCamera->SetFieldOfView(CurrentView.FOV);
+	MainCamera->SetNearZ(CurrentView.NearClipPlane);
+	MainCamera->SetFarZ(CurrentView.FarClipPlane);
+	MainCamera->SetIsOrthogonal(CurrentView.bIsOrthogonal);
+	MainCamera->SetOrthoWidth(CurrentView.OrthoWidth);
+
+	if (Width > 0 && Height > 0)
+	{
+		MainCamera->SetAspectRatio(static_cast<float>(Width) / static_cast<float>(Height));
+	}
+
 	bPreviousMainCameraExternalInputManaged = MainCamera->IsExternalInputManaged();
 	MainCamera->SetExternalInputManaged(true);
 	CameraComponent = MainCamera;
 	bSIEMode = true;
 	LostFocus();
+
 	return true;
 }
 
