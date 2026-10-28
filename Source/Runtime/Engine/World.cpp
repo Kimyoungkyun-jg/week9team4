@@ -156,6 +156,8 @@ void UWorld::Tick(float DeltaTime)
 			{
 				PathTracker.Tick(Level->GetActors(), DeltaTime);
 			}
+			if (IsValid(PlayerController) && !PlayerController->IsActorBeingDestroyed())
+				PlayerController->UpdateCameraManager(DeltaTime);
 		}
 	}
 	else

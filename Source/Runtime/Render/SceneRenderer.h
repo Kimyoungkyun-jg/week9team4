@@ -24,6 +24,10 @@ struct FScenePassCallbacks // 공통 화면 효과의 실행 작업
 	std::function<bool()> HeightFog;
 	std::function<FConstantBuffer*(bool)> TranslucentFogConstants;
 	std::function<void()> SceneText;
+	std::function<bool()> Vignetting;
+	FTexture2D* VignettingOutput = nullptr;
+	std::function<bool()> GammaCorrection;
+	FTexture2D* GammaCorrectionOutput = nullptr;
 	std::function<bool()> FXAA;
 	FTexture2D* FXAAOutput = nullptr;
 };
@@ -58,6 +62,8 @@ public:
 	bool AddLightCullingDebugPass(FRenderGraphBuilder& Graph, FRenderer* Renderer,
 		FRenderGraphTextureRef Color, FRenderGraphTextureRef Depth);
 	bool DidCorePassSucceed() const { return bCorePassSucceeded; }
+	bool DidVignettingPassSucceed() const { return bVignettingPassSucceeded; }
+	bool DidGammaPassSucceed() const { return bGammaPassSucceeded; }
 	bool DidFXAAPassSucceed() const { return bFXAAPassSucceeded; }
 
 	// 반투명 렌더링
@@ -105,6 +111,8 @@ private:
 	TArray<FMeshDrawBatch> ForwardBatches;
 	FViewContext CachedViewContext;
 	bool bCorePassSucceeded = true;
+	bool bVignettingPassSucceeded = true;
+	bool bGammaPassSucceeded = true;
 	bool bFXAAPassSucceeded = true;
 	bool bHasFog = false;
 };

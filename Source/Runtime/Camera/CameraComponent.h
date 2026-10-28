@@ -26,6 +26,8 @@ public:
 	// Picking
 	FRay DeProjection(FVector2 MousePos, float ScreenW, float ScreenH);
 
+	void GetCameraView(struct FMinimalViewInfo& OutPOV) const;
+
 	// Get & Set
 	float GetFieldOfView() const { return FieldOfView; }
 	void SetFieldOfView(float InFieldOfView) { FieldOfView = InFieldOfView; }

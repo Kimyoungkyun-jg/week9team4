@@ -13,6 +13,7 @@
 #include "Engine/Level.h"
 #include "Core/EngineLog.h"
 #include "Serialization/StructuredArchive.h"
+#include "Serialization/StructuredArchiveSlots.h"
 #include <queue>
 #include <algorithm>
 #include <cmath>

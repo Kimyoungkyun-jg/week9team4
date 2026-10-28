@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "CameraComponent.h"
+#include "Camera/MinimalViewInfo.h"
 #include "Input/InputSystem.h"
 #include "../Collision/Ray.h"
 
@@ -172,4 +173,16 @@ FMatrix UCameraComponent::GetProjectionMatrix() const
 FMatrix UCameraComponent::GetViewProjectionMatrix() const
 {
     return GetViewMatrix() * GetProjectionMatrix();
+}
+
+void UCameraComponent::GetCameraView(FMinimalViewInfo& OutPOV) const
+{
+    OutPOV.Location = GetWorldLocation();
+    OutPOV.Rotation = GetWorldRotation();
+    OutPOV.FieldOfView = FieldOfView;
+    OutPOV.AspectRatio = AspectRatio;
+    OutPOV.NearClip = NearClipPlane;
+    OutPOV.FarClip = FarClipPlane;
+    OutPOV.OrthoWidth = OrthoWidth;
+    OutPOV.bIsPerspective = !bIsOrthogonal;
 }

@@ -13,15 +13,54 @@ APlayerController::APlayerController()
 	PrimaryActorTick.bCanEverTick = true;
 }
 
+void APlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+	if (IsPendingKillPending() || !GetWorld()) return;
+	PlayerCameraManager = GetWorld()->SpawnActor<APlayerCameraManager>();
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->SetFlags(EObjectFlags::RF_Transient);
+		PlayerCameraManager->Initialize(this);
+		PlayerCameraManager->SetViewTarget(PossessedPawn);
+	}
+}
+
+void APlayerController::EndPlay()
+{
+	APlayerCameraManager* Manager = GetPlayerCameraManager();
+	PlayerCameraManager = nullptr;
+	if (Manager && GetWorld() && GetWorld()->HasBegunPlay()) Manager->Destroy();
+	Super::EndPlay();
+}
+
+APlayerCameraManager* APlayerController::GetPlayerCameraManager() const
+{
+	return PlayerCameraManager && GUObjectArray.Find(PlayerCameraManager) != INDEX_NONE &&
+		IsValid(PlayerCameraManager) && !PlayerCameraManager->IsActorBeingDestroyed()
+		? PlayerCameraManager : nullptr;
+}
+
+void APlayerController::SetViewTarget(AActor* InTarget)
+{
+	if (APlayerCameraManager* Manager = GetPlayerCameraManager()) Manager->SetViewTarget(InTarget);
+}
+
+AActor* APlayerController::GetViewTarget() const
+{
+	if (APlayerCameraManager* Manager = GetPlayerCameraManager()) return Manager->GetViewTarget();
+	return nullptr;
+}
+
+void APlayerController::UpdateCameraManager(float DeltaTime)
+{
+	if (APlayerCameraManager* Manager = GetPlayerCameraManager()) Manager->UpdateCamera(DeltaTime);
+}
+
 void APlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	ProcessPlayerInput(DeltaTime);
-
-	if (PlayerCameraManager)
-	{
-		PlayerCameraManager->UpdateCamera(DeltaTime);
-	}
 }
 
 void APlayerController::ProcessPlayerInput(float DeltaTime)
@@ -68,31 +107,14 @@ void APlayerController::Possess(APawn* InPawn)
 	UnPossess();
 	PossessedPawn = InPawn;
 	if (PossessedPawn) PossessedPawn->PossessedBy(this);
-	SpawnPlayerCameraManager();
-}
-
-APlayerCameraManager* APlayerController::GetPlayerCameraManager()
-{
-	if (!PlayerCameraManager)
-	{
-		SpawnPlayerCameraManager();
-	}
-	return PlayerCameraManager;
-}
-
-void APlayerController::SpawnPlayerCameraManager()
-{
-	if (!PlayerCameraManager)
-	{
-		if (UWorld* World = GetWorld())
-		{
-			PlayerCameraManager = Cast<APlayerCameraManager>(World->SpawnActor(APlayerCameraManager::StaticClass()));
-		}
-	}
+	if (APlayerCameraManager* Manager = GetPlayerCameraManager())
+		if (!Manager->GetViewTarget()) Manager->SetViewTarget(PossessedPawn);
 }
 
 void APlayerController::UnPossess()
 {
+	if (APlayerCameraManager* Manager = GetPlayerCameraManager())
+		if (Manager->GetViewTarget() == PossessedPawn) Manager->SetViewTarget(nullptr);
 	if (PossessedPawn) PossessedPawn->UnPossessed();
 	PossessedPawn = nullptr;
 }

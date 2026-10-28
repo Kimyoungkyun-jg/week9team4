@@ -1,4 +1,5 @@
 #pragma pack_matrix(row_major)
+#include "ColorSpace.hlsli"
 
 cbuffer PerObjectConstants : register(b0)
 {
@@ -58,5 +59,5 @@ float4 mainPS(VSOutput Input) : SV_Target
 
     float x = Distance / Radius;
     float Attenuation = pow(saturate(1.0 - x), max(RadiusFallOff, 0.0f));
-    return Color * (Attenuation * Intensity);
+    return float4(SRGBToLinear(Color.rgb), Color.a) * (Attenuation * Intensity);
 }

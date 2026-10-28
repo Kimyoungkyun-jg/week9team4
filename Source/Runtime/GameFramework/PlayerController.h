@@ -14,6 +14,8 @@ class APlayerController : public AActor
 	REFLECT_END()
 public:
 	APlayerController();
+	void BeginPlay() override;
+	void EndPlay() override;
 	void Tick(float DeltaTime) override;
 	void ProcessPlayerInput(float DeltaTime);
 	void GetPlayerViewCamera(FVector& OutLocation, FRotator& OutRotation) const;
@@ -21,10 +23,11 @@ public:
 	void UnPossess();
 	APawn* GetPawn() const { return PossessedPawn; }
 	AGameHUD* GetHUD() const { return HUD; }
+	APlayerCameraManager* GetPlayerCameraManager() const;
+	void SetViewTarget(AActor* InTarget);
+	AActor* GetViewTarget() const;
+	void UpdateCameraManager(float DeltaTime);
 	void SetHUD(AGameHUD* InHUD) { HUD = InHUD; }
-	APlayerCameraManager* GetPlayerCameraManager();
-	void SetPlayerCameraManager(APlayerCameraManager* InCameraManager) { PlayerCameraManager = InCameraManager; }
-	void SpawnPlayerCameraManager();
 	void InputKey(int32 Key, bool bDown);
 	void InputAxis(EGameInputAxis Axis, float Delta);
 	void ClearInputState();

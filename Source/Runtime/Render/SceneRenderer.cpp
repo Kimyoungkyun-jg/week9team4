@@ -651,6 +651,8 @@ bool FSceneRenderer::AddPostProcessingPasses(FRenderGraphBuilder& Graph, FRender
 	const FRenderGraphTextureRef Depth = Graph.ImportTexture(Targets.Depth.get(), "SceneDepth");
 	if (!SceneColor || !Depth) return false;
 	bHasFog = false;
+	bVignettingPassSucceeded = true;
+	bGammaPassSucceeded = true;
 	bFXAAPassSucceeded = true;
 
 	if (!Options.bShowWorldNormal && Options.bDrawPrimitives && Callbacks.FireBall)
@@ -681,12 +683,36 @@ bool FSceneRenderer::AddPostProcessingPasses(FRenderGraphBuilder& Graph, FRender
 		return false;
 
 	FRenderGraphTextureRef FinalColor = SceneColor;
+	if (!Options.bShowWorldNormal && Callbacks.VignettingOutput && Callbacks.Vignetting)
+	{
+		FinalColor = Graph.ImportTexture(Callbacks.VignettingOutput, "VignettingOutput");
+		if (!FinalColor) return false;
+		FRenderGraphRasterPassDesc Pass = MakeViewportPass("Vignetting", FinalColor);
+		Pass.ReadTextures = { SceneColor };
+		if (!Graph.AddRasterPass(std::move(Pass), [this, ApplyVignetting = Callbacks.Vignetting]
+			{
+			bVignettingPassSucceeded = ApplyVignetting();
+			})) return false;
+	}
+	if (!Options.bShowWorldNormal && Callbacks.GammaCorrectionOutput && Callbacks.GammaCorrection)
+	{
+		const FRenderGraphTextureRef GammaInput = FinalColor;
+		FinalColor = Graph.ImportTexture(Callbacks.GammaCorrectionOutput, "GammaCorrectionOutput");
+		if (!FinalColor) return false;
+		FRenderGraphRasterPassDesc Pass = MakeViewportPass("GammaCorrection", FinalColor);
+		Pass.ReadTextures = { GammaInput };
+		if (!Graph.AddRasterPass(std::move(Pass), [this, ApplyGamma = Callbacks.GammaCorrection]
+			{
+			bGammaPassSucceeded = ApplyGamma();
+			})) return false;
+	}
 	if (!Options.bShowWorldNormal && Callbacks.FXAAOutput && Callbacks.FXAA)
 	{
+		const FRenderGraphTextureRef FXAAInput = FinalColor;
 		FinalColor = Graph.ImportTexture(Callbacks.FXAAOutput, "FXAAOutput");
 		if (!FinalColor) return false;
 		FRenderGraphRasterPassDesc Pass = MakeViewportPass("FXAA", FinalColor);
-		Pass.ReadTextures = { SceneColor };
+		Pass.ReadTextures = { FXAAInput };
 		if (!Graph.AddRasterPass(std::move(Pass), [this, ApplyFXAA = Callbacks.FXAA]
 			{
 			bFXAAPassSucceeded = ApplyFXAA();

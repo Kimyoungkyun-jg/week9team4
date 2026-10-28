@@ -1,8 +1,6 @@
 #include "EnginePCH.h"
 #include "Camera/PlayerCameraManager.h"
 
-APlayerCameraManager::APlayerCameraManager() = default;
-
 void APlayerCameraManager::UpdateCamera(float DeltaTime)
 {
 	// TODO: 시점 계산, Modifier 적용, 페이드 갱신을 순서대로 호출한다.

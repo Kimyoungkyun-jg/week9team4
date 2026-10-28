@@ -89,9 +89,18 @@ void FSettingsPanel::OnRender()
 	//////////////////////////////////////////////////////////
 
 	ImGui::Dummy(ImVec2(0.0f, SectionGap));
-	ImGui::SeparatorText("Anti-Aliasing");
+	ImGui::SeparatorText("Post Processing");
 
 	ImGui::Checkbox("Enable FXAA", &Settings.bEnableFXAA);
+	ImGui::Checkbox("Gamma Correction", &Settings.bEnableGammaCorrection);
+	ImGui::Checkbox("Vignetting", &Settings.Vignetting.bEnabled);
+	if (Settings.Vignetting.bEnabled)
+	{
+		ImGui::SliderFloat("Inner Radius", &Settings.Vignetting.InnerRadius, 0.0f, 1.0f);
+		ImGui::SliderFloat("Softness", &Settings.Vignetting.Softness, 0.01f, 1.0f);
+		ImGui::SliderFloat("Opacity", &Settings.Vignetting.Opacity, 0.0f, 1.0f);
+		ImGui::ColorEdit3("Vignette Color", Settings.Vignetting.Color.V);
+	}
 
 	//////////////////////////////////////////////////////////
 
@@ -308,6 +317,14 @@ bool FSettingsPanel::SaveSettings() const
 	File << "DrawPSGrid=" << Settings.bDrawPSGrid << "\n";
 	File << "SceneDepthMaxRange=" << Settings.SceneDepthMaxRange << "\n";
 	File << "EnableFXAA=" << Settings.bEnableFXAA << "\n";
+	File << "EnableGammaCorrection=" << Settings.bEnableGammaCorrection << "\n";
+	File << "EnableVignetting=" << Settings.Vignetting.bEnabled << "\n";
+	File << "VignetteInnerRadius=" << Settings.Vignetting.InnerRadius << "\n";
+	File << "VignetteSoftness=" << Settings.Vignetting.Softness << "\n";
+	File << "VignetteOpacity=" << Settings.Vignetting.Opacity << "\n";
+	File << "VignetteColorR=" << Settings.Vignetting.Color.X << "\n";
+	File << "VignetteColorG=" << Settings.Vignetting.Color.Y << "\n";
+	File << "VignetteColorB=" << Settings.Vignetting.Color.Z << "\n";
 	File << "LightCullingMode=" << (Settings.LightCullingMode == ELightCullingMode::Off ? "Off" : Settings.LightCullingMode == ELightCullingMode::Tiled ? "Tiled" : "Clustered") << "\n";
 	File << "RenderingPath=" << (Settings.RenderingPath == ERenderingPath::Forward ? "Forward" : "Deferred") << "\n";
 	File << "LightingModel=" << (Settings.LightingModel == ELightingModel::Gouraud ? "Gouraud" :
@@ -468,6 +485,14 @@ bool FSettingsPanel::LoadSettings()
 				else if (Key == "DrawPSGrid") Settings.bDrawPSGrid = std::stoi(ValueStr);
 				else if (Key == "SceneDepthMaxRange") Settings.SceneDepthMaxRange = std::stof(ValueStr);
 				else if (Key == "EnableFXAA") Settings.bEnableFXAA = std::stoi(ValueStr);
+				else if (Key == "EnableGammaCorrection") Settings.bEnableGammaCorrection = std::stoi(ValueStr);
+				else if (Key == "EnableVignetting") Settings.Vignetting.bEnabled = std::stoi(ValueStr);
+				else if (Key == "VignetteInnerRadius") Settings.Vignetting.InnerRadius = std::stof(ValueStr);
+				else if (Key == "VignetteSoftness") Settings.Vignetting.Softness = std::stof(ValueStr);
+				else if (Key == "VignetteOpacity") Settings.Vignetting.Opacity = std::stof(ValueStr);
+				else if (Key == "VignetteColorR") Settings.Vignetting.Color.X = std::stof(ValueStr);
+				else if (Key == "VignetteColorG") Settings.Vignetting.Color.Y = std::stof(ValueStr);
+				else if (Key == "VignetteColorB") Settings.Vignetting.Color.Z = std::stof(ValueStr);
 				else if (Key == "LightCullingMode")
 				{
 					if (ValueStr == "Off") Settings.LightCullingMode = ELightCullingMode::Off;

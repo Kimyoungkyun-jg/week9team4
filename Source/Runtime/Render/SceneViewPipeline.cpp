@@ -3,6 +3,8 @@
 
 #include "Render/Effects/FireBallRenderer.h"
 #include "Render/Effects/FXAARenderer.h"
+#include "Render/Effects/GammaCorrectionRenderer.h"
+#include "Render/Effects/VignettingRenderer.h"
 #include "Render/Effects/HeightFogRenderer.h"
 #include "Render/SkyboxRenderer.h"
 #include "Text/TextRenderer.h"
@@ -23,11 +25,15 @@ void FSceneViewPipeline::Init(FRenderer* Renderer)
 	FireBall = MakeUnique<FFireBallRenderer>();
 	HeightFog = MakeUnique<FHeightFogRenderer>();
 	FXAA = MakeUnique<FFXAARenderer>();
+	GammaCorrection = MakeUnique<FGammaCorrectionRenderer>();
+	Vignetting = MakeUnique<FVignettingRenderer>();
 	Text = MakeUnique<FTextRenderer>();
 	Skybox = MakeUnique<FSkyboxRenderer>();
 	FireBall->Init(Renderer);
 	HeightFog->Init(Renderer);
 	FXAA->Init(Renderer);
+	GammaCorrection->Init();
+	Vignetting->Init();
 	Text->Init();
 	Skybox->Init("Assets/SkySphere/Sky.hdr");
 }
@@ -38,7 +44,7 @@ bool FSceneViewPipeline::Prepare(FRenderGraphBuilder& Graph, FPreparedView& Prep
 {
 	FTexture2D* Color = Targets.SceneColor.get();
 	FTexture2D* Depth = Targets.Depth.get();
-	if (!World || !Renderer || !Skybox || !FireBall || !HeightFog || !FXAA || !Text ||
+	if (!World || !Renderer || !Skybox || !FireBall || !HeightFog || !FXAA || !GammaCorrection || !Vignetting || !Text ||
 		!Color || !Depth || !Color->GetWidth() || !Color->GetHeight() ||
 		!Targets.IsValidFor(Color->GetWidth(), Color->GetHeight()))
 		return false;
@@ -49,12 +55,35 @@ bool FSceneViewPipeline::Prepare(FRenderGraphBuilder& Graph, FPreparedView& Prep
 	Callbacks.TranslucentFogConstants = [this](bool bHasFog) { return HeightFog->GetTranslucentFogConstants(bHasFog); };
 	Callbacks.SceneText = [this, World, &View] { RenderSceneText(World, View); };
 
+	Prepared.bUseVignetting = Options.Vignetting.bEnabled && !Options.bShowSceneDepth &&
+		!Options.bShowWorldNormal && Vignetting->PrepareOutput(Color);
+	if (Options.Vignetting.bEnabled && !Options.bShowSceneDepth &&
+		!Options.bShowWorldNormal && !Prepared.bUseVignetting)
+		return false;
+	FTexture2D* PostVignettingColor = Prepared.bUseVignetting ? Vignetting->GetOutputTarget().get() : Color;
+	if (Prepared.bUseVignetting)
+	{
+		Callbacks.VignettingOutput = PostVignettingColor;
+		Callbacks.Vignetting = [this, Color, Settings = Options.Vignetting]
+			{ return Vignetting->OnRender(Color, Settings); };
+	}
+	Prepared.bUseGammaCorrection = Options.bEnableGammaCorrection && !Options.bShowSceneDepth &&
+		!Options.bShowWorldNormal && GammaCorrection->PrepareOutput(PostVignettingColor);
+	if (Options.bEnableGammaCorrection && !Options.bShowSceneDepth &&
+		!Options.bShowWorldNormal && !Prepared.bUseGammaCorrection)
+		return false;
+	FTexture2D* PostGammaColor = Prepared.bUseGammaCorrection ? GammaCorrection->GetOutputTarget().get() : PostVignettingColor;
+	if (Prepared.bUseGammaCorrection)
+	{
+		Callbacks.GammaCorrectionOutput = PostGammaColor;
+		Callbacks.GammaCorrection = [this, PostVignettingColor] { return GammaCorrection->OnRender(PostVignettingColor); };
+	}
 	Prepared.bUseFXAA = Options.bEnableFXAA && !Options.bShowSceneDepth &&
-		!Options.bShowWorldNormal && FXAA->PrepareOutput(Color);
+		!Options.bShowWorldNormal && FXAA->PrepareOutput(PostGammaColor);
 	if (Prepared.bUseFXAA)
 	{
 		Callbacks.FXAAOutput = FXAA->GetOutputTarget().get();
-		Callbacks.FXAA = [this, Color] { return FXAA->OnRender(Color); };
+		Callbacks.FXAA = [this, PostGammaColor] { return FXAA->OnRender(PostGammaColor); };
 	}
 
 	if (!SceneRenderer.AddViewportPasses(Graph, Renderer, Targets, Options, Skybox.get(), Callbacks, Prepared.FinalColor))
@@ -66,9 +95,17 @@ bool FSceneViewPipeline::Prepare(FRenderGraphBuilder& Graph, FPreparedView& Prep
 bool FSceneViewPipeline::Execute(FRenderGraphBuilder& Graph, const FPreparedView& Prepared,
 	FSceneRenderer& SceneRenderer, FSceneViewTargets& Targets)
 {
-	if (!Graph.Execute() || !SceneRenderer.DidCorePassSucceed() || !SceneRenderer.DidFXAAPassSucceed())
+	if (!Graph.Execute() || !SceneRenderer.DidCorePassSucceed() ||
+		!SceneRenderer.DidVignettingPassSucceed() ||
+		!SceneRenderer.DidGammaPassSucceed() || !SceneRenderer.DidFXAAPassSucceed())
 		return false;
 	if (Prepared.bUseFXAA && !Targets.SwapSceneColorAndBind(FXAA->GetOutputTarget()))
+		return false;
+	if (!Prepared.bUseFXAA && Prepared.bUseGammaCorrection &&
+		!Targets.SwapSceneColorAndBind(GammaCorrection->GetOutputTarget()))
+		return false;
+	if (!Prepared.bUseFXAA && !Prepared.bUseGammaCorrection && Prepared.bUseVignetting &&
+		!Targets.SwapSceneColorAndBind(Vignetting->GetOutputTarget()))
 		return false;
 	RenderCommand::EndRenderPass();
 	return true;
