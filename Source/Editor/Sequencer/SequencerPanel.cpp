@@ -14,6 +14,8 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Render/Mesh.h"
 #include "Render/LineBatcher.h"
 #include "Input/InputSystem.h"
 #include "Core/EngineLog.h"
@@ -852,6 +854,9 @@ bool FSequencerPanel::SaveSequenceAsset(const FString& Path)
 			Entry.ActorName = ActorName;
 			Entry.ClassName = Actor->GetClass()->Name;
 			Entry.InitialTransform = Actor->GetActorTransform();
+			Entry.bActorEnableCollision = Actor->GetActorEnableCollision();
+			if (const auto* Mesh = Actor->GetComponentByClass<UStaticMeshComponent>())
+				if (Mesh->GetStaticMesh()) Entry.StaticMeshPath = Mesh->GetStaticMesh()->GetPath();
 			if (UCameraComponent* Camera = Actor->GetComponentByClass<UCameraComponent>())
 				Entry.InitialFOV = Camera->GetFieldOfView();
 		}
@@ -1101,7 +1106,7 @@ void FSequencerPanel::SyncPilotedCameraToViewport()
 	Client->SetViewportType(ELevelViewportType::Perspective);
 	Client->SetViewLocation(POV.Location);
 	Client->SetViewRotation(POV.Rotation);
-	Client->SetViewFOV(POV.FieldOfView);
+	Client->SetViewFOV(POV.FOV);
 	LastPilotViewLocation = POV.Location;
 	LastPilotViewRotation = POV.Rotation;
 	LastPilotFrame = CurrentFrame;
@@ -1120,7 +1125,7 @@ void FSequencerPanel::SyncCameraToActiveViewport()
 		{
 			Client->SetViewLocation(EvaluatedCameraPOV.Location);
 			Client->SetViewRotation(EvaluatedCameraPOV.Rotation);
-			Client->SetViewFOV(EvaluatedCameraPOV.FieldOfView);
+			Client->SetViewFOV(EvaluatedCameraPOV.FOV);
 		}
 	}
 }
@@ -2015,9 +2020,33 @@ void FSequencerPanel::DrawTrackInspector()
 				{
 					if (FEditorViewportClient* Client = ViewportsPanel->GetViewportClient(ViewportsPanel->GetActiveViewIndex()))
 					{
-						Key.Location = Client->GetViewLocation();
-						Key.Rotation = Client->GetViewRotation();
+						const FVector CapturedLoc = Client->GetViewLocation();
+						const FRotator CapturedRot = Client->GetViewRotation();
+						Key.Location = CapturedLoc;
+						Key.Rotation = CapturedRot;
+
+						// 타임라인 커서를 키프레임 프레임과 동기화
+						CurrentFrame = Key.Frame;
+
+						// 월드 대상 액터의 트랜스폼 즉시 갱신
+						if (World)
+						{
+							if (AActor* Target = FLevelSequenceAsset::FindActorByNameInWorld(World, Track.TargetActorName))
+							{
+								Target->SetActorLocation(CapturedLoc, false);
+								Target->SetActorRotation(CapturedRot, false);
+							}
+						}
+
+						// Camera Lock으로 인해 방금 잡은 뷰포트 카메라가 시퀀서 컷으로 덮어씌워지는 것 방지
+						const bool bPrevLock = bCameraLock;
+						bCameraLock = false;
 						EvaluateAtCurrentFrame(false);
+						bCameraLock = bPrevLock;
+
+						// 뷰포트 카메라 위치를 방금 캡처한 위치로 확실하게 유지
+						Client->SetViewLocation(CapturedLoc);
+						Client->SetViewRotation(CapturedRot);
 					}
 				}
 			}
