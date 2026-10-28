@@ -1,0 +1,25 @@
+{
+    "EndFrame": 150,
+    "FrameRate": 30,
+    "SpawnableActors": [],
+    "StartFrame": 0,
+    "Tracks": [
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "",
+            "TrackName": "Camera Cuts",
+            "TrackType": 0,
+            "TransformKeys": [],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        }
+    ],
+    "Version": 2,
+    "bLoop": false
+}

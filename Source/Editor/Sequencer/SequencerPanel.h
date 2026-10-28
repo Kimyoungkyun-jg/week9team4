@@ -19,7 +19,7 @@ public:
 	void OnRender() override;
 	const char* GetPanelName() const override { return "Sequencer"; }
 
-	void SetWorld(UWorld* InWorld) { World = InWorld; }
+	void SetWorld(UWorld* InWorld) { if (World != InWorld) StopPilotingCamera(); World = InWorld; }
 	void SetOutlinerPanel(FOutlinerPanel* InOutliner) { OutlinerPanel = InOutliner; }
 	void SetViewportsPanel(FViewportsPanel* InViewports) { ViewportsPanel = InViewports; }
 	void SetGizmo(FGizmo* InGizmo) { Gizmo = InGizmo; }
@@ -30,6 +30,9 @@ public:
 
 	void DrawTrajectoryLines(FLineBatcher* LineBatcher) const;
 	bool IsCameraLockActive() const { return bCameraLock && bHasEvaluatedCameraCut; }
+	bool IsPlaying() const { return bIsPlaying; }
+	FSequenceCameraEffects GetCameraEffects() const
+	{ return FLevelSequenceAsset::EvaluateCameraEffects(SequenceData, bIsPlaying ? PlaybackFrameFloat : static_cast<float>(CurrentFrame)); }
 
 	FLevelSequenceData& GetSequenceData() { return SequenceData; }
 	const FLevelSequenceData& GetSequenceData() const { return SequenceData; }
@@ -49,6 +52,9 @@ public:
 	void ToggleTrackExpandedAt(int32 TrackIndex);
 
 	void AddKeyframeAtCurrentFrame(int32 TrackIndex);
+	void DeleteKeyAt(int32 TrackIndex, int32 KeyIndex);
+	void CopySelectedKey();
+	void PasteCopiedKeyAtCurrentFrame();
 
 private:
 	void DrawToolbar();
@@ -58,6 +64,10 @@ private:
 	void SyncCameraToActiveViewport();
 	void SpawnCutsceneCamera();
 	void SpawnSequenceActorInLevel();
+	void StartPilotingCamera();
+	void StopPilotingCamera();
+	void SyncPilotedCameraToViewport();
+	int32 FindPilotedTransformTrackIndex() const;
 
 	UWorld* World = nullptr;
 	FOutlinerPanel* OutlinerPanel = nullptr;
@@ -75,12 +85,20 @@ private:
 	int32 FirstFrame = 0;
 	int32 SelectedTrackIndex = -1;
 	int32 SelectedKeyIndex = -1;
+	FSequenceTrack CopiedKeyTrack;
+	bool bHasCopiedKey = false;
 	bool bSequencerExpanded = true;
 
 	bool bIsPlaying = false;
 	bool bCameraLock = true;
 	bool bAutoKey = false;
 	bool bShowTrajectory = true;
+	bool bPilotingCamera = false;
+	FString PilotedCameraName;
+	int32 PilotedViewportIndex = -1;
+	int32 LastPilotFrame = -1;
+	FVector LastPilotViewLocation{};
+	FRotator LastPilotViewRotation{};
 
 	FMinimalViewInfo EvaluatedCameraPOV{};
 	bool bHasEvaluatedCameraCut = false;

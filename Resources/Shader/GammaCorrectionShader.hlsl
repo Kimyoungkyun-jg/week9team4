@@ -1,5 +1,13 @@
 #include "ColorSpace.hlsli"
 
+cbuffer CinematicOverlayConstants : register(b0)
+{
+    float FadeOpacity;
+    float LetterboxSize;
+    float ApplyGamma;
+    float Padding;
+};
+
 Texture2D<float4> LinearSceneColor : register(t0);
 
 struct FPSInput
@@ -18,5 +26,11 @@ FPSInput mainVS(uint VertexID : SV_VertexID)
 float4 mainPS(FPSInput Input) : SV_Target
 {
     float4 Color = LinearSceneColor.Load(int3(int2(Input.Position.xy), 0));
-    return float4(LinearToSRGB(Color.rgb), Color.a);
+    uint Width, Height;
+    LinearSceneColor.GetDimensions(Width, Height);
+    float Y = Input.Position.y / max(float(Height), 1.0f);
+    if (Y < LetterboxSize || Y > 1.0f - LetterboxSize)
+        return float4(0.0f, 0.0f, 0.0f, Color.a);
+    float3 OutputColor = ApplyGamma > 0.5f ? LinearToSRGB(Color.rgb) : Color.rgb;
+    return float4(lerp(OutputColor, float3(0.0f, 0.0f, 0.0f), saturate(FadeOpacity)), Color.a);
 }

@@ -38,6 +38,9 @@ namespace ImSequencer
 		virtual void Add(int) {}
 		virtual void Del(int) {}
 		virtual void Duplicate(int) {}
+		virtual void SelectTrack(int) {}
+		virtual bool CanEditItemRange(int) const { return true; }
+		virtual bool DrawOnMainRow(int) const { return false; }
 
 		virtual void Copy() {}
 		virtual void Paste() {}

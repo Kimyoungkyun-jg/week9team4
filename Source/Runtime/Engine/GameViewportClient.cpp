@@ -2,6 +2,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Engine/Level.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -11,6 +12,7 @@
 #include "Camera/MinimalViewInfo.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Camera/ViewportCameraMovement.h"
+#include "Sequencer/LevelSequenceActor.h"
 #include <cmath>
 #include "Math/Frustum.h"
 #include "Render/RenderCommand.h"
@@ -457,6 +459,19 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 	OutView.OrthoWidth = std::isfinite(POV.OrthoWidth) ? std::max(POV.OrthoWidth, 0.001f) : 16.0f;
 	OutView.bIsPerspective = POV.bIsPerspective;
 	OutView.bIsWireframe = false;
+	if (World && World->GetPersistentLevel())
+	{
+		for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+		{
+			if (!Actor || !IsValid(Actor) || Actor->IsActorBeingDestroyed()) continue;
+			ALevelSequenceActor* Sequence = Cast<ALevelSequenceActor>(Actor);
+			if (!Sequence || !Sequence->HasCameraEffectsView()) continue;
+			const FSequenceCameraEffects Effects = FLevelSequenceAsset::EvaluateCameraEffects(Sequence->GetSequenceData(), Sequence->GetCurrentFrame());
+			OutView.FadeOpacity = Effects.FadeOpacity;
+			OutView.LetterboxSize = Effects.LetterboxSize;
+			break;
+		}
+	}
 	OutView.ViewMatrix = FMatrix::MakeTranslation(POV.Location * -1.0f) *
 		POV.Rotation.Quaternion().ToFMatrix().GetTransposed();
 	OutView.ProjectionMatrix = POV.bIsPerspective

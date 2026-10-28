@@ -82,8 +82,10 @@ void ALevelSequenceActor::PlaySequence()
 
 	CurrentFrame = static_cast<float>(SequenceData.StartFrame);
 	PreviousFrame = -1.0f;
+	FLevelSequenceAsset::SpawnMissingActors(SequenceData, GetWorld());
 	bIsPlayingSequence = true;
 	bIsPausedSequence = false;
+	bHoldFinalCameraEffects = false;
 
 	ApplyFrameEvaluation(CurrentFrame, PreviousFrame, true);
 	PreviousFrame = CurrentFrame;
@@ -101,6 +103,7 @@ void ALevelSequenceActor::StopSequence()
 {
 	bIsPlayingSequence = false;
 	bIsPausedSequence = false;
+	bHoldFinalCameraEffects = false;
 	bHasActiveCameraCut = false;
 	RestorePlayerCameraViewTarget();
 }
@@ -114,7 +117,9 @@ void ALevelSequenceActor::SetCurrentFrame(float InFrame)
 	const float Clamped = bAssetLoaded
 		? FMath::Clamp(InFrame, static_cast<float>(SequenceData.StartFrame), static_cast<float>(SequenceData.EndFrame))
 		: InFrame;
+	if (bAssetLoaded) FLevelSequenceAsset::SpawnMissingActors(SequenceData, GetWorld());
 	ApplyFrameEvaluation(Clamped, CurrentFrame, false);
+	bHoldFinalCameraEffects = true;
 	CurrentFrame = Clamped;
 	PreviousFrame = Clamped;
 }
@@ -149,6 +154,7 @@ void ALevelSequenceActor::Tick(float DeltaTime)
 		ApplyFrameEvaluation(CurrentFrame, PreviousFrame, true);
 		PreviousFrame = CurrentFrame;
 		StopSequence();
+		bHoldFinalCameraEffects = true;
 		return;
 	}
 

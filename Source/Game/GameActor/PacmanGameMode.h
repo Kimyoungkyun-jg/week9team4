@@ -36,6 +36,7 @@ private:
 	int32 LifeCount = 3;
 	class ULuaScriptComponent* ScriptComponent = nullptr;
 	class UImageWidget* FadeImage = nullptr;
+	class ALevelSequenceActor* ClearSequenceActor = nullptr;
 	uint64 FadeOverlayHandle = 0;
 	float FadeElapsed = 0.0f;
 	bool bPendingClear = false;
@@ -59,6 +60,7 @@ private:
 	uint64 HitOverlayHandle = 0;
 	bool bGhostHitPlaying = false;
 	void CommitGameResult(bool bCleared);
+	void BeginResultFade(bool bCleared);
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 	void ReleaseGhostHitCamera();

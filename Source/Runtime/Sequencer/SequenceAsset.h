@@ -17,7 +17,9 @@ enum class ESequenceTrackType : int32
 	CameraCut = 0,
 	ActorTransform = 1,
 	CameraFOV = 2,
-	Audio = 3
+	Audio = 3,
+	ActorVisibility = 4,
+	CameraEffects = 5
 };
 
 // 키프레임 보간 방식
@@ -55,6 +57,27 @@ struct FFOVKeyframe
 	ESequenceInterpMode InterpMode = ESequenceInterpMode::Linear;
 };
 
+struct FVisibilityKeyframe
+{
+	int32 Frame = 0;
+	bool bVisible = true;
+	bool bHiddenInGame = false;
+};
+
+struct FCameraEffectsKeyframe
+{
+	int32 Frame = 0;
+	float FadeOpacity = 0.0f;
+	float LetterboxSize = 0.0f;
+	ESequenceInterpMode InterpMode = ESequenceInterpMode::Linear;
+};
+
+struct FSequenceCameraEffects
+{
+	float FadeOpacity = 0.0f;
+	float LetterboxSize = 0.0f;
+};
+
 // 오디오 재생 구간 클립
 struct FAudioClip
 {
@@ -74,11 +97,24 @@ struct FSequenceTrack
 	FString TargetActorName;
 	bool bExpanded = true;
 	bool bMuted = false;
+	bool bConstantSpeed = false;
+	bool bSmoothPath = false;
 
 	TArray<FCameraCutClip> CameraCuts;
 	TArray<FTransformKeyframe> TransformKeys;
 	TArray<FFOVKeyframe> FOVKeys;
+	TArray<FVisibilityKeyframe> VisibilityKeys;
+	TArray<FCameraEffectsKeyframe> CameraEffectsKeys;
 	TArray<FAudioClip> AudioClips;
+};
+
+// 시퀀스가 참조하지만 현재 레벨에는 없을 때 생성할 액터
+struct FSequenceSpawnableActor
+{
+	FString ActorName;
+	FString ClassName;
+	FTransform InitialTransform{};
+	float InitialFOV = 60.0f;
 };
 
 // 시퀀스 전체 데이터
@@ -89,6 +125,7 @@ struct FLevelSequenceData
 	int32 EndFrame = 150;
 	bool bLoop = false;
 	TArray<FSequenceTrack> Tracks;
+	TArray<FSequenceSpawnableActor> SpawnableActors;
 };
 
 // 시퀀스 직렬화 및 평가 유틸리티
@@ -105,7 +142,9 @@ public:
 	static FRotator LerpRotatorShortest(const FRotator& StartRot, const FRotator& EndRot, float Alpha);
 	static FTransform EvaluateTransformTrack(const FSequenceTrack& Track, float CurrentFrame, const FTransform& DefaultTransform);
 	static float EvaluateFOVTrack(const FSequenceTrack& Track, float CurrentFrame, float DefaultFOV);
+	static FSequenceCameraEffects EvaluateCameraEffects(const FLevelSequenceData& Data, float CurrentFrame);
 	static AActor* FindActorByNameInWorld(UWorld* World, const FString& ActorName);
+	static void SpawnMissingActors(const FLevelSequenceData& Data, UWorld* World);
 
 	static void EvaluateWorldAtFrame(
 		const FLevelSequenceData& Data,

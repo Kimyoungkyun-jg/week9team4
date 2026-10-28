@@ -67,16 +67,19 @@ bool FSceneViewPipeline::Prepare(FRenderGraphBuilder& Graph, FPreparedView& Prep
 		Callbacks.Vignetting = [this, Color, Settings = Options.Vignetting]
 			{ return Vignetting->OnRender(Color, Settings); };
 	}
-	Prepared.bUseGammaCorrection = Options.bEnableGammaCorrection && !Options.bShowSceneDepth &&
+	const bool bNeedsCinematicOverlay = View.FadeOpacity > 0.0f || View.LetterboxSize > 0.0f;
+	Prepared.bUseGammaCorrection = (Options.bEnableGammaCorrection || bNeedsCinematicOverlay) && !Options.bShowSceneDepth &&
 		!Options.bShowWorldNormal && GammaCorrection->PrepareOutput(PostVignettingColor);
-	if (Options.bEnableGammaCorrection && !Options.bShowSceneDepth &&
+	if ((Options.bEnableGammaCorrection || bNeedsCinematicOverlay) && !Options.bShowSceneDepth &&
 		!Options.bShowWorldNormal && !Prepared.bUseGammaCorrection)
 		return false;
 	FTexture2D* PostGammaColor = Prepared.bUseGammaCorrection ? GammaCorrection->GetOutputTarget().get() : PostVignettingColor;
 	if (Prepared.bUseGammaCorrection)
 	{
 		Callbacks.GammaCorrectionOutput = PostGammaColor;
-		Callbacks.GammaCorrection = [this, PostVignettingColor] { return GammaCorrection->OnRender(PostVignettingColor); };
+		Callbacks.GammaCorrection = [this, PostVignettingColor, bApplyGamma = Options.bEnableGammaCorrection,
+			FadeOpacity = View.FadeOpacity, LetterboxSize = View.LetterboxSize]
+			{ return GammaCorrection->OnRender(PostVignettingColor, bApplyGamma, FadeOpacity, LetterboxSize); };
 	}
 	Prepared.bUseFXAA = Options.bEnableFXAA && !Options.bShowSceneDepth &&
 		!Options.bShowWorldNormal && FXAA->PrepareOutput(PostGammaColor);

@@ -279,6 +279,29 @@ namespace ImSequencer
 				ImVec2(contentMin.x + legendWidth - 1.0f, contentMin.y + (i + 1) * ItemHeight + customHeight - 1.0f),
 				(selectedEntry && *selectedEntry == i) ? 0xFF4A3B28 : ((i & 1) ? 0xFF2B2B2B : 0xFF252525));
 			draw_list->AddText(tpos, 0xFFFFFFFF, sequence->GetItemLabel(i));
+			const ImRect labelRect(
+				ImVec2(contentMin.x, contentMin.y + i * ItemHeight + customHeight),
+				ImVec2(contentMin.x + legendWidth - 1.0f, contentMin.y + (i + 1) * ItemHeight + customHeight));
+			const bool overLabel = labelRect.Contains(io.MousePos) &&
+				ImRect(childFramePos, ImVec2(childFramePos.x + childFrameSize.x, childFramePos.y + childFrameSize.y)).Contains(io.MousePos);
+			if (overLabel && io.MouseClicked[0] && selectedEntry)
+			{
+				*selectedEntry = i;
+				sequence->SelectTrack(i);
+			}
+			ImGui::PushID(i);
+			if ((sequenceOptions & SEQUENCER_DELETE) && overLabel && io.MouseClicked[1])
+			{
+				if (selectedEntry) *selectedEntry = i;
+				sequence->SelectTrack(i);
+				ImGui::OpenPopup("trackContext");
+			}
+			if (ImGui::BeginPopup("trackContext"))
+			{
+				if (ImGui::MenuItem("Delete Track")) delEntry = i;
+				ImGui::EndPopup();
+			}
+			ImGui::PopID();
 
 			if (sequenceOptions & SEQUENCER_DELETE)
 			{
@@ -300,11 +323,12 @@ namespace ImSequencer
 			const size_t localCustomHeight = sequence->GetCustomHeight(i);
 			const ImVec2 pos = ImVec2(contentMin.x + legendWidth, contentMin.y + ItemHeight * i + 1 + customHeight);
 			const ImVec2 sz = ImVec2(canvas_size.x + canvas_pos.x, pos.y + ItemHeight - 1 + localCustomHeight);
-			if (!popupOpened && cy >= pos.y && cy < pos.y + (ItemHeight + localCustomHeight) && movingEntry == -1 && (cy > canvas_pos.y + ItemHeight) && cy < (childFramePos.y + childFrameSize.y))
+			if (!popupOpened && cx >= pos.x && cx < contentMin.x + canvas_size.x && cy >= pos.y && cy < pos.y + (ItemHeight + localCustomHeight) && movingEntry == -1 && (cy > canvas_pos.y + ItemHeight) && cy < (childFramePos.y + childFrameSize.y))
 			{
 				if (io.MouseClicked[0] && selectedEntry)
 				{
 					*selectedEntry = i;
+					sequence->SelectTrack(i);
 				}
 				if (io.MouseDoubleClicked[0])
 				{
@@ -354,7 +378,7 @@ namespace ImSequencer
 			const unsigned int slotColor = color | 0xFF000000;
 			const unsigned int slotColorHalf = (color & 0xFFFFFF) | 0x40000000;
 
-			if (slotP1.x <= (canvas_size.x + contentMin.x) && slotP2.x >= (contentMin.x + legendWidth))
+			if (!sequence->DrawOnMainRow(i) && slotP1.x <= (canvas_size.x + contentMin.x) && slotP2.x >= (contentMin.x + legendWidth))
 			{
 				draw_list->AddRectFilled(slotP1, slotP3, slotColorHalf, 2.0f);
 				draw_list->AddRectFilled(slotP1, slotP2, slotColor, 2.0f);
@@ -373,7 +397,7 @@ namespace ImSequencer
 			};
 
 			const unsigned int quadColor[] = { 0xFFFFFFFF, 0xFFFFFFFF, slotColor + (selectedEntry && *selectedEntry == i ? 0 : 0x202020) };
-			if (movingEntry == -1 && (sequenceOptions & SEQUENCER_EDIT_STARTEND))
+			if (movingEntry == -1 && (sequenceOptions & SEQUENCER_EDIT_STARTEND) && sequence->CanEditItemRange(i))
 			{
 				for (int j = 2; j >= 0; j--)
 				{
@@ -418,6 +442,16 @@ namespace ImSequencer
 					ImVec2(canvas_pos.x, canvas_pos.y + static_cast<float>(ItemHeight)),
 					ImVec2(canvas_pos.x + static_cast<float>(legendWidth), canvas_pos.y + static_cast<float>(localCustomHeight + ItemHeight)));
 				customDraws.push_back({ i, customRect, legendRect, clippingRect, legendClippingRect });
+				if (sequence->DrawOnMainRow(i))
+				{
+					const ImRect mainRect(
+						ImVec2(customRect.Min.x, rp.y),
+						ImVec2(customRect.Max.x, rp.y + static_cast<float>(ItemHeight)));
+					const ImRect mainClip(
+						ImVec2(rp.x + static_cast<float>(legendWidth), rp.y),
+						ImVec2(rp.x + canvas_size.x, rp.y + static_cast<float>(ItemHeight)));
+					compactCustomDraws.push_back({ i, mainRect, ImRect(), mainClip, ImRect() });
+				}
 			}
 			else
 			{
@@ -507,8 +541,6 @@ namespace ImSequencer
 		if (delEntry != -1)
 		{
 			sequence->Del(delEntry);
-			if (selectedEntry && (*selectedEntry == delEntry || *selectedEntry >= sequence->GetItemCount()))
-				*selectedEntry = -1;
 			ret = true;
 		}
 

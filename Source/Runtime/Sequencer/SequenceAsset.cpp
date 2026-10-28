@@ -7,7 +7,9 @@
 #include "GameFramework/Actor.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SceneComponent.h"
 #include "Serialization/TypeSerializer.h"
+#include "UObject/UObjectHash.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,7 +18,7 @@
 
 namespace
 {
-	constexpr int32 SequenceAssetVersion = 1;
+	constexpr int32 SequenceAssetVersion = 2;
 
 	float NormalizeAngleDelta(float Angle)
 	{
@@ -26,6 +28,27 @@ namespace
 			Result += 360.0f;
 		}
 		return Result - 180.0f;
+	}
+
+	FVector EvaluatePathPosition(const FSequenceTrack& Track, int32 Segment, float Alpha)
+	{
+		const FVector& From = Track.TransformKeys[Segment].Location;
+		const FVector& To = Track.TransformKeys[Segment + 1].Location;
+		if (!Track.bSmoothPath || Track.TransformKeys.Num() < 3)
+			return From + (To - From) * Alpha;
+
+		// 이웃 키로 베지에 접선을 만들어 각 키를 지나는 부드러운 경로를 만든다.
+		const FVector& Prev = Track.TransformKeys[std::max(Segment - 1, 0)].Location;
+		const FVector& Next = Track.TransformKeys[std::min(Segment + 2, Track.TransformKeys.Num() - 1)].Location;
+		FVector TangentFrom = (To - Prev) * 0.5f;
+		FVector TangentTo = (Next - From) * 0.5f;
+		const float SegmentLength = (To - From).Length();
+		if (TangentFrom.Length() > SegmentLength) TangentFrom = TangentFrom.Normalized() * SegmentLength;
+		if (TangentTo.Length() > SegmentLength) TangentTo = TangentTo.Normalized() * SegmentLength;
+		const float T2 = Alpha * Alpha;
+		const float T3 = T2 * Alpha;
+		return From * (2.0f * T3 - 3.0f * T2 + 1.0f) + TangentFrom * (T3 - 2.0f * T2 + Alpha) +
+			To * (-2.0f * T3 + 3.0f * T2) + TangentTo * (T3 - T2);
 	}
 }
 
@@ -45,6 +68,16 @@ void FLevelSequenceAsset::SortTrackKeys(FSequenceTrack& Track)
 
 	std::sort(Track.FOVKeys.begin(), Track.FOVKeys.end(),
 		[](const FFOVKeyframe& Left, const FFOVKeyframe& Right)
+		{
+			return Left.Frame < Right.Frame;
+		});
+	std::sort(Track.VisibilityKeys.begin(), Track.VisibilityKeys.end(),
+		[](const FVisibilityKeyframe& Left, const FVisibilityKeyframe& Right)
+		{
+			return Left.Frame < Right.Frame;
+		});
+	std::sort(Track.CameraEffectsKeys.begin(), Track.CameraEffectsKeys.end(),
+		[](const FCameraEffectsKeyframe& Left, const FCameraEffectsKeyframe& Right)
 		{
 			return Left.Frame < Right.Frame;
 		});
@@ -118,9 +151,45 @@ FTransform FLevelSequenceAsset::EvaluateTransformTrack(const FSequenceTrack& Tra
 			const float Alpha = ComputeInterpAlpha(RawAlpha, KeyA.InterpMode);
 
 			FTransform OutTransform;
-			OutTransform.Location = KeyA.Location + (KeyB.Location - KeyA.Location) * Alpha;
+			OutTransform.Location = EvaluatePathPosition(Track, Index, Alpha);
 			OutTransform.Rotation = LerpRotatorShortest(KeyA.Rotation, KeyB.Rotation, Alpha);
 			OutTransform.Scale = KeyA.Scale + (KeyB.Scale - KeyA.Scale) * Alpha;
+			if (Track.bConstantSpeed)
+			{
+				const int32 SamplesPerSegment = Track.bSmoothPath ? 24 : 1;
+				float TotalLength = 0.0f;
+				for (int32 Segment = 0; Segment < LastIdx; ++Segment)
+				{
+					FVector Previous = EvaluatePathPosition(Track, Segment, 0.0f);
+					for (int32 Sample = 1; Sample <= SamplesPerSegment; ++Sample)
+					{
+						const FVector Point = EvaluatePathPosition(Track, Segment, static_cast<float>(Sample) / SamplesPerSegment);
+						TotalLength += (Point - Previous).Length();
+						Previous = Point;
+					}
+				}
+				const float TotalFrames = static_cast<float>(Track.TransformKeys[LastIdx].Frame - Track.TransformKeys[0].Frame);
+				if (TotalLength > 0.0001f && TotalFrames > 0.0f)
+				{
+					float Remaining = TotalLength * FMath::Clamp((CurrentFrame - Track.TransformKeys[0].Frame) / TotalFrames, 0.0f, 1.0f);
+					for (int32 Segment = 0; Segment < LastIdx; ++Segment)
+					{
+						FVector Previous = EvaluatePathPosition(Track, Segment, 0.0f);
+						for (int32 Sample = 1; Sample <= SamplesPerSegment; ++Sample)
+						{
+							const FVector Point = EvaluatePathPosition(Track, Segment, static_cast<float>(Sample) / SamplesPerSegment);
+							const float Length = (Point - Previous).Length();
+							if (Remaining <= Length || (Segment == LastIdx - 1 && Sample == SamplesPerSegment))
+							{
+								OutTransform.Location = Previous + (Point - Previous) * (Length > 0.0001f ? FMath::Clamp(Remaining / Length, 0.0f, 1.0f) : 0.0f);
+								return OutTransform;
+							}
+							Remaining -= Length;
+							Previous = Point;
+						}
+					}
+				}
+			}
 			return OutTransform;
 		}
 	}
@@ -162,6 +231,29 @@ float FLevelSequenceAsset::EvaluateFOVTrack(const FSequenceTrack& Track, float C
 	return DefaultFOV;
 }
 
+FSequenceCameraEffects FLevelSequenceAsset::EvaluateCameraEffects(const FLevelSequenceData& Data, float CurrentFrame)
+{
+	FSequenceCameraEffects Result;
+	for (const FSequenceTrack& Track : Data.Tracks)
+	{
+		if (Track.bMuted || Track.TrackType != ESequenceTrackType::CameraEffects || Track.CameraEffectsKeys.IsEmpty()) continue;
+		const FCameraEffectsKeyframe* A = &Track.CameraEffectsKeys[0];
+		const FCameraEffectsKeyframe* B = A;
+		for (int32 i = 1; i < Track.CameraEffectsKeys.Num(); ++i)
+		{
+			B = &Track.CameraEffectsKeys[i];
+			if (CurrentFrame <= B->Frame) break;
+			A = B;
+		}
+		float Alpha = 0.0f;
+		if (A != B && B->Frame > A->Frame)
+			Alpha = ComputeInterpAlpha((CurrentFrame - A->Frame) / (B->Frame - A->Frame), A->InterpMode);
+		Result.FadeOpacity = FMath::Clamp(A->FadeOpacity + (B->FadeOpacity - A->FadeOpacity) * Alpha, 0.0f, 1.0f);
+		Result.LetterboxSize = FMath::Clamp(A->LetterboxSize + (B->LetterboxSize - A->LetterboxSize) * Alpha, 0.0f, 0.45f);
+	}
+	return Result;
+}
+
 AActor* FLevelSequenceAsset::FindActorByNameInWorld(UWorld* World, const FString& ActorName)
 {
 	if (!World || ActorName.empty())
@@ -184,6 +276,30 @@ AActor* FLevelSequenceAsset::FindActorByNameInWorld(UWorld* World, const FString
 	}
 
 	return nullptr;
+}
+
+void FLevelSequenceAsset::SpawnMissingActors(const FLevelSequenceData& Data, UWorld* World)
+{
+	if (!World) return;
+	for (const FSequenceSpawnableActor& Entry : Data.SpawnableActors)
+	{
+		if (Entry.ActorName.empty() || Entry.ClassName.empty() || FindActorByNameInWorld(World, Entry.ActorName))
+			continue;
+		UClass* Class = FindClass(Entry.ClassName);
+		if (!Class || !Class->IsChildOf(AActor::StaticClass()) || Entry.ClassName == "ALevelSequenceActor")
+			continue;
+		AActor* Actor = World->SpawnActor(Class, FName(Entry.ActorName), &Entry.InitialTransform);
+		if (Actor && Actor->GetName() == Entry.ActorName)
+		{
+			Actor->SetFlags(EObjectFlags::RF_Transient);
+			if (UCameraComponent* Camera = Actor->GetComponentByClass<UCameraComponent>())
+				Camera->SetFieldOfView(Entry.InitialFOV);
+		}
+		else if (Actor)
+		{
+			World->DestroyActor(Actor);
+		}
+	}
 }
 
 void FLevelSequenceAsset::EvaluateWorldAtFrame(
@@ -232,6 +348,26 @@ void FLevelSequenceAsset::EvaluateWorldAtFrame(
 				{
 					const float EvalFOV = EvaluateFOVTrack(Track, CurrentFrame, CamComp->GetFieldOfView());
 					CamComp->SetFieldOfView(EvalFOV);
+				}
+			}
+		}
+		else if (Track.TrackType == ESequenceTrackType::ActorVisibility)
+		{
+			AActor* Target = FindActorByNameInWorld(World, Track.TargetActorName);
+			if (Target && !Track.VisibilityKeys.IsEmpty())
+			{
+				const FVisibilityKeyframe* ActiveKey = &Track.VisibilityKeys[0];
+				for (const FVisibilityKeyframe& Key : Track.VisibilityKeys)
+				{
+					if (static_cast<float>(Key.Frame) > CurrentFrame) break;
+					ActiveKey = &Key;
+				}
+				for (UActorComponent* Component : Target->GetComponents())
+				{
+					USceneComponent* SceneComponent = Cast<USceneComponent>(Component);
+					if (!SceneComponent || (SceneComponent->GetAttachParent() && SceneComponent->GetAttachParent()->GetOwner() == Target)) continue;
+					SceneComponent->SetVisibility(ActiveKey->bVisible);
+					SceneComponent->SetHiddenInGame(ActiveKey->bHiddenInGame);
 				}
 			}
 		}
@@ -383,6 +519,19 @@ FString FLevelSequenceAsset::SerializeToString(const FLevelSequenceData& Data)
 		Root["StartFrame"] = Data.StartFrame;
 		Root["EndFrame"] = Data.EndFrame;
 		Root["bLoop"] = Data.bLoop;
+		json SpawnablesJson = json::array();
+		for (const FSequenceSpawnableActor& Entry : Data.SpawnableActors)
+		{
+			const FTransform& T = Entry.InitialTransform;
+			SpawnablesJson.push_back({
+				{"ActorName", Entry.ActorName}, {"ClassName", Entry.ClassName},
+				{"Location", {T.Location.X, T.Location.Y, T.Location.Z}},
+				{"Rotation", {T.Rotation.Pitch, T.Rotation.Yaw, T.Rotation.Roll}},
+				{"Scale", {T.Scale.X, T.Scale.Y, T.Scale.Z}},
+				{"InitialFOV", Entry.InitialFOV}
+			});
+		}
+		Root["SpawnableActors"] = std::move(SpawnablesJson);
 
 		json TracksJson = json::array();
 		for (const FSequenceTrack& Track : Data.Tracks)
@@ -393,6 +542,8 @@ FString FLevelSequenceAsset::SerializeToString(const FLevelSequenceData& Data)
 			TrackObj["TargetActorName"] = Track.TargetActorName;
 			TrackObj["bExpanded"] = Track.bExpanded;
 			TrackObj["bMuted"] = Track.bMuted;
+			TrackObj["bConstantSpeed"] = Track.bConstantSpeed;
+			TrackObj["bSmoothPath"] = Track.bSmoothPath;
 
 			json CutsArray = json::array();
 			for (const FCameraCutClip& Cut : Track.CameraCuts)
@@ -429,6 +580,15 @@ FString FLevelSequenceAsset::SerializeToString(const FLevelSequenceData& Data)
 				});
 			}
 			TrackObj["FOVKeys"] = std::move(FOVArray);
+			json VisibilityArray = json::array();
+			for (const FVisibilityKeyframe& Key : Track.VisibilityKeys)
+				VisibilityArray.push_back({ {"Frame", Key.Frame}, {"bVisible", Key.bVisible}, {"bHiddenInGame", Key.bHiddenInGame} });
+			TrackObj["VisibilityKeys"] = std::move(VisibilityArray);
+			json EffectsArray = json::array();
+			for (const FCameraEffectsKeyframe& Key : Track.CameraEffectsKeys)
+				EffectsArray.push_back({ {"Frame", Key.Frame}, {"FadeOpacity", Key.FadeOpacity},
+					{"LetterboxSize", Key.LetterboxSize}, {"InterpMode", static_cast<int32>(Key.InterpMode)} });
+			TrackObj["CameraEffectsKeys"] = std::move(EffectsArray);
 
 			json AudioArray = json::array();
 			for (const FAudioClip& Clip : Track.AudioClips)
@@ -475,6 +635,24 @@ bool FLevelSequenceAsset::DeserializeFromString(const FString& Content, FLevelSe
 		Parsed.StartFrame = Document.value("StartFrame", 0);
 		Parsed.EndFrame = Document.value("EndFrame", 150);
 		Parsed.bLoop = Document.value("bLoop", false);
+		if (Document.contains("SpawnableActors") && Document["SpawnableActors"].is_array())
+		{
+			for (const json& EntryObj : Document["SpawnableActors"])
+			{
+				if (!EntryObj.is_object()) continue;
+				FSequenceSpawnableActor Entry;
+				Entry.ActorName = EntryObj.value("ActorName", FString(""));
+				Entry.ClassName = EntryObj.value("ClassName", FString(""));
+				if (EntryObj.contains("Location") && EntryObj["Location"].is_array() && EntryObj["Location"].size() == 3)
+					Entry.InitialTransform.Location = FVector(EntryObj["Location"][0].get<float>(), EntryObj["Location"][1].get<float>(), EntryObj["Location"][2].get<float>());
+				if (EntryObj.contains("Rotation") && EntryObj["Rotation"].is_array() && EntryObj["Rotation"].size() == 3)
+					Entry.InitialTransform.Rotation = FRotator(EntryObj["Rotation"][0].get<float>(), EntryObj["Rotation"][1].get<float>(), EntryObj["Rotation"][2].get<float>());
+				if (EntryObj.contains("Scale") && EntryObj["Scale"].is_array() && EntryObj["Scale"].size() == 3)
+					Entry.InitialTransform.Scale = FVector(EntryObj["Scale"][0].get<float>(), EntryObj["Scale"][1].get<float>(), EntryObj["Scale"][2].get<float>());
+				Entry.InitialFOV = EntryObj.value("InitialFOV", 60.0f);
+				if (!Entry.ActorName.empty() && !Entry.ClassName.empty()) Parsed.SpawnableActors.Add(std::move(Entry));
+			}
+		}
 
 		if (Document.contains("Tracks") && Document["Tracks"].is_array())
 		{
@@ -490,6 +668,8 @@ bool FLevelSequenceAsset::DeserializeFromString(const FString& Content, FLevelSe
 				Track.TargetActorName = TrackObj.value("TargetActorName", FString(""));
 				Track.bExpanded = TrackObj.value("bExpanded", true);
 				Track.bMuted = TrackObj.value("bMuted", false);
+				Track.bConstantSpeed = TrackObj.value("bConstantSpeed", false);
+				Track.bSmoothPath = TrackObj.value("bSmoothPath", false);
 
 				if (TrackObj.contains("CameraCuts") && TrackObj["CameraCuts"].is_array())
 				{
@@ -547,6 +727,29 @@ bool FLevelSequenceAsset::DeserializeFromString(const FString& Content, FLevelSe
 						Track.FOVKeys.Add(Key);
 					}
 				}
+				if (TrackObj.contains("VisibilityKeys") && TrackObj["VisibilityKeys"].is_array())
+				{
+					for (const json& KeyObj : TrackObj["VisibilityKeys"])
+					{
+						FVisibilityKeyframe Key;
+						Key.Frame = KeyObj.value("Frame", 0);
+						Key.bVisible = KeyObj.value("bVisible", true);
+						Key.bHiddenInGame = KeyObj.value("bHiddenInGame", false);
+						Track.VisibilityKeys.Add(Key);
+					}
+				}
+				if (TrackObj.contains("CameraEffectsKeys") && TrackObj["CameraEffectsKeys"].is_array())
+				{
+					for (const json& KeyObj : TrackObj["CameraEffectsKeys"])
+					{
+						FCameraEffectsKeyframe Key;
+						Key.Frame = KeyObj.value("Frame", 0);
+						Key.FadeOpacity = KeyObj.value("FadeOpacity", 0.0f);
+						Key.LetterboxSize = KeyObj.value("LetterboxSize", 0.0f);
+						Key.InterpMode = static_cast<ESequenceInterpMode>(KeyObj.value("InterpMode", 0));
+						Track.CameraEffectsKeys.Add(Key);
+					}
+				}
 
 				if (TrackObj.contains("AudioClips") && TrackObj["AudioClips"].is_array())
 				{
@@ -565,6 +768,36 @@ bool FLevelSequenceAsset::DeserializeFromString(const FString& Content, FLevelSe
 
 				SortTrackKeys(Track);
 				Parsed.Tracks.Add(std::move(Track));
+			}
+		}
+		// 구버전 시퀀스에는 생성 정보가 없으므로 카메라 컷의 액터를 복원한다.
+		for (const FSequenceTrack& Track : Parsed.Tracks)
+		{
+			if (Track.TrackType != ESequenceTrackType::CameraCut) continue;
+			for (const FCameraCutClip& Cut : Track.CameraCuts)
+			{
+				if (Cut.CameraActorName.empty()) continue;
+				bool bRecorded = false;
+				for (const FSequenceSpawnableActor& Existing : Parsed.SpawnableActors)
+					if (Existing.ActorName == Cut.CameraActorName) { bRecorded = true; break; }
+				if (bRecorded) continue;
+				FSequenceSpawnableActor Entry;
+				Entry.ActorName = Cut.CameraActorName;
+				Entry.ClassName = "ACameraActor";
+				for (const FSequenceTrack& CameraTrack : Parsed.Tracks)
+				{
+					if (CameraTrack.TargetActorName != Entry.ActorName) continue;
+					if (CameraTrack.TrackType == ESequenceTrackType::ActorTransform && !CameraTrack.TransformKeys.IsEmpty())
+					{
+						const FTransformKeyframe& Key = CameraTrack.TransformKeys[0];
+						Entry.InitialTransform.Location = Key.Location;
+						Entry.InitialTransform.Rotation = Key.Rotation;
+						Entry.InitialTransform.Scale = Key.Scale;
+					}
+					else if (CameraTrack.TrackType == ESequenceTrackType::CameraFOV && !CameraTrack.FOVKeys.IsEmpty())
+						Entry.InitialFOV = CameraTrack.FOVKeys[0].FieldOfView;
+				}
+				Parsed.SpawnableActors.Add(std::move(Entry));
 			}
 		}
 

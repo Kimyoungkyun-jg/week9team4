@@ -18,6 +18,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/GameInstance.h"
 #include "Audio/SoundManager.h"
+#include "Sequencer/LevelSequenceActor.h"
 #include "UI/Widget.h"
 #include <algorithm>
 #include <cmath>
@@ -340,6 +341,11 @@ void APacmanGameMode::TickGhostHit(float DeltaTime)
 void APacmanGameMode::ShowGameResult(bool bCleared)
 {
 	if (bResultShown) return;
+	BeginResultFade(bCleared);
+}
+
+void APacmanGameMode::BeginResultFade(bool bCleared)
+{
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	if (!HUD) return;
@@ -383,6 +389,14 @@ void APacmanGameMode::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	GhostHitCooldown = std::max(0.0f, GhostHitCooldown - DeltaTime);
 	TickGhostHit(DeltaTime);
+	if (ClearSequenceActor && (!IsValid(ClearSequenceActor) ||
+		(!ClearSequenceActor->IsPlayingSequence() && !ClearSequenceActor->IsPausedSequence())))
+	{
+		ClearSequenceActor = nullptr;
+		if (UWorld* World = GetWorld())
+			if (APacmanHUD* HUD = Cast<APacmanHUD>(World->GetHUD()))
+				HUD->ShowNameEntry();
+	}
 	if (!FadeImage || (FadePhase != EResultFadePhase::FadeOut && FadePhase != EResultFadePhase::FadeIn)) return;
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
@@ -398,7 +412,32 @@ void APacmanGameMode::Tick(float DeltaTime)
 
 	if (FadePhase == EResultFadePhase::FadeOut)
 	{
-		const FString Path = bPendingClear ? "Assets/UI/GameClear.ui.json" : "Assets/UI/GameOver.ui.json";
+		if (bPendingClear)
+		{
+			ALevelSequenceActor* Sequence = World->SpawnActor<ALevelSequenceActor>();
+			if (Sequence)
+			{
+				Sequence->SetSequenceAssetPath("Assets/Sequences/Pacman_Clear.seq.json");
+				Sequence->PlaySequence();
+				if (Sequence->IsPlayingSequence())
+				{
+					ClearSequenceActor = Sequence;
+					Viewport->ClearWidgetRoot();
+				}
+				else World->DestroyActor(Sequence);
+			}
+			if (!ClearSequenceActor)
+			{
+				HTR_LOG(Warning, "PacmanGameMode: failed to play Pacman_Clear.seq.json; opening name entry");
+				if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD)) PacmanHUD->ShowNameEntry();
+			}
+			HUD->RemoveOverlay(FadeOverlayHandle);
+			FadeOverlayHandle = 0;
+			FadeImage = nullptr;
+			FadePhase = EResultFadePhase::Complete;
+			return;
+		}
+		const FString Path = "Assets/UI/GameOver.ui.json";
 		if (!HUD->ShowWidget(Path))
 		{
 			if (HitGhost) HitGhost->SetHitFrozen(false);

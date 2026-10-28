@@ -3,12 +3,12 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Asset/AssetManager.h"
-#include "Components/BillboardComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/PrimitiveSceneProxy.h"
 
 #include "../Components/ActorComponent.h"
 
-// 카메라 컴포넌트와 에디터 표시용 컴포넌트를 생성해 루트에 연결
+// 카메라 컴포넌트와 편집용 시네 카메라 메시를 생성해 루트에 연결
 ACameraActor::ACameraActor()
 {
 	SetActorEnableCollision(false);
@@ -16,26 +16,24 @@ ACameraActor::ACameraActor()
 	CameraComponent->SetExternalInputManaged(true);
 	SetRootComponent(CameraComponent);
 
-	UBillboardComponent* Icon = CreateDefaultSubobject<UBillboardComponent>("CameraIcon");
-	Icon->SetupAttachment(CameraComponent);
-	Icon->SetEditorIcon(true);
-	Icon->SetHiddenInGame(true);
-	Icon->SetIconSize(1.5f);
-	Icon->SetHiddenInDetails(true);
-	Icon->SetCastShadow(false);
-	Icon->SetReceiveShadow(false);
+	UStaticMeshComponent* CineMesh = CreateDefaultSubobject<UStaticMeshComponent>("CineCameraMesh");
+	CineMesh->SetupAttachment(CameraComponent);
+	CineMesh->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Models/Camera/SM_CineCam.obj"));
+	CineMesh->SetEditorIcon(true);
+	CineMesh->SetHiddenInGame(true);
+	CineMesh->SetCastShadow(false);
+	CineMesh->SetReceiveShadow(false);
+}
 
-	UStaticMeshComponent* Arrow = CreateDefaultSubobject<UStaticMeshComponent>("CameraArrow");
-	Arrow->SetupAttachment(CameraComponent);
-	Arrow->SetEditorIcon(true);
-	Arrow->SetHiddenInGame(true);
-	Arrow->SetHiddenInDetails(true);
-	Arrow->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>("Arrow"));
-	Arrow->SetMaterial(0, UAssetManager::GetAssetByPath<UMaterial>("EditorArrowMaterial"));
-	Arrow->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
-	Arrow->SetRelativeScale3D(FVector(0.3f, 0.3f, 0.5f));
-	Arrow->SetCastShadow(false);
-	Arrow->SetReceiveShadow(false);
+void ACameraActor::Serialize(FStructuredArchive::FRecord Record)
+{
+	Super::Serialize(Record);
+	FArchive& Ar = Record.GetUnderlyingArchive();
+	if (!Ar.IsLoading() || Ar.HasAnyPortFlags(EPropertyPortFlags::PPF_Duplicate)) return;
+	// 이전 씬 파일에 저장된 편집용 아이콘과 화살표를 제거한다.
+	for (const char* Name : { "CameraIcon", "CameraArrow" })
+		if (UActorComponent* OldComponent = FindComponentByName(FName(Name)))
+			OldComponent->DestroyComponent();
 }
 
 void ACameraActor::BeginPlay()
@@ -45,4 +43,15 @@ void ACameraActor::BeginPlay()
 	{
 		CameraComponent->SetExternalInputManaged(true);
 	}
+}
+
+bool ACameraActor::ShouldHideEditorMeshFromView(const UStaticMeshComponent* Mesh, const FVector& ViewLocation) const
+{
+	if (!Mesh || Mesh->GetOwner() != this || !Mesh->IsEditorIcon()) return false;
+	if ((GetActorLocation() - ViewLocation).SizeSquared() < 0.01f) return true;
+	const FPrimitiveSceneProxy* Proxy = Mesh->GetSceneProxy();
+	if (!Proxy) return false;
+	const FAABB& Bounds = Proxy->GetBounds();
+	const FVector Delta = ViewLocation - Bounds.Center;
+	return fabsf(Delta.X) <= Bounds.Extent.X && fabsf(Delta.Y) <= Bounds.Extent.Y && fabsf(Delta.Z) <= Bounds.Extent.Z;
 }

@@ -1,0 +1,1035 @@
+{
+    "EndFrame": 170,
+    "FrameRate": 30,
+    "SpawnableActors": [
+        {
+            "ActorName": "ACameraActor_1",
+            "ClassName": "ACameraActor",
+            "InitialFOV": 90.5999984741211,
+            "Location": [
+                1.2880947589874268,
+                0.01902821660041809,
+                108.97828674316406
+            ],
+            "Rotation": [
+                15.20004653930664,
+                2.000171184539795,
+                0.0
+            ],
+            "Scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "ActorName": "AExponentialHeightFogActor_1",
+            "ClassName": "AExponentialHeightFogActor",
+            "InitialFOV": 60.0,
+            "Location": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "Rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "Scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "ActorName": "ASkyLightActor_0",
+            "ClassName": "ASkyLightActor",
+            "InitialFOV": 60.0,
+            "Location": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "Rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "Scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "StartFrame": 0,
+    "Tracks": [
+        {
+            "AudioClips": [],
+            "CameraCuts": [
+                {
+                    "BlendTime": 0.0,
+                    "CameraActorName": "ACameraActor_1",
+                    "EndFrame": 150,
+                    "StartFrame": 0
+                }
+            ],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "",
+            "TrackName": "Camera Cuts",
+            "TrackType": 0,
+            "TransformKeys": [],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "AExponentialHeightFogActor_1",
+            "TrackName": "AExponentialHeightFogActor_1 Visibility",
+            "TrackType": 4,
+            "TransformKeys": [],
+            "VisibilityKeys": [
+                {
+                    "Frame": 0,
+                    "bHiddenInGame": true,
+                    "bVisible": false
+                }
+            ],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "ASkyLightActor_0",
+            "TrackName": "ASkyLightActor_0 Visibility",
+            "TrackType": 4,
+            "TransformKeys": [],
+            "VisibilityKeys": [
+                {
+                    "Frame": 0,
+                    "bHiddenInGame": false,
+                    "bVisible": true
+                }
+            ],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "ALevelSequenceActor_1",
+            "TrackName": "ALevelSequenceActor_1 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 12,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        109.1364517211914
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 23,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 36,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        109.1364517211914
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 47,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 61,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        109.1364517211914
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 72,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 84,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        109.1364517211914
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 95,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 109,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        109.1364517211914
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 119,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 132,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        109.1364517211914
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 145,
+                    "InterpMode": 1,
+                    "Location": [
+                        3.5259926319122314,
+                        0.0,
+                        106.91877746582031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "VisibilityKeys": [],
+            "bConstantSpeed": true,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": true
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "ACameraActor_1",
+            "TrackName": "ACameraActor_1 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        -2.524017810821533,
+                        5.860913276672363,
+                        113.26734161376953
+                    ],
+                    "Rotation": [
+                        34.40005111694336,
+                        310.8001403808594,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 25,
+                    "InterpMode": 1,
+                    "Location": [
+                        6.392871856689453,
+                        3.109302282333374,
+                        111.72216033935547
+                    ],
+                    "Rotation": [
+                        34.40003967285156,
+                        213.6001739501953,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 53,
+                    "InterpMode": 1,
+                    "Location": [
+                        5.637916088104248,
+                        -5.275521278381348,
+                        111.72216033935547
+                    ],
+                    "Rotation": [
+                        31.600038528442383,
+                        132.8001708984375,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 84,
+                    "InterpMode": 1,
+                    "Location": [
+                        -3.0335159301757813,
+                        -1.18702232837677,
+                        112.75861358642578
+                    ],
+                    "Rotation": [
+                        39.40003967285156,
+                        47.400177001953125,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 117,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.10699462890625,
+                        3.9727256298065186,
+                        110.45743560791016
+                    ],
+                    "Rotation": [
+                        34.17573547363281,
+                        -44.12200164794922,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 140,
+                    "InterpMode": 1,
+                    "Location": [
+                        1.2880947589874268,
+                        0.01902821660041809,
+                        108.97828674316406
+                    ],
+                    "Rotation": [
+                        15.20004653930664,
+                        2.000171184539795,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "VisibilityKeys": [],
+            "bConstantSpeed": true,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": true
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [
+                {
+                    "FieldOfView": 60.0,
+                    "Frame": 116,
+                    "InterpMode": 1
+                },
+                {
+                    "FieldOfView": 90.5999984741211,
+                    "Frame": 146,
+                    "InterpMode": 1
+                }
+            ],
+            "TargetActorName": "ACameraActor_1",
+            "TrackName": "ACameraActor_1 FOV",
+            "TrackType": 2,
+            "TransformKeys": [],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "ALevelSequenceActor_0",
+            "TrackName": "ALevelSequenceActor_0 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        0.0,
+                        25.63779067993164,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 10,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        19.459314346313477,
+                        25.63779067993164,
+                        -4.527487078576087e-07
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 22,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        0.0,
+                        25.63779067993164,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 33,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        19.459314346313477,
+                        25.63779067993164,
+                        -4.527487078576087e-07
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 47,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        0.0,
+                        25.63779067993164,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 63,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        19.459314346313477,
+                        25.63779067993164,
+                        -4.527487078576087e-07
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 78,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        0.0,
+                        25.63779067993164,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 95,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        19.459314346313477,
+                        25.63779067993164,
+                        -4.527487078576087e-07
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 110,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        0.0,
+                        25.63779067993164,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 125,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.12014307081699371,
+                        -2.403949499130249,
+                        107.09236907958984
+                    ],
+                    "Rotation": [
+                        19.459314346313477,
+                        25.63779067993164,
+                        -4.527487078576087e-07
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "ALevelSequenceActor_2",
+            "TrackName": "ALevelSequenceActor_2 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        4.258265972137451,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 10,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        28.24521827697754,
+                        4.258266448974609,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 21,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        4.258265972137451,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 32,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        28.24521827697754,
+                        4.258266448974609,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 46,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        4.258265972137451,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 62,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        28.24521827697754,
+                        4.258266448974609,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 77,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        4.258265972137451,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 95,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        28.24521827697754,
+                        4.258266448974609,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 109,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        0.0,
+                        4.258265972137451,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                },
+                {
+                    "Frame": 125,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.035294096916913986,
+                        -0.26882654428482056,
+                        107.26399230957031
+                    ],
+                    "Rotation": [
+                        28.24521827697754,
+                        4.258266448974609,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.00048828125
+                    ]
+                }
+            ],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "ALevelSequenceActor_3",
+            "TrackName": "ALevelSequenceActor_3 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 112,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.32984858751296997,
+                        1.8561650514602661,
+                        107.26817321777344
+                    ],
+                    "Rotation": [
+                        -0.02983827516436577,
+                        -23.963077545166016,
+                        0.950697660446167
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [
+                {
+                    "FadeOpacity": 0.0,
+                    "Frame": 0,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.09799999743700027
+                },
+                {
+                    "FadeOpacity": 0.0,
+                    "Frame": 145,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.09799999743700027
+                },
+                {
+                    "FadeOpacity": 0.996999979019165,
+                    "Frame": 170,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.10499999672174454
+                }
+            ],
+            "FOVKeys": [],
+            "TargetActorName": "",
+            "TrackName": "Camera Effects",
+            "TrackType": 5,
+            "TransformKeys": [],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        }
+    ],
+    "Version": 2,
+    "bLoop": false
+}

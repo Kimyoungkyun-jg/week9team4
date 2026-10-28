@@ -185,7 +185,8 @@ void FGizmo::BeginDrag(int Axis, const FRay& MouseRay, const FVector2& MousePos)
 	DragStartMousePos = MousePos;
 	DraggingAxis = Axis;
 	DragStartLocation = GetLocation();
-	DragStartRenderLocation = Target ? Target->GetWorldLocation() : GetRenderLocation();
+	// 이동은 실제 대상 깊이에서 계산해야 화면의 마우스 이동량과 일치한다.
+	DragStartRenderLocation = Mode == EGizmoMode::Location ? Target->GetWorldLocation() : GetRenderLocation();
 	DragStartRotation = GetRotation();
 	DragStartScale = GetScale();
 
@@ -200,7 +201,7 @@ void FGizmo::BeginDrag(int Axis, const FRay& MouseRay, const FVector2& MousePos)
 	{
 		if (Mode == EGizmoMode::Rotation)
 		{
-			DragAxisDirection = (DragStartRenderLocation - GetCameraLocation()).Normalized();
+			DragAxisDirection = (GetRenderLocation() - GetCameraLocation()).Normalized();
 			DragPlaneNormal = DragAxisDirection;
 		}
 		else
@@ -210,7 +211,7 @@ void FGizmo::BeginDrag(int Axis, const FRay& MouseRay, const FVector2& MousePos)
 	}
 	else if (Mode == EGizmoMode::Rotation)
 	{
-		FVector ToCamera = (GetCameraLocation() - DragStartRenderLocation).Normalized();
+		FVector ToCamera = (GetCameraLocation() - GetRenderLocation()).Normalized();
 		if (DragAxisDirection.Dot(ToCamera) < 0.0f)
 			DragAxisDirection = -DragAxisDirection;
 
@@ -282,9 +283,7 @@ void FGizmo::UpdateDrag(const FRay& MouseRay, const FVector2& MousePos)
 		Target->SetRelativeLocation(DragStartLocation + DragAxisDirection * amount);
 	else   // Scale
 	{
-		float TargetDist = (DragStartRenderLocation - ViewCameraLocation).Length();
-		float scaleAmount = (bViewCameraOrthographic || TargetDist < 0.0001f) ? amount : amount * (10.0f / TargetDist);
-		float factor = 1.0f + scaleAmount;
+		float factor = 1.0f + amount;
 		if (factor < 0.01f) factor = 0.01f;
 
 		// 조명이면 여기서 radius만 반영하고 return

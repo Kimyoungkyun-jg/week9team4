@@ -42,6 +42,7 @@ public:
 	void StopSequence();
 
 	bool IsPlayingSequence() const { return bIsPlayingSequence && !bIsPausedSequence; }
+	bool HasCameraEffectsView() const { return bIsPlayingSequence || bHoldFinalCameraEffects; }
 	bool IsPausedSequence() const { return bIsPausedSequence; }
 
 	void SetCurrentFrame(float InFrame);
@@ -67,6 +68,7 @@ private:
 	bool bAssetLoaded = false;
 	bool bIsPlayingSequence = false;
 	bool bIsPausedSequence = false;
+	bool bHoldFinalCameraEffects = false;
 	float CurrentFrame = 0.0f;
 	float PreviousFrame = -1.0f;
 

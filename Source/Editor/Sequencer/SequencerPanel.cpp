@@ -13,6 +13,7 @@
 #include "Audio/SoundManager.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SceneComponent.h"
 #include "Render/LineBatcher.h"
 #include "Input/InputSystem.h"
 #include "Core/EngineLog.h"
@@ -28,6 +29,17 @@
 
 namespace
 {
+	template <typename T>
+	void PasteKeyAtFrame(TArray<T>& Keys, T Key, int32 Frame)
+	{
+		Key.Frame = Frame;
+		for (T& Existing : Keys)
+		{
+			if (Existing.Frame == Frame) { Existing = Key; return; }
+		}
+		Keys.Add(std::move(Key));
+	}
+
 	// 파일 열기 대화상자를 통해 애셋 경로 선택
 	FString BrowseFileDialog(const wchar_t* Filter, const wchar_t* DefExt)
 	{
@@ -72,6 +84,10 @@ namespace
 			return 0xFF9B59B6;
 		case ESequenceTrackType::Audio:
 			return 0xFFD35400;
+		case ESequenceTrackType::ActorVisibility:
+			return 0xFF35A8C9;
+		case ESequenceTrackType::CameraEffects:
+			return 0xFFB05AA8;
 		default:
 			return 0xFF555555;
 		}
@@ -89,9 +105,42 @@ namespace
 			return "Camera FOV Track";
 		case ESequenceTrackType::Audio:
 			return "Audio Track";
+		case ESequenceTrackType::ActorVisibility:
+			return "Actor Visibility Track";
+		case ESequenceTrackType::CameraEffects:
+			return "Camera Effects Track";
 		default:
 			return "Track";
 		}
+	}
+
+	int32 AppendCameraCut(FSequenceTrack& Track, int32 RequestedFrame, int32 SequenceStart, int32 SequenceEnd, const FString& CameraName)
+	{
+		FCameraCutClip Cut;
+		Cut.StartFrame = FMath::Clamp(RequestedFrame, SequenceStart, SequenceEnd);
+		Cut.CameraActorName = CameraName;
+		if (Track.CameraCuts.IsEmpty())
+		{
+			Cut.EndFrame = std::min(Cut.StartFrame + 60, SequenceEnd);
+		}
+		else
+		{
+			FLevelSequenceAsset::SortTrackKeys(Track);
+			FCameraCutClip& LastCut = Track.CameraCuts.Last();
+			if (Cut.StartFrame <= LastCut.StartFrame)
+			{
+				if (LastCut.EndFrame < SequenceEnd) Cut.StartFrame = LastCut.EndFrame + 1;
+				else if (LastCut.StartFrame < LastCut.EndFrame)
+					Cut.StartFrame = LastCut.StartFrame + (LastCut.EndFrame - LastCut.StartFrame + 1) / 2;
+			}
+			if (Cut.StartFrame > LastCut.StartFrame && Cut.StartFrame <= LastCut.EndFrame)
+			{
+				LastCut.EndFrame = Cut.StartFrame - 1;
+			}
+			Cut.EndFrame = SequenceEnd;
+		}
+		Track.CameraCuts.Add(Cut);
+		return Track.CameraCuts.Num() - 1;
 	}
 
 	// 시퀀서 위젯과 패널 데이터를 연결하는 어댑터
@@ -101,9 +150,6 @@ namespace
 		TArray<int32> CachedStartFrames;
 		TArray<int32> CachedEndFrames;
 		TArray<FString> CachedLabels;
-
-		int32 DraggingTrackIdx = -1;
-		int32 DraggingKeyIdx = -1;
 
 		explicit FSequencerBridge(FSequencerPanel* InPanel)
 			: Panel(InPanel)
@@ -127,6 +173,8 @@ namespace
 				else if (Track.TrackType == ESequenceTrackType::ActorTransform) Prefix = "[Xform] ";
 				else if (Track.TrackType == ESequenceTrackType::CameraFOV) Prefix = "[FOV] ";
 				else if (Track.TrackType == ESequenceTrackType::Audio) Prefix = "[Audio] ";
+				else if (Track.TrackType == ESequenceTrackType::ActorVisibility) Prefix = "[Vis] ";
+				else if (Track.TrackType == ESequenceTrackType::CameraEffects) Prefix = "[FX] ";
 
 				FString NamePart = !Track.TrackName.empty() ? Track.TrackName : Track.TargetActorName;
 				if (NamePart.empty()) NamePart = GetTrackTypeLabel(Track.TrackType);
@@ -149,6 +197,16 @@ namespace
 				{
 					MinF = Track.FOVKeys[0].Frame;
 					MaxF = Track.FOVKeys.Last().Frame;
+				}
+				else if (Track.TrackType == ESequenceTrackType::ActorVisibility && !Track.VisibilityKeys.IsEmpty())
+				{
+					MinF = Track.VisibilityKeys[0].Frame;
+					MaxF = Track.VisibilityKeys.Last().Frame;
+				}
+				else if (Track.TrackType == ESequenceTrackType::CameraEffects && !Track.CameraEffectsKeys.IsEmpty())
+				{
+					MinF = Track.CameraEffectsKeys[0].Frame;
+					MaxF = Track.CameraEffectsKeys.Last().Frame;
 				}
 				else if (Track.TrackType == ESequenceTrackType::Audio && !Track.AudioClips.IsEmpty())
 				{
@@ -177,7 +235,7 @@ namespace
 
 		int GetItemTypeCount() const override
 		{
-			return 4;
+			return 6;
 		}
 
 		const char* GetItemTypeName(int TypeIndex) const override
@@ -240,6 +298,23 @@ namespace
 			RebuildCache();
 		}
 
+		void SelectTrack(int) override
+		{
+			Panel->SetSelectedKeyIndex(-1);
+		}
+
+		bool CanEditItemRange(int Index) const override
+		{
+			const ESequenceTrackType Type = Panel->GetSequenceData().Tracks[Index].TrackType;
+			return Type != ESequenceTrackType::CameraCut && Type != ESequenceTrackType::ActorVisibility &&
+				Type != ESequenceTrackType::CameraEffects;
+		}
+
+		bool DrawOnMainRow(int Index) const override
+		{
+			return Panel->GetSequenceData().Tracks[Index].TrackType == ESequenceTrackType::CameraCut;
+		}
+
 		void Duplicate(int Index) override
 		{
 			Panel->DuplicateTrackAt(Index);
@@ -278,6 +353,14 @@ namespace
 
 			ImGuiIO& Io = ImGui::GetIO();
 			DrawList->PushClipRect(ClippingRect.Min, ClippingRect.Max, true);
+			struct FKeyDragState
+			{
+				int32 TrackIndex = -1;
+				int32 KeyIndex = -1;
+				int32 StartFrame = 0;
+				float MouseX = 0.0f;
+			};
+			static FKeyDragState KeyDrag;
 
 			if (bDetailed)
 			{
@@ -288,6 +371,16 @@ namespace
 			// 카메라 컷 클립 블록 및 블렌드 구간 표시
 			if (Track.TrackType == ESequenceTrackType::CameraCut)
 			{
+				struct FCutDragState
+				{
+					int32 TrackIndex = -1;
+					int32 CutIndex = -1;
+					int32 Part = 0; // 1: left edge, 2: body, 3: right edge
+					float MouseX = 0.0f;
+					int32 StartFrame = 0;
+					int32 EndFrame = 0;
+				};
+				static FCutDragState CutDrag;
 				for (int32 CutIdx = 0; CutIdx < Track.CameraCuts.Num(); ++CutIdx)
 				{
 					FCameraCutClip& Cut = Track.CameraCuts[CutIdx];
@@ -298,6 +391,9 @@ namespace
 
 					DrawList->AddRectFilled(CutRect.Min, CutRect.Max, bSelected ? 0xFF5A9BD5 : 0xFF2E5B88, 3.0f);
 					DrawList->AddRect(CutRect.Min, CutRect.Max, bSelected ? 0xFFFFD700 : 0xFF88Bbee, 3.0f);
+					const float HandleWidth = std::min(8.0f, (X2 - X1) / 3.0f);
+					DrawList->AddLine(ImVec2(X1 + HandleWidth, CutRect.Min.y + 2.0f), ImVec2(X1 + HandleWidth, CutRect.Max.y - 2.0f), 0x88FFFFFF);
+					DrawList->AddLine(ImVec2(X2 - HandleWidth, CutRect.Min.y + 2.0f), ImVec2(X2 - HandleWidth, CutRect.Max.y - 2.0f), 0x88FFFFFF);
 
 					if (Cut.BlendTime > 0.0f)
 					{
@@ -316,6 +412,62 @@ namespace
 					{
 						Panel->SetSelectedTrackIndex(Index);
 						Panel->SetSelectedKeyIndex(CutIdx);
+						CutDrag.TrackIndex = Index;
+						CutDrag.CutIndex = CutIdx;
+						CutDrag.Part = Io.MousePos.x <= X1 + HandleWidth ? 1 : (Io.MousePos.x >= X2 - HandleWidth ? 3 : 2);
+						CutDrag.MouseX = Io.MousePos.x;
+						CutDrag.StartFrame = Cut.StartFrame;
+						CutDrag.EndFrame = Cut.EndFrame;
+					}
+					if (ClippingRect.Contains(Io.MousePos) && CutRect.Contains(Io.MousePos) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+					{
+						Panel->DeleteKeyAt(Index, CutIdx);
+						break;
+					}
+				}
+				if (CutDrag.TrackIndex == Index)
+				{
+					if (CutDrag.CutIndex >= Track.CameraCuts.Num())
+					{
+						CutDrag.TrackIndex = -1;
+					}
+					else if (Io.MouseDown[0] && PixelPerFrame > 0.001f)
+					{
+						FCameraCutClip& Cut = Track.CameraCuts[CutDrag.CutIndex];
+						const int32 Delta = static_cast<int32>(std::round((Io.MousePos.x - CutDrag.MouseX) / PixelPerFrame));
+						int32 NewStart = CutDrag.StartFrame;
+						int32 NewEnd = CutDrag.EndFrame;
+						if (CutDrag.Part == 1) NewStart = FMath::Clamp(NewStart + Delta, Data.StartFrame, NewEnd);
+						else if (CutDrag.Part == 3) NewEnd = FMath::Clamp(NewEnd + Delta, NewStart, Data.EndFrame);
+						else
+						{
+							const int32 Offset = FMath::Clamp(Delta, Data.StartFrame - NewStart, Data.EndFrame - NewEnd);
+							NewStart += Offset;
+							NewEnd += Offset;
+						}
+						if (Cut.StartFrame != NewStart || Cut.EndFrame != NewEnd)
+						{
+							Cut.StartFrame = NewStart;
+							Cut.EndFrame = NewEnd;
+							Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
+						}
+					}
+					else
+					{
+						const FCameraCutClip SelectedCut = Track.CameraCuts[CutDrag.CutIndex];
+						FLevelSequenceAsset::SortTrackKeys(Track);
+						for (int32 SortedIndex = 0; SortedIndex < Track.CameraCuts.Num(); ++SortedIndex)
+						{
+							const FCameraCutClip& Candidate = Track.CameraCuts[SortedIndex];
+							if (Candidate.StartFrame == SelectedCut.StartFrame && Candidate.EndFrame == SelectedCut.EndFrame &&
+								Candidate.CameraActorName == SelectedCut.CameraActorName && Candidate.BlendTime == SelectedCut.BlendTime)
+							{
+								Panel->SetSelectedKeyIndex(SortedIndex);
+								break;
+							}
+						}
+						CutDrag.TrackIndex = -1;
+						Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
 					}
 				}
 			}
@@ -340,6 +492,11 @@ namespace
 					{
 						Panel->SetSelectedTrackIndex(Index);
 						Panel->SetSelectedKeyIndex(ClipIdx);
+					}
+					if (ClippingRect.Contains(Io.MousePos) && ClipRect.Contains(Io.MousePos) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+					{
+						Panel->DeleteKeyAt(Index, ClipIdx);
+						break;
 					}
 				}
 			}
@@ -373,17 +530,11 @@ namespace
 					{
 						Panel->SetSelectedTrackIndex(Index);
 						Panel->SetSelectedKeyIndex(KeyIdx);
-						DraggingTrackIdx = Index;
-						DraggingKeyIdx = KeyIdx;
+						KeyDrag = { Index, KeyIdx, Key.Frame, Io.MousePos.x };
 					}
 					if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 					{
-						Track.TransformKeys.RemoveAt(KeyIdx);
-						if (Panel->GetSelectedKeyIndex() >= Track.TransformKeys.Num())
-						{
-							Panel->SetSelectedKeyIndex(Track.TransformKeys.Num() - 1);
-						}
-						Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
+						Panel->DeleteKeyAt(Index, KeyIdx);
 						break;
 					}
 				}
@@ -423,48 +574,121 @@ namespace
 					{
 						Panel->SetSelectedTrackIndex(Index);
 						Panel->SetSelectedKeyIndex(KeyIdx);
-						DraggingTrackIdx = Index;
-						DraggingKeyIdx = KeyIdx;
+						KeyDrag = { Index, KeyIdx, Key.Frame, Io.MousePos.x };
 					}
 					if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 					{
-						Track.FOVKeys.RemoveAt(KeyIdx);
-						if (Panel->GetSelectedKeyIndex() >= Track.FOVKeys.Num())
-						{
-							Panel->SetSelectedKeyIndex(Track.FOVKeys.Num() - 1);
-						}
-						Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
+						Panel->DeleteKeyAt(Index, KeyIdx);
+						break;
+					}
+				}
+			}
+			else if (Track.TrackType == ESequenceTrackType::ActorVisibility)
+			{
+				for (int32 KeyIdx = 0; KeyIdx < Track.VisibilityKeys.Num(); ++KeyIdx)
+				{
+					const FVisibilityKeyframe& Key = Track.VisibilityKeys[KeyIdx];
+					const float KeyX = BaseX + (Key.Frame - GetFrameMin()) * PixelPerFrame;
+					if (KeyIdx + 1 < Track.VisibilityKeys.Num())
+					{
+						const float NextX = BaseX + (Track.VisibilityKeys[KeyIdx + 1].Frame - GetFrameMin()) * PixelPerFrame;
+						DrawList->AddLine(ImVec2(KeyX, MidY), ImVec2(NextX, MidY), Key.bVisible && !Key.bHiddenInGame ? 0xAA35A8C9 : 0xAA555555, 2.0f);
+					}
+					const bool bSelected = Panel->GetSelectedTrackIndex() == Index && Panel->GetSelectedKeyIndex() == KeyIdx;
+					const ImRect HitBox(ImVec2(KeyX - 7.0f, MidY - 7.0f), ImVec2(KeyX + 7.0f, MidY + 7.0f));
+					const bool bHovered = ClippingRect.Contains(Io.MousePos) && HitBox.Contains(Io.MousePos);
+					DrawDiamondMarker(DrawList, ImVec2(KeyX, MidY), bSelected ? 6.5f : 5.5f,
+						bSelected ? 0xFFFFCC00 : (bHovered ? 0xFF75D4EE : 0xFF35A8C9), 0xFF111111);
+					if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					{
+						Panel->SetSelectedTrackIndex(Index);
+						Panel->SetSelectedKeyIndex(KeyIdx);
+						KeyDrag = { Index, KeyIdx, Key.Frame, Io.MousePos.x };
+					}
+					if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+					{
+						Panel->DeleteKeyAt(Index, KeyIdx);
+						break;
+					}
+				}
+			}
+			else if (Track.TrackType == ESequenceTrackType::CameraEffects)
+			{
+				for (int32 KeyIdx = 0; KeyIdx < Track.CameraEffectsKeys.Num(); ++KeyIdx)
+				{
+					const FCameraEffectsKeyframe& Key = Track.CameraEffectsKeys[KeyIdx];
+					const float KeyX = BaseX + (Key.Frame - GetFrameMin()) * PixelPerFrame;
+					if (KeyIdx + 1 < Track.CameraEffectsKeys.Num())
+					{
+						const float NextX = BaseX + (Track.CameraEffectsKeys[KeyIdx + 1].Frame - GetFrameMin()) * PixelPerFrame;
+						DrawList->AddLine(ImVec2(KeyX, MidY), ImVec2(NextX, MidY), 0xAAB05AA8, 2.0f);
+					}
+					const bool bSelected = Panel->GetSelectedTrackIndex() == Index && Panel->GetSelectedKeyIndex() == KeyIdx;
+					const ImRect HitBox(ImVec2(KeyX - 7.0f, MidY - 7.0f), ImVec2(KeyX + 7.0f, MidY + 7.0f));
+					const bool bHovered = ClippingRect.Contains(Io.MousePos) && HitBox.Contains(Io.MousePos);
+					DrawDiamondMarker(DrawList, ImVec2(KeyX, MidY), bSelected ? 6.5f : 5.5f,
+						bSelected ? 0xFFFFCC00 : (bHovered ? 0xFFD887D1 : 0xFFB05AA8), 0xFF111111);
+					if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					{
+						Panel->SetSelectedTrackIndex(Index);
+						Panel->SetSelectedKeyIndex(KeyIdx);
+						KeyDrag = { Index, KeyIdx, Key.Frame, Io.MousePos.x };
+					}
+					if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+					{
+						Panel->DeleteKeyAt(Index, KeyIdx);
 						break;
 					}
 				}
 			}
 
 			// 키프레임 마우스 드래그 이동 처리
-			if (DraggingTrackIdx == Index && DraggingKeyIdx >= 0)
+			if (KeyDrag.TrackIndex == Index &&
+				(Track.TrackType == ESequenceTrackType::ActorTransform || Track.TrackType == ESequenceTrackType::CameraFOV ||
+				 Track.TrackType == ESequenceTrackType::ActorVisibility || Track.TrackType == ESequenceTrackType::CameraEffects))
 			{
-				if (Io.MouseDown[0] && PixelPerFrame > 0.001f)
+				const int32 KeyCount = Track.TrackType == ESequenceTrackType::ActorTransform ? Track.TransformKeys.Num() :
+					Track.TrackType == ESequenceTrackType::CameraFOV ? Track.FOVKeys.Num() :
+					Track.TrackType == ESequenceTrackType::ActorVisibility ? Track.VisibilityKeys.Num() : Track.CameraEffectsKeys.Num();
+				auto KeyFrameAt = [&](int32 KeyIndex) -> int32&
+				{
+					if (Track.TrackType == ESequenceTrackType::ActorTransform) return Track.TransformKeys[KeyIndex].Frame;
+					if (Track.TrackType == ESequenceTrackType::CameraFOV) return Track.FOVKeys[KeyIndex].Frame;
+					if (Track.TrackType == ESequenceTrackType::ActorVisibility) return Track.VisibilityKeys[KeyIndex].Frame;
+					return Track.CameraEffectsKeys[KeyIndex].Frame;
+				};
+				if (KeyDrag.KeyIndex < 0 || KeyDrag.KeyIndex >= KeyCount)
+				{
+					KeyDrag.TrackIndex = -1;
+				}
+				else if (Io.MouseDown[0] && PixelPerFrame > 0.001f)
 				{
 					const int32 NewFrame = FMath::Clamp(
-						static_cast<int32>(std::round((Io.MousePos.x - BaseX) / PixelPerFrame)) + GetFrameMin(),
+						KeyDrag.StartFrame + static_cast<int32>(std::round((Io.MousePos.x - KeyDrag.MouseX) / PixelPerFrame)),
 						GetFrameMin(),
 						GetFrameMax());
 
-					if (Track.TrackType == ESequenceTrackType::ActorTransform && DraggingKeyIdx < Track.TransformKeys.Num())
+					if (KeyFrameAt(KeyDrag.KeyIndex) != NewFrame)
 					{
-						Track.TransformKeys[DraggingKeyIdx].Frame = NewFrame;
-						Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
-					}
-					else if (Track.TrackType == ESequenceTrackType::CameraFOV && DraggingKeyIdx < Track.FOVKeys.Num())
-					{
-						Track.FOVKeys[DraggingKeyIdx].Frame = NewFrame;
+						KeyFrameAt(KeyDrag.KeyIndex) = NewFrame;
 						Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
 					}
 				}
-				else if (!Io.MouseDown[0])
+				else
 				{
+					const int32 MovedFrame = KeyFrameAt(KeyDrag.KeyIndex);
 					FLevelSequenceAsset::SortTrackKeys(Track);
-					DraggingTrackIdx = -1;
-					DraggingKeyIdx = -1;
+					for (int32 SortedIndex = 0; SortedIndex < KeyCount; ++SortedIndex)
+					{
+						const int32 Frame = KeyFrameAt(SortedIndex);
+						if (Frame == MovedFrame)
+						{
+							Panel->SetSelectedKeyIndex(SortedIndex);
+							break;
+						}
+					}
+					KeyDrag.TrackIndex = -1;
+					Panel->SetCurrentFrameAndEvaluate(Panel->GetCurrentFrame(), false);
 				}
 			}
 
@@ -511,6 +735,7 @@ bool FSequencerPanel::Init()
 
 void FSequencerPanel::CreateNewSequence()
 {
+	StopPilotingCamera();
 	SequenceData = FLevelSequenceData{};
 	SequenceData.FrameRate = 30;
 	SequenceData.StartFrame = 0;
@@ -544,6 +769,8 @@ bool FSequencerPanel::OpenSequenceAsset(const FString& Path)
 	}
 
 	SequenceData = std::move(Loaded);
+	StopPilotingCamera();
+	FLevelSequenceAsset::SpawnMissingActors(SequenceData, World);
 	CurrentAssetPath = Path;
 	strncpy_s(AssetPathBuffer, sizeof(AssetPathBuffer), CurrentAssetPath.c_str(), _TRUNCATE);
 	CurrentFrame = SequenceData.StartFrame;
@@ -561,6 +788,35 @@ bool FSequencerPanel::OpenSequenceAsset(const FString& Path)
 
 bool FSequencerPanel::SaveSequenceAsset(const FString& Path)
 {
+	TArray<FSequenceSpawnableActor> Spawnables;
+	auto CaptureActor = [&](const FString& ActorName)
+	{
+		if (ActorName.empty()) return;
+		for (const FSequenceSpawnableActor& Existing : Spawnables)
+			if (Existing.ActorName == ActorName) return;
+		FSequenceSpawnableActor Entry;
+		if (AActor* Actor = FLevelSequenceAsset::FindActorByNameInWorld(World, ActorName))
+		{
+			if (Actor->IsA<ALevelSequenceActor>()) return;
+			Entry.ActorName = ActorName;
+			Entry.ClassName = Actor->GetClass()->Name;
+			Entry.InitialTransform = Actor->GetActorTransform();
+			if (UCameraComponent* Camera = Actor->GetComponentByClass<UCameraComponent>())
+				Entry.InitialFOV = Camera->GetFieldOfView();
+		}
+		else
+		{
+			for (const FSequenceSpawnableActor& Existing : SequenceData.SpawnableActors)
+				if (Existing.ActorName == ActorName) { Entry = Existing; break; }
+		}
+		if (!Entry.ClassName.empty()) Spawnables.Add(std::move(Entry));
+	};
+	for (const FSequenceTrack& Track : SequenceData.Tracks)
+	{
+		CaptureActor(Track.TargetActorName);
+		for (const FCameraCutClip& Cut : Track.CameraCuts) CaptureActor(Cut.CameraActorName);
+	}
+	SequenceData.SpawnableActors = std::move(Spawnables);
 	for (FSequenceTrack& Track : SequenceData.Tracks)
 	{
 		FLevelSequenceAsset::SortTrackKeys(Track);
@@ -582,13 +838,40 @@ void FSequencerPanel::Tick(float DeltaTime)
 	{
 		return;
 	}
+	if (bPilotingCamera && !bIsPlaying && ViewportsPanel)
+	{
+		AActor* Camera = FLevelSequenceAsset::FindActorByNameInWorld(World, PilotedCameraName);
+		FEditorViewportClient* Client = ViewportsPanel->GetViewportClient(PilotedViewportIndex);
+		if (!Camera || !Client)
+		{
+			StopPilotingCamera();
+		}
+		else if (ViewportsPanel->GetActiveViewIndex() == PilotedViewportIndex)
+		{
+			const FVector& Location = Client->GetViewLocation();
+			const FRotator& Rotation = Client->GetViewRotation();
+			const bool bMoved = (Location - LastPilotViewLocation).SizeSquared() > 0.0001f ||
+				std::abs(Rotation.Pitch - LastPilotViewRotation.Pitch) > 0.01f ||
+				std::abs(Rotation.Yaw - LastPilotViewRotation.Yaw) > 0.01f ||
+				std::abs(Rotation.Roll - LastPilotViewRotation.Roll) > 0.01f;
+			if (bMoved)
+			{
+				Camera->SetActorLocation(Location, false);
+				Camera->SetActorRotation(Rotation, false);
+				LastPilotViewLocation = Location;
+				LastPilotViewRotation = Rotation;
+				if (bAutoKey) AddKeyframeAtCurrentFrame(FindPilotedTransformTrackIndex());
+			}
+		}
+	}
 
 	// 에디터 단축키로 현재 프레임에 키프레임 찍기
 	if (IsOpen() && !ImGui::GetIO().WantTextInput && FInputSystem::IsKeyPressed(EKeyCode::K))
 	{
-		if (SelectedTrackIndex >= 0 && SelectedTrackIndex < SequenceData.Tracks.Num())
+		const int32 TrackIndex = bPilotingCamera ? FindPilotedTransformTrackIndex() : SelectedTrackIndex;
+		if (TrackIndex >= 0 && TrackIndex < SequenceData.Tracks.Num())
 		{
-			AddKeyframeAtCurrentFrame(SelectedTrackIndex);
+			AddKeyframeAtCurrentFrame(TrackIndex);
 		}
 	}
 
@@ -650,10 +933,112 @@ void FSequencerPanel::EvaluateAtCurrentFrame(bool bTriggerAudio)
 		&bHasEvaluatedCameraCut);
 	PreviousEvalFrame = EvalFrame;
 
-	if (bCameraLock && bHasEvaluatedCameraCut)
+	if (bPilotingCamera && CurrentFrame != LastPilotFrame)
+	{
+		SyncPilotedCameraToViewport();
+	}
+	else if (!bPilotingCamera && bCameraLock && bHasEvaluatedCameraCut)
 	{
 		SyncCameraToActiveViewport();
 	}
+}
+
+void FSequencerPanel::StartPilotingCamera()
+{
+	if (!World || !ViewportsPanel) return;
+	if (!ViewportsPanel->GetViewportClient(ViewportsPanel->GetActiveViewIndex())) return;
+	FString CameraName;
+	if (SelectedTrackIndex >= 0 && SelectedTrackIndex < SequenceData.Tracks.Num())
+	{
+		const FSequenceTrack& Track = SequenceData.Tracks[SelectedTrackIndex];
+		if (Track.TrackType == ESequenceTrackType::CameraCut &&
+			SelectedKeyIndex >= 0 && SelectedKeyIndex < Track.CameraCuts.Num())
+			CameraName = Track.CameraCuts[SelectedKeyIndex].CameraActorName;
+	}
+	if (CameraName.empty())
+	{
+		if (AActor* Selected = OutlinerPanel ? OutlinerPanel->GetSelectedActor() : nullptr)
+		{
+			if (Selected->GetComponentByClass<UCameraComponent>())
+				CameraName = Selected->GetName();
+		}
+	}
+	if (CameraName.empty() && SelectedTrackIndex >= 0 && SelectedTrackIndex < SequenceData.Tracks.Num())
+	{
+		const FSequenceTrack& Track = SequenceData.Tracks[SelectedTrackIndex];
+		if (Track.TrackType == ESequenceTrackType::ActorTransform) CameraName = Track.TargetActorName;
+	}
+	AActor* Camera = FLevelSequenceAsset::FindActorByNameInWorld(World, CameraName);
+	if (!Camera || !Camera->GetComponentByClass<UCameraComponent>())
+	{
+		StatusMessage = "Select a camera actor or camera cut first.";
+		return;
+	}
+
+	int32 TransformTrackIndex = -1;
+	for (int32 Index = 0; Index < SequenceData.Tracks.Num(); ++Index)
+	{
+		const FSequenceTrack& Track = SequenceData.Tracks[Index];
+		if (Track.TrackType == ESequenceTrackType::ActorTransform && Track.TargetActorName == CameraName)
+		{
+			TransformTrackIndex = Index;
+			break;
+		}
+	}
+	if (TransformTrackIndex < 0)
+	{
+		FSequenceTrack Track;
+		Track.TrackType = ESequenceTrackType::ActorTransform;
+		Track.TrackName = CameraName + " Transform";
+		Track.TargetActorName = CameraName;
+		SequenceData.Tracks.Add(Track);
+		TransformTrackIndex = SequenceData.Tracks.Num() - 1;
+	}
+	SelectedTrackIndex = TransformTrackIndex;
+	SelectedKeyIndex = -1;
+	bIsPlaying = false;
+	bPilotingCamera = true;
+	PilotedCameraName = CameraName;
+	PilotedViewportIndex = ViewportsPanel->GetActiveViewIndex();
+	LastPilotFrame = CurrentFrame;
+	SyncPilotedCameraToViewport();
+	StatusMessage = "Piloting " + CameraName + " (K: key current frame).";
+}
+
+void FSequencerPanel::StopPilotingCamera()
+{
+	bPilotingCamera = false;
+	PilotedCameraName.clear();
+	PilotedViewportIndex = -1;
+	LastPilotFrame = -1;
+}
+
+int32 FSequencerPanel::FindPilotedTransformTrackIndex() const
+{
+	for (int32 Index = 0; Index < SequenceData.Tracks.Num(); ++Index)
+	{
+		const FSequenceTrack& Track = SequenceData.Tracks[Index];
+		if (Track.TrackType == ESequenceTrackType::ActorTransform && Track.TargetActorName == PilotedCameraName)
+			return Index;
+	}
+	return -1;
+}
+
+void FSequencerPanel::SyncPilotedCameraToViewport()
+{
+	if (!bPilotingCamera || !ViewportsPanel || !World) return;
+	AActor* Camera = FLevelSequenceAsset::FindActorByNameInWorld(World, PilotedCameraName);
+	FEditorViewportClient* Client = ViewportsPanel->GetViewportClient(PilotedViewportIndex);
+	if (!Camera || !Client) { StopPilotingCamera(); return; }
+	FMinimalViewInfo POV;
+	Camera->CalcCamera(0.0f, POV);
+	Client->SetViewportType(ELevelViewportType::Perspective);
+	Client->SetViewLocation(POV.Location);
+	Client->SetViewRotation(POV.Rotation);
+	Client->SetViewFOV(POV.FieldOfView);
+	LastPilotViewLocation = POV.Location;
+	LastPilotViewRotation = POV.Rotation;
+	LastPilotFrame = CurrentFrame;
 }
 
 void FSequencerPanel::SyncCameraToActiveViewport()
@@ -771,12 +1156,39 @@ void FSequencerPanel::AddTrackByType(ESequenceTrackType TrackType)
 		DefaultAudio.EndFrame = std::min(CurrentFrame + 30, SequenceData.EndFrame);
 		NewTrack.AudioClips.Add(DefaultAudio);
 	}
+	else if (TrackType == ESequenceTrackType::ActorVisibility)
+	{
+		NewTrack.TargetActorName = SelectedActor ? SelectedActor->GetName() : "";
+		NewTrack.TrackName = SelectedActor ? SelectedActor->GetName() + " Visibility" : "Actor Visibility";
+		if (CurrentFrame > SequenceData.StartFrame)
+		{
+			FVisibilityKeyframe StartKey;
+			StartKey.Frame = SequenceData.StartFrame;
+			if (SelectedActor && SelectedActor->GetRootComponent())
+			{
+				StartKey.bVisible = SelectedActor->GetRootComponent()->IsVisible();
+				StartKey.bHiddenInGame = SelectedActor->GetRootComponent()->IsHiddenInGame();
+			}
+			NewTrack.VisibilityKeys.Add(StartKey);
+		}
+	}
+	else if (TrackType == ESequenceTrackType::CameraEffects)
+	{
+		NewTrack.TrackName = "Camera Effects";
+		if (CurrentFrame > SequenceData.StartFrame)
+		{
+			FCameraEffectsKeyframe StartKey;
+			StartKey.Frame = SequenceData.StartFrame;
+			NewTrack.CameraEffectsKeys.Add(StartKey);
+		}
+	}
 
 	SequenceData.Tracks.Add(std::move(NewTrack));
 	SelectedTrackIndex = SequenceData.Tracks.Num() - 1;
 	SelectedKeyIndex = -1;
 
-	if (TrackType == ESequenceTrackType::ActorTransform || TrackType == ESequenceTrackType::CameraFOV)
+	if (TrackType == ESequenceTrackType::ActorTransform || TrackType == ESequenceTrackType::CameraFOV ||
+		TrackType == ESequenceTrackType::ActorVisibility || TrackType == ESequenceTrackType::CameraEffects)
 	{
 		AddKeyframeAtCurrentFrame(SelectedTrackIndex);
 	}
@@ -789,11 +1201,137 @@ void FSequencerPanel::DeleteTrackAt(int32 TrackIndex)
 		return;
 	}
 	SequenceData.Tracks.RemoveAt(TrackIndex);
-	if (SelectedTrackIndex >= SequenceData.Tracks.Num())
+	if (SelectedTrackIndex == TrackIndex)
 	{
-		SelectedTrackIndex = SequenceData.Tracks.Num() - 1;
+		SelectedTrackIndex = -1;
+	}
+	else if (SelectedTrackIndex > TrackIndex)
+	{
+		--SelectedTrackIndex;
 	}
 	SelectedKeyIndex = -1;
+	EvaluateAtCurrentFrame(false);
+}
+
+void FSequencerPanel::DeleteKeyAt(int32 TrackIndex, int32 KeyIndex)
+{
+	if (TrackIndex < 0 || TrackIndex >= SequenceData.Tracks.Num() || KeyIndex < 0)
+	{
+		return;
+	}
+
+	FSequenceTrack& Track = SequenceData.Tracks[TrackIndex];
+	bool bDeleted = false;
+	switch (Track.TrackType)
+	{
+	case ESequenceTrackType::CameraCut:
+		if (KeyIndex < Track.CameraCuts.Num()) { Track.CameraCuts.RemoveAt(KeyIndex); bDeleted = true; }
+		break;
+	case ESequenceTrackType::ActorTransform:
+		if (KeyIndex < Track.TransformKeys.Num()) { Track.TransformKeys.RemoveAt(KeyIndex); bDeleted = true; }
+		break;
+	case ESequenceTrackType::CameraFOV:
+		if (KeyIndex < Track.FOVKeys.Num()) { Track.FOVKeys.RemoveAt(KeyIndex); bDeleted = true; }
+		break;
+	case ESequenceTrackType::Audio:
+		if (KeyIndex < Track.AudioClips.Num()) { Track.AudioClips.RemoveAt(KeyIndex); bDeleted = true; }
+		break;
+	case ESequenceTrackType::ActorVisibility:
+		if (KeyIndex < Track.VisibilityKeys.Num()) { Track.VisibilityKeys.RemoveAt(KeyIndex); bDeleted = true; }
+		break;
+	case ESequenceTrackType::CameraEffects:
+		if (KeyIndex < Track.CameraEffectsKeys.Num()) { Track.CameraEffectsKeys.RemoveAt(KeyIndex); bDeleted = true; }
+		break;
+	}
+	if (bDeleted)
+	{
+		if (SelectedTrackIndex == TrackIndex)
+		{
+			if (SelectedKeyIndex == KeyIndex) SelectedKeyIndex = -1;
+			else if (SelectedKeyIndex > KeyIndex) --SelectedKeyIndex;
+		}
+		EvaluateAtCurrentFrame(false);
+	}
+}
+
+void FSequencerPanel::CopySelectedKey()
+{
+	if (SelectedTrackIndex < 0 || SelectedTrackIndex >= SequenceData.Tracks.Num() || SelectedKeyIndex < 0)
+	{
+		StatusMessage = "Select a keyframe to copy.";
+		return;
+	}
+	const FSequenceTrack& Source = SequenceData.Tracks[SelectedTrackIndex];
+	FSequenceTrack Copy;
+	Copy.TrackType = Source.TrackType;
+	switch (Source.TrackType)
+	{
+	case ESequenceTrackType::ActorTransform:
+		if (SelectedKeyIndex >= Source.TransformKeys.Num()) return;
+		Copy.TransformKeys.Add(Source.TransformKeys[SelectedKeyIndex]);
+		break;
+	case ESequenceTrackType::CameraFOV:
+		if (SelectedKeyIndex >= Source.FOVKeys.Num()) return;
+		Copy.FOVKeys.Add(Source.FOVKeys[SelectedKeyIndex]);
+		break;
+	case ESequenceTrackType::ActorVisibility:
+		if (SelectedKeyIndex >= Source.VisibilityKeys.Num()) return;
+		Copy.VisibilityKeys.Add(Source.VisibilityKeys[SelectedKeyIndex]);
+		break;
+	case ESequenceTrackType::CameraEffects:
+		if (SelectedKeyIndex >= Source.CameraEffectsKeys.Num()) return;
+		Copy.CameraEffectsKeys.Add(Source.CameraEffectsKeys[SelectedKeyIndex]);
+		break;
+	default:
+		StatusMessage = "Select a transform, FOV, visibility, or camera effects keyframe.";
+		return;
+	}
+	CopiedKeyTrack = std::move(Copy);
+	bHasCopiedKey = true;
+	StatusMessage = "Keyframe copied. Select a matching track and paste at the current frame.";
+}
+
+void FSequencerPanel::PasteCopiedKeyAtCurrentFrame()
+{
+	if (!bHasCopiedKey || SelectedTrackIndex < 0 || SelectedTrackIndex >= SequenceData.Tracks.Num())
+	{
+		StatusMessage = "Copy a keyframe and select a track before pasting.";
+		return;
+	}
+	FSequenceTrack& Target = SequenceData.Tracks[SelectedTrackIndex];
+	if (Target.TrackType != CopiedKeyTrack.TrackType)
+	{
+		StatusMessage = "Paste requires the same track type.";
+		return;
+	}
+	switch (Target.TrackType)
+	{
+	case ESequenceTrackType::ActorTransform:
+		PasteKeyAtFrame(Target.TransformKeys, CopiedKeyTrack.TransformKeys[0], CurrentFrame);
+		break;
+	case ESequenceTrackType::CameraFOV:
+		PasteKeyAtFrame(Target.FOVKeys, CopiedKeyTrack.FOVKeys[0], CurrentFrame);
+		break;
+	case ESequenceTrackType::ActorVisibility:
+		PasteKeyAtFrame(Target.VisibilityKeys, CopiedKeyTrack.VisibilityKeys[0], CurrentFrame);
+		break;
+	case ESequenceTrackType::CameraEffects:
+		PasteKeyAtFrame(Target.CameraEffectsKeys, CopiedKeyTrack.CameraEffectsKeys[0], CurrentFrame);
+		break;
+	default: return;
+	}
+	FLevelSequenceAsset::SortTrackKeys(Target);
+	SelectedKeyIndex = -1;
+	for (int32 i = 0; i < Target.TransformKeys.Num(); ++i)
+		if (Target.TrackType == ESequenceTrackType::ActorTransform && Target.TransformKeys[i].Frame == CurrentFrame) SelectedKeyIndex = i;
+	for (int32 i = 0; i < Target.FOVKeys.Num(); ++i)
+		if (Target.TrackType == ESequenceTrackType::CameraFOV && Target.FOVKeys[i].Frame == CurrentFrame) SelectedKeyIndex = i;
+	for (int32 i = 0; i < Target.VisibilityKeys.Num(); ++i)
+		if (Target.TrackType == ESequenceTrackType::ActorVisibility && Target.VisibilityKeys[i].Frame == CurrentFrame) SelectedKeyIndex = i;
+	for (int32 i = 0; i < Target.CameraEffectsKeys.Num(); ++i)
+		if (Target.TrackType == ESequenceTrackType::CameraEffects && Target.CameraEffectsKeys[i].Frame == CurrentFrame) SelectedKeyIndex = i;
+	EvaluateAtCurrentFrame(false);
+	StatusMessage = "Keyframe pasted at frame " + std::to_string(CurrentFrame) + ".";
 }
 
 void FSequencerPanel::DuplicateTrackAt(int32 TrackIndex)
@@ -896,18 +1434,49 @@ void FSequencerPanel::AddKeyframeAtCurrentFrame(int32 TrackIndex)
 			}
 		}
 	}
+	else if (Track.TrackType == ESequenceTrackType::ActorVisibility)
+	{
+		FVisibilityKeyframe NewKey;
+		NewKey.Frame = CurrentFrame;
+		if (BoundActor && BoundActor->GetRootComponent())
+		{
+			NewKey.bVisible = BoundActor->GetRootComponent()->IsVisible();
+			NewKey.bHiddenInGame = BoundActor->GetRootComponent()->IsHiddenInGame();
+		}
+		for (int32 i = 0; i < Track.VisibilityKeys.Num(); ++i)
+		{
+			if (Track.VisibilityKeys[i].Frame != CurrentFrame) continue;
+			Track.VisibilityKeys[i] = NewKey;
+			SelectedKeyIndex = i;
+			return;
+		}
+		Track.VisibilityKeys.Add(NewKey);
+		FLevelSequenceAsset::SortTrackKeys(Track);
+		for (int32 i = 0; i < Track.VisibilityKeys.Num(); ++i)
+			if (Track.VisibilityKeys[i].Frame == CurrentFrame) { SelectedKeyIndex = i; break; }
+	}
+	else if (Track.TrackType == ESequenceTrackType::CameraEffects)
+	{
+		FCameraEffectsKeyframe Key;
+		Key.Frame = CurrentFrame;
+		const FSequenceCameraEffects Effects = FLevelSequenceAsset::EvaluateCameraEffects(SequenceData, CurrentFrame);
+		Key.FadeOpacity = Effects.FadeOpacity;
+		Key.LetterboxSize = Effects.LetterboxSize;
+		for (int32 i = 0; i < Track.CameraEffectsKeys.Num(); ++i)
+			if (Track.CameraEffectsKeys[i].Frame == CurrentFrame) { SelectedKeyIndex = i; return; }
+		Track.CameraEffectsKeys.Add(Key);
+		FLevelSequenceAsset::SortTrackKeys(Track);
+		for (int32 i = 0; i < Track.CameraEffectsKeys.Num(); ++i)
+			if (Track.CameraEffectsKeys[i].Frame == CurrentFrame) { SelectedKeyIndex = i; break; }
+	}
 	else if (Track.TrackType == ESequenceTrackType::CameraCut)
 	{
-		FCameraCutClip NewCut;
-		NewCut.StartFrame = CurrentFrame;
-		NewCut.EndFrame = std::min(CurrentFrame + 60, SequenceData.EndFrame);
+		FString CameraName;
 		if (AActor* Selected = OutlinerPanel ? OutlinerPanel->GetSelectedActor() : nullptr)
 		{
-			NewCut.CameraActorName = Selected->GetName();
+			if (Selected->GetComponentByClass<UCameraComponent>()) CameraName = Selected->GetName();
 		}
-		Track.CameraCuts.Add(NewCut);
-		FLevelSequenceAsset::SortTrackKeys(Track);
-		SelectedKeyIndex = Track.CameraCuts.Num() - 1;
+		SelectedKeyIndex = AppendCameraCut(Track, CurrentFrame, SequenceData.StartFrame, SequenceData.EndFrame, CameraName);
 	}
 	else if (Track.TrackType == ESequenceTrackType::Audio)
 	{
@@ -962,22 +1531,25 @@ void FSequencerPanel::SpawnCutsceneCamera()
 	AddTrackByType(ESequenceTrackType::CameraFOV);
 
 	bool bAddedToCutTrack = false;
-	for (FSequenceTrack& Track : SequenceData.Tracks)
+	for (int32 TrackIndex = 0; TrackIndex < SequenceData.Tracks.Num(); ++TrackIndex)
 	{
+		FSequenceTrack& Track = SequenceData.Tracks[TrackIndex];
 		if (Track.TrackType == ESequenceTrackType::CameraCut)
 		{
 			if (Track.CameraCuts.IsEmpty())
 			{
-				FCameraCutClip Cut;
-				Cut.StartFrame = CurrentFrame;
-				Cut.EndFrame = SequenceData.EndFrame;
-				Cut.CameraActorName = CamActor->GetName();
-				Track.CameraCuts.Add(Cut);
+				AppendCameraCut(Track, CurrentFrame, SequenceData.StartFrame, SequenceData.EndFrame, CamActor->GetName());
 			}
 			else if (Track.CameraCuts.Last().CameraActorName.empty())
 			{
 				Track.CameraCuts.Last().CameraActorName = CamActor->GetName();
 			}
+			else
+			{
+				AppendCameraCut(Track, CurrentFrame, SequenceData.StartFrame, SequenceData.EndFrame, CamActor->GetName());
+			}
+			SelectedTrackIndex = TrackIndex;
+			SelectedKeyIndex = Track.CameraCuts.Num() - 1;
 			bAddedToCutTrack = true;
 			break;
 		}
@@ -1059,6 +1631,7 @@ void FSequencerPanel::DrawToolbar()
 	if (ImGui::Button(bIsPlaying ? "Pause" : "Play"))
 	{
 		bIsPlaying = !bIsPlaying;
+		if (bIsPlaying) StopPilotingCamera();
 		if (bIsPlaying && CurrentFrame >= SequenceData.EndFrame)
 		{
 			CurrentFrame = SequenceData.StartFrame;
@@ -1096,6 +1669,12 @@ void FSequencerPanel::DrawToolbar()
 	}
 	ImGui::SameLine();
 	ImGui::Checkbox("3D Path", &bShowTrajectory);
+	ImGui::SameLine();
+	if (ImGui::Button(bPilotingCamera ? "Stop Pilot" : "Pilot Camera"))
+	{
+		if (bPilotingCamera) { StopPilotingCamera(); EvaluateAtCurrentFrame(false); }
+		else StartPilotingCamera();
+	}
 
 	// 두 번째 줄: 프레임 설정 및 빠른 생성 도구
 	ImGui::SetNextItemWidth(70.0f);
@@ -1141,13 +1720,15 @@ void FSequencerPanel::DrawToolbar()
 		if (ImGui::MenuItem("Camera Cut Track")) AddTrackByType(ESequenceTrackType::CameraCut);
 		if (ImGui::MenuItem("Actor Transform Track (Selected Actor)")) AddTrackByType(ESequenceTrackType::ActorTransform);
 		if (ImGui::MenuItem("Camera FOV Track (Selected Camera)")) AddTrackByType(ESequenceTrackType::CameraFOV);
+		if (ImGui::MenuItem("Actor Visibility Track (Selected Actor)")) AddTrackByType(ESequenceTrackType::ActorVisibility);
+		if (ImGui::MenuItem("Camera Effects Track (Fade / Letterbox)")) AddTrackByType(ESequenceTrackType::CameraEffects);
 		if (ImGui::MenuItem("Audio Track (SFX / BGM)")) AddTrackByType(ESequenceTrackType::Audio);
 		ImGui::EndPopup();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("+ Key (K)") && SelectedTrackIndex >= 0 && SelectedTrackIndex < SequenceData.Tracks.Num())
 	{
-		AddKeyframeAtCurrentFrame(SelectedTrackIndex);
+		AddKeyframeAtCurrentFrame(bPilotingCamera ? FindPilotedTransformTrackIndex() : SelectedTrackIndex);
 	}
 
 	if (!StatusMessage.empty())
@@ -1182,7 +1763,8 @@ void FSequencerPanel::DrawTrackInspector()
 	ImGui::Checkbox("Expanded", &Track.bExpanded);
 
 	// 액터 바인딩이 필요한 트랙은 드롭다운과 선택 액터 할당 버튼 제공
-	if (Track.TrackType == ESequenceTrackType::ActorTransform || Track.TrackType == ESequenceTrackType::CameraFOV)
+	if (Track.TrackType == ESequenceTrackType::ActorTransform || Track.TrackType == ESequenceTrackType::CameraFOV ||
+		Track.TrackType == ESequenceTrackType::ActorVisibility)
 	{
 		const char* CurrentTarget = Track.TargetActorName.empty() ? "(None)" : Track.TargetActorName.c_str();
 		if (ImGui::BeginCombo("Target Actor", CurrentTarget))
@@ -1200,9 +1782,10 @@ void FSequencerPanel::DrawTrackInspector()
 					if (ImGui::Selectable(Actor->GetName().c_str(), bSelected))
 					{
 						Track.TargetActorName = Actor->GetName();
-						if (Track.TrackName.empty() || Track.TrackName == "Actor Transform" || Track.TrackName == "Camera FOV")
+						if (Track.TrackName.empty() || Track.TrackName == "Actor Transform" || Track.TrackName == "Camera FOV" || Track.TrackName == "Actor Visibility")
 						{
-							Track.TrackName = Actor->GetName() + (Track.TrackType == ESequenceTrackType::CameraFOV ? " FOV" : " Transform");
+							Track.TrackName = Actor->GetName() + (Track.TrackType == ESequenceTrackType::CameraFOV ? " FOV" :
+								Track.TrackType == ESequenceTrackType::ActorVisibility ? " Visibility" : " Transform");
 						}
 					}
 				}
@@ -1215,12 +1798,16 @@ void FSequencerPanel::DrawTrackInspector()
 			if (AActor* Selected = OutlinerPanel ? OutlinerPanel->GetSelectedActor() : nullptr)
 			{
 				Track.TargetActorName = Selected->GetName();
-				Track.TrackName = Selected->GetName() + (Track.TrackType == ESequenceTrackType::CameraFOV ? " FOV" : " Transform");
+				Track.TrackName = Selected->GetName() + (Track.TrackType == ESequenceTrackType::CameraFOV ? " FOV" :
+					Track.TrackType == ESequenceTrackType::ActorVisibility ? " Visibility" : " Transform");
 			}
 		}
 	}
 
 	ImGui::Separator();
+	if (ImGui::Button("Copy Key (Ctrl+C)")) CopySelectedKey();
+	ImGui::SameLine();
+	if (ImGui::Button("Paste Key (Ctrl+V)")) PasteCopiedKeyAtCurrentFrame();
 
 	const char* InterpNames[] = { "Linear", "Cubic (Smooth)", "Constant (Step)" };
 
@@ -1289,13 +1876,16 @@ void FSequencerPanel::DrawTrackInspector()
 		}
 		if (RemoveIdx >= 0)
 		{
-			Track.CameraCuts.RemoveAt(RemoveIdx);
-			EvaluateAtCurrentFrame(false);
+			DeleteKeyAt(SelectedTrackIndex, RemoveIdx);
 		}
 	}
 	// 액터 트랜스폼 키프레임 편집 UI
 	else if (Track.TrackType == ESequenceTrackType::ActorTransform)
 	{
+		if (ImGui::Checkbox("Smooth Curved Path", &Track.bSmoothPath)) EvaluateAtCurrentFrame(false);
+		if (ImGui::Checkbox("Constant Speed Along Path", &Track.bConstantSpeed)) EvaluateAtCurrentFrame(false);
+		if (Track.bConstantSpeed)
+			ImGui::TextDisabled("Intermediate keys are path points; their frame times do not set position timing.");
 		if (ImGui::Button("+ Key Actor Transform at Current Frame"))
 		{
 			AddKeyframeAtCurrentFrame(SelectedTrackIndex);
@@ -1327,7 +1917,7 @@ void FSequencerPanel::DrawTrackInspector()
 				EvaluateAtCurrentFrame(false);
 			}
 			int InterpIdx = static_cast<int>(Key.InterpMode);
-			if (ImGui::Combo("Interpolation", &InterpIdx, InterpNames, IM_ARRAYSIZE(InterpNames)))
+			if (ImGui::Combo(Track.bConstantSpeed ? "Rotation/Scale Interpolation" : "Interpolation", &InterpIdx, InterpNames, IM_ARRAYSIZE(InterpNames)))
 			{
 				Key.InterpMode = static_cast<ESequenceInterpMode>(InterpIdx);
 				EvaluateAtCurrentFrame(false);
@@ -1347,9 +1937,7 @@ void FSequencerPanel::DrawTrackInspector()
 			ImGui::SameLine();
 			if (ImGui::Button("Delete Key"))
 			{
-				Track.TransformKeys.RemoveAt(SelectedKeyIndex);
-				SelectedKeyIndex = -1;
-				EvaluateAtCurrentFrame(false);
+				DeleteKeyAt(SelectedTrackIndex, SelectedKeyIndex);
 			}
 		}
 		else
@@ -1386,15 +1974,63 @@ void FSequencerPanel::DrawTrackInspector()
 			}
 			if (ImGui::Button("Delete Key"))
 			{
-				Track.FOVKeys.RemoveAt(SelectedKeyIndex);
-				SelectedKeyIndex = -1;
-				EvaluateAtCurrentFrame(false);
+				DeleteKeyAt(SelectedTrackIndex, SelectedKeyIndex);
 			}
 		}
 		else
 		{
 			ImGui::TextDisabled("Click a diamond keyframe on the FOV track to edit.");
 		}
+	}
+	else if (Track.TrackType == ESequenceTrackType::ActorVisibility)
+	{
+		if (ImGui::Button("+ Key Visibility at Current Frame")) AddKeyframeAtCurrentFrame(SelectedTrackIndex);
+		if (SelectedKeyIndex >= 0 && SelectedKeyIndex < Track.VisibilityKeys.Num())
+		{
+			FVisibilityKeyframe& Key = Track.VisibilityKeys[SelectedKeyIndex];
+			ImGui::SeparatorText("Selected Visibility Keyframe");
+			if (ImGui::DragInt("Key Frame", &Key.Frame, 1.0f, SequenceData.StartFrame, SequenceData.EndFrame))
+			{
+				const int32 MovedFrame = Key.Frame;
+				FLevelSequenceAsset::SortTrackKeys(Track);
+				for (int32 i = 0; i < Track.VisibilityKeys.Num(); ++i)
+					if (Track.VisibilityKeys[i].Frame == MovedFrame) { SelectedKeyIndex = i; break; }
+				EvaluateAtCurrentFrame(false);
+			}
+			FVisibilityKeyframe& SelectedKey = Track.VisibilityKeys[SelectedKeyIndex];
+			if (ImGui::Checkbox("Visible", &SelectedKey.bVisible)) EvaluateAtCurrentFrame(false);
+			if (ImGui::Checkbox("Hidden In Game", &SelectedKey.bHiddenInGame)) EvaluateAtCurrentFrame(false);
+			if (ImGui::Button("Delete Key")) DeleteKeyAt(SelectedTrackIndex, SelectedKeyIndex);
+		}
+		else ImGui::TextDisabled("Click a diamond keyframe to edit visibility.");
+	}
+	else if (Track.TrackType == ESequenceTrackType::CameraEffects)
+	{
+		if (ImGui::Button("+ Key Camera Effects at Current Frame")) AddKeyframeAtCurrentFrame(SelectedTrackIndex);
+		if (SelectedKeyIndex >= 0 && SelectedKeyIndex < Track.CameraEffectsKeys.Num())
+		{
+			FCameraEffectsKeyframe& Key = Track.CameraEffectsKeys[SelectedKeyIndex];
+			ImGui::SeparatorText("Selected Camera Effects Keyframe");
+			if (ImGui::DragInt("Key Frame", &Key.Frame, 1.0f, SequenceData.StartFrame, SequenceData.EndFrame))
+			{
+				const int32 MovedFrame = Key.Frame;
+				FLevelSequenceAsset::SortTrackKeys(Track);
+				for (int32 i = 0; i < Track.CameraEffectsKeys.Num(); ++i)
+					if (Track.CameraEffectsKeys[i].Frame == MovedFrame) { SelectedKeyIndex = i; break; }
+				EvaluateAtCurrentFrame(false);
+			}
+			FCameraEffectsKeyframe& SelectedKey = Track.CameraEffectsKeys[SelectedKeyIndex];
+			if (ImGui::SliderFloat("Fade to Black", &SelectedKey.FadeOpacity, 0.0f, 1.0f)) EvaluateAtCurrentFrame(false);
+			if (ImGui::SliderFloat("Letterbox Height", &SelectedKey.LetterboxSize, 0.0f, 0.45f)) EvaluateAtCurrentFrame(false);
+			int InterpIdx = static_cast<int>(SelectedKey.InterpMode);
+			if (ImGui::Combo("Interpolation", &InterpIdx, InterpNames, IM_ARRAYSIZE(InterpNames)))
+			{
+				SelectedKey.InterpMode = static_cast<ESequenceInterpMode>(InterpIdx);
+				EvaluateAtCurrentFrame(false);
+			}
+			if (ImGui::Button("Delete Key")) DeleteKeyAt(SelectedTrackIndex, SelectedKeyIndex);
+		}
+		else ImGui::TextDisabled("Click a diamond keyframe to edit camera effects.");
 	}
 	// 오디오 클립 편집 UI
 	else if (Track.TrackType == ESequenceTrackType::Audio)
@@ -1455,7 +2091,7 @@ void FSequencerPanel::DrawTrackInspector()
 		}
 		if (RemoveIdx >= 0)
 		{
-			Track.AudioClips.RemoveAt(RemoveIdx);
+			DeleteKeyAt(SelectedTrackIndex, RemoveIdx);
 		}
 	}
 
@@ -1469,10 +2105,12 @@ void FSequencerPanel::OnRender()
 	if (!ImGui::Begin("Sequencer", &bPanelOpen))
 	{
 		SetOpen(bPanelOpen);
+		if (!bPanelOpen) StopPilotingCamera();
 		ImGui::End();
 		return;
 	}
 	SetOpen(bPanelOpen);
+	if (!bPanelOpen) StopPilotingCamera();
 
 	DrawToolbar();
 	ImGui::Separator();
@@ -1493,6 +2131,12 @@ void FSequencerPanel::OnRender()
 			&FirstFrame,
 			ImSequencer::SEQUENCER_EDIT_ALL | ImSequencer::SEQUENCER_ADD | ImSequencer::SEQUENCER_DELETE);
 
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete))
+		{
+			if (SelectedKeyIndex >= 0) DeleteKeyAt(SelectedTrackIndex, SelectedKeyIndex);
+			else DeleteTrackAt(SelectedTrackIndex);
+		}
+
 		if (bChanged || CurrentFrame != PrevFrame)
 		{
 			PlaybackFrameFloat = static_cast<float>(CurrentFrame);
@@ -1508,6 +2152,12 @@ void FSequencerPanel::OnRender()
 		DrawTrackInspector();
 	}
 	ImGui::EndChild();
+
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput && ImGui::GetIO().KeyCtrl)
+	{
+		if (ImGui::IsKeyPressed(ImGuiKey_C)) CopySelectedKey();
+		if (ImGui::IsKeyPressed(ImGuiKey_V)) PasteCopiedKeyAtCurrentFrame();
+	}
 
 	ImGui::End();
 }
@@ -1537,9 +2187,11 @@ void FSequencerPanel::DrawTrajectoryLines(FLineBatcher* LineBatcher) const
 		const int32 LastKeyFrame = Track.TransformKeys.Last().Frame;
 		FVector PrevPos = Track.TransformKeys[0].Location;
 
-		for (int32 f = FirstKeyFrame + 1; f <= LastKeyFrame; ++f)
+		const int32 SampleCount = std::max(LastKeyFrame - FirstKeyFrame, (Track.TransformKeys.Num() - 1) * 12);
+		for (int32 SampleIndex = 1; SampleIndex <= SampleCount; ++SampleIndex)
 		{
-			const FTransform Sample = FLevelSequenceAsset::EvaluateTransformTrack(Track, static_cast<float>(f), FTransform::Identity);
+			const float Frame = FirstKeyFrame + static_cast<float>(LastKeyFrame - FirstKeyFrame) * SampleIndex / SampleCount;
+			const FTransform Sample = FLevelSequenceAsset::EvaluateTransformTrack(Track, Frame, FTransform::Identity);
 			LineBatcher->AddLine(PrevPos, Sample.Location, PathColor);
 			PrevPos = Sample.Location;
 		}
