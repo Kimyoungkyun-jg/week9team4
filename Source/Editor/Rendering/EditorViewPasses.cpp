@@ -11,6 +11,7 @@
 #include "Editor/Gizmo/GizmoRenderer.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "Editor/Settings/SettingsPanel.h"
+#include "Editor/Sequencer/SequencerPanel.h"
 #include "Engine/World.h"
 #include "Engine/Level.h"
 #include "GameFramework/Actor/PointLightActor.h"
@@ -65,7 +66,7 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 		 Cast<APointLightActor>(Resources.Gizmo->GetTarget()->GetOwner()) ||
 		 Cast<ARectLightActor>(Resources.Gizmo->GetTarget()->GetOwner()));
 	const bool bDrawCascadeBounds = Settings.bDrawCascadeBounds;
-	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds)
+	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds || (Resources.SequencerPanel && Resources.SequencerPanel->IsOpen()))
 		Overlays.EditorLines = [this, ViewClient, bDrawSelectedLight, bDrawCascadeBounds]
 		{
 			RenderEditorLines(ViewClient, bDrawSelectedLight, bDrawCascadeBounds);
@@ -193,6 +194,10 @@ void FEditorViewPasses::RenderEditorLines(FEditorViewportClient* ViewClient,
             if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component); Primitive && Primitive->IsCollisionEnabled())
                 Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
     }
+	if (OverlayResources.SequencerPanel && OverlayResources.SequencerPanel->IsOpen())
+	{
+		OverlayResources.SequencerPanel->DrawTrajectoryLines(Lines);
+	}
     Lines->OnRender(View.ViewProjectionMatrix);
 }
 

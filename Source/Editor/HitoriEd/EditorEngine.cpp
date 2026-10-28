@@ -39,6 +39,8 @@
 #include "Editor/Outliner/OutlinerPanel.h"
 #include "Editor/HitoriEd/EditorFileUtils.h"
 #include "Editor/UIEditor/WidgetEditorPanel.h"
+#include "Editor/Sequencer/SequencerPanel.h"
+#include "Sequencer/LevelSequenceActor.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
 #include "Core/EngineLog.h"
@@ -87,6 +89,9 @@ bool UEditorEngine::Init()
 	AMainMenuHUD::StaticClass();
 	APacmanGameMode::StaticClass();
 	APacmanHUD::StaticClass();
+	ACameraActor::StaticClass();
+	UCameraComponent::StaticClass();
+	ALevelSequenceActor::StaticClass();
 
 	FWorldContext& InitialWorldContext = CreateNewWorldContext(EWorldType::Editor);
 	InitialWorldContext.SetCurrentWorld(UWorld::CreateWorld(EWorldType::Editor, true));
@@ -154,6 +159,15 @@ bool UEditorEngine::Init()
 	ContentDrawerPanel = EditorUI->AddEditorPanel<FContentDrawerPanel>();
 	WidgetEditorPanel = EditorUI->AddEditorPanel<FWidgetEditorPanel>();
 	WidgetEditorPanel->SetViewportsPanel(ViewportsPanel);
+	SequencerPanel = EditorUI->AddEditorPanel<FSequencerPanel>();
+	SequencerPanel->SetViewportsPanel(ViewportsPanel);
+	SequencerPanel->SetGizmo(Gizmo.get());
+	SequencerPanel->SetWorld(EditorWorld);
+	ContentDrawerPanel->SetOpenSequenceAssetCallback([this](const FString& Path)
+	{
+		if (!SequencerPanel->OpenSequenceAsset(Path))
+			HTR_LOG(Error, "Failed to open Sequence asset: {}", Path);
+	});
 	ContentDrawerPanel->SetOpenUIAssetCallback([this](const FString& Path)
 	{
 		if (!WidgetEditorPanel->RequestOpenAsset(Path))
@@ -200,6 +214,7 @@ bool UEditorEngine::Init()
 
 	OutlinerPanel = EditorUI->AddEditorPanel<FOutlinerPanel>();
 	OutlinerPanel->SetWorld(GetActiveWorld());
+	if (SequencerPanel) SequencerPanel->SetOutlinerPanel(OutlinerPanel);
 	OutlinerPanel->SetSelectionCallback(
 		[this](USceneComponent* Root)
 		{
@@ -965,7 +980,7 @@ bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& Sc
 		Outline.get(), OutlineRenderer.get(), Gizmo.get(), TextRenderer.get(), SystemFont,
 		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr,
 		MapTileRenderer.get(), DetailsPanel ? &DetailsPanel->GetMapTileEditor() : nullptr,
-		!PlayWorld || IsSimulatingInEditor() };
+		!PlayWorld || IsSimulatingInEditor(), SequencerPanel };
 	if (ViewClient)
 		EditorPasses.ConfigureViewportOverlays(OverlayResources, ViewClient, bIsPIE,
 			ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex());
@@ -1148,6 +1163,7 @@ void UEditorEngine::OnActiveWorldChanged()
 	if (DetailsPanel) DetailsPanel->SetWorld(UIWorld);
 	if (EditorControlsPanel) EditorControlsPanel->SetWorld(UIWorld);
 	if (SettingsPanel) SettingsPanel->SetWorld(UIWorld);
+	if (SequencerPanel) SequencerPanel->SetWorld(UIWorld);
 	for (FEditorViewportClient* Client : AllViewportClients)
 		if (Client) Client->SetWorld(UIWorld);
 }
