@@ -20,6 +20,7 @@ class FWidgetRenderer
 public:
 	bool Init();
 	void Render(UCanvasWidget* Root, FTexture2D* Target);
+	void RenderFade(FTexture2D* Target,	const FLinearColor& Color, float Amount);
 
 private:
 	void DrawWidget(UWidget* Widget);

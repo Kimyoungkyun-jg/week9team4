@@ -167,8 +167,8 @@ void APlayerController::UnPossess()
 
 	if (bViewingOldPawn && PlayerCameraManager->HasValidCameraPOV())
 	{
-		// 정상 해제·파괴 상황 모두 마지막 계산 시점을 보존.
-		FallbackCameraView = PlayerCameraManager->GetCameraPOV();
+		// 정상 해제·파괴 상황 모두 마지막 기본 시점을 보존. Modifier는 다시 적용된다.
+		FallbackCameraView = PlayerCameraManager->GetBaseCameraPOV();
 	}
 	else if (IsValid(OldPawn) && !OldPawn->IsActorBeingDestroyed())
 	{

@@ -10,7 +10,6 @@
 #include "Math/Rotator.h"
 #include "CameraTypes.h"
 
-// ToDO: UCameraModifier 구현
 class UCameraModifier;
 class APlayerController;
 
@@ -20,8 +19,6 @@ struct FViewTarget
 {
 	AActor* Target = nullptr;
 	FMinimalViewInfo POV;
-
-	// TODO: 최종 시점의 위치, 회전, FOV 등을 담을 정보를 추가한다.
 };
 
 // 시점 대상, 카메라 보정 효과, 화면 페이드 상태를 관리하는 액터
@@ -31,7 +28,8 @@ class APlayerCameraManager : public AActor
 
 public:
 	APlayerCameraManager() = default;
-	~APlayerCameraManager() override = default;
+	~APlayerCameraManager() override;
+	void EndPlay() override;
 
 	APlayerCameraManager(const APlayerCameraManager&) = delete;
 	APlayerCameraManager& operator=(const APlayerCameraManager&) = delete;
@@ -45,16 +43,27 @@ public:
 	// 외부에서 매 프레임 호출할 카메라 갱신 진입점.
 	void UpdateCamera(float DeltaTime);
 	void SetViewTarget(AActor* NewViewTarget);
+
+	// 반환된 Modifier는 Manager 소유이며 제거 후에는 사용하면 안 된다.
+	UCameraModifier* AddNewCameraModifier(UClass* ModifierClass);
+	UCameraModifier* FindCameraModifier(UClass* ModifierClass) const;
+	bool RemoveCameraModifier(UCameraModifier* Modifier);
+	void RemoveAllCameraModifiers();
+
 	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color);
 	void StopCameraFade();
 
 	AActor* GetViewTarget() const { return ViewTarget.Target; }
-	const FMinimalViewInfo& GetCameraPOV() const { return ViewTarget.POV; }
+	const FMinimalViewInfo& GetCameraPOV() const { return CameraPOV; }
+	// 대체 시점에는 Modifier 적용 전의 POV를 보관해 보정의 재누적을 막는다.
+	const FMinimalViewInfo& GetBaseCameraPOV() const { return ViewTarget.POV; }
 	bool HasValidCameraPOV() const { return bHasValidCameraPOV; }
+	float GetFadeAmount() const { return FadeAmount; }
+	const FLinearColor& GetFadeColor() const { return FadeColor; }
 
 protected:
 	void UpdateViewTarget(float DeltaTime);
-	void ApplyCameraModifiers(float DeltaTime);
+	void ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV);
 	void UpdateCameraFade(float DeltaTime);
 
 	FLinearColor FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -70,7 +79,13 @@ protected:
 
 	APlayerController* PCOwner = nullptr;
 
-	// TODO: Modifier의 추가/제거 및 수명 관리 방식을 정한다.
+private:
+	void FlushRemovedCameraModifiers();
+
 	TArray<UCameraModifier*> ModifierList;
+	TArray<UCameraModifier*> RemovedModifiers;
+	FMinimalViewInfo CameraPOV;
 	bool bHasValidCameraPOV = false;
+	bool bIsUpdatingCamera = false;
+	bool bIsClearingModifiers = false;
 };

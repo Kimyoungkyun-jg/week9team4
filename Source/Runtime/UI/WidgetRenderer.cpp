@@ -48,6 +48,39 @@ void FWidgetRenderer::Render(UCanvasWidget* Root, FTexture2D* Target)
 	RenderCommand::EndRenderPass();
 }
 
+void FWidgetRenderer::RenderFade(FTexture2D* Target, const FLinearColor& Color, float Amount)
+{
+	if (!Target || !Target->GetRTV() ||	!VertexBuffer || !ConstantBuffer ||	!Target->GetWidth() || !Target->GetHeight() ||	Amount <= 0.0f)
+	{
+		return;
+	}
+
+	UTexture2D* White =	UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
+
+	if (!White || !White->GetResource())
+		return;
+
+	TargetWidth = Target->GetWidth();
+	TargetHeight = Target->GetHeight();
+	ClipCenter = FVector2(0.0f, 0.0f);
+	ClipRadius = 0.0f;
+	bMinimapTerrain = false;
+
+	FLinearColor Tint = Color;
+	Tint.A = FMath::Clamp(Amount, 0.0f, 1.0f);
+
+	RenderCommand::BindRenderPassNoClear(Target, nullptr, TargetWidth, TargetHeight);
+	RenderCommand::BindPipelineState(PipelineState);
+	RenderCommand::BindVertexBuffer(VertexBuffer.get());
+	RenderCommand::BindConstantBuffer(0, ConstantBuffer.get(), EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
+	RenderCommand::BindSamplerState(0, ESamplerState::LinearClamp, EShaderBindFlagBits::Pixel);
+
+	DrawQuad({ 0.0f, 0.0f, static_cast<float>(TargetWidth),	 static_cast<float>(TargetHeight) }, 0.0f, 0.0f, 1.0f, 1.0f, White, Tint);
+
+	RenderCommand::UnbindShaderResources(0, 1, EShaderBindFlagBits::Pixel);
+	RenderCommand::EndRenderPass();
+}
+
 void FWidgetRenderer::DrawWidget(UWidget* Widget)
 {
 	if (!Widget || !Widget->IsVisible()) return;

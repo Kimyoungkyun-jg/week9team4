@@ -100,7 +100,8 @@ void FGameViewportClient::ClearWidgetOverlays()
 void FGameViewportClient::RenderUI()
 {
 	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
-	if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
+	//if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
+	if (!ViewTargets.SceneColor) return;
 	if (!WidgetRenderer)
 	{
 		WidgetRenderer = MakeUnique<FWidgetRenderer>();
@@ -109,6 +110,23 @@ void FGameViewportClient::RenderUI()
 	WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
 	for (const FWidgetOverlay& Overlay : WidgetOverlays)
 		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
+
+	if (bSIEMode || !World)
+		return;
+
+	APlayerController* PC = World->GetPlayerController();
+	if (!IsValid(PC) || PC->IsActorBeingDestroyed())
+	{
+		return;
+	}
+
+	APlayerCameraManager* Manager = PC->GetPlayerCameraManager();
+	if (!IsValid(Manager) || Manager->IsActorBeingDestroyed())
+	{
+		return;
+	}
+
+	WidgetRenderer->RenderFade(ViewTargets.SceneColor.get(), Manager->GetFadeColor(), Manager->GetFadeAmount());
 }
 
 void FGameViewportClient::Init(FWorldContext& InWorldContext, UEngine* InEngine)

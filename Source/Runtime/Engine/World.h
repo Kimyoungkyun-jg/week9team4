@@ -155,6 +155,7 @@ private:
 	FCollisionQueryStats CollisionQueryStats;
 	void UpdateCollisionIndex();
 	friend class AActor;
+	friend class APlayerCameraManager;
 	friend class UActorComponent;
 	friend class USceneComponent;
 	friend class UPrimitiveComponent;
