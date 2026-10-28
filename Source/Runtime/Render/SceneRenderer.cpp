@@ -10,6 +10,7 @@
 #include "Tasks/Tasks.h"
 #include "Core/Stats/LightweightStats.h"
 #include "Components/StaticMeshComponent.h"
+#include "Camera/CameraActor.h"
 #include "Asset/LOD/StaticMeshLODSelector.h"
 #include "Render/SkyLightEnvironment.h"
 #include "Engine/SceneManagement.h"
@@ -805,7 +806,15 @@ void FSceneRenderer::GatherRenderPackets(FScene& Scene, FSceneRenderData& Data,
 		// 표시 상태는 프록시 캐시로 판정해 오클루전과 드로우 수집 전에 제외한다.
 		const auto Visit = [&](FPrimitiveSceneProxy* Proxy)
 		{
-			if (Proxy->IsShown(View.bGameView)) VisibleProxies.Add(Proxy);
+			if (!Proxy->IsShown(View.bGameView)) return;
+			// 카메라 자신의 뷰에서는 편집용 카메라 메시가 화면을 가리지 않게 한다.
+			if (!View.bGameView)
+			{
+				const UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Proxy->GetComponent());
+				const ACameraActor* Camera = Mesh && Mesh->IsEditorIcon() ? Cast<ACameraActor>(Mesh->GetOwner()) : nullptr;
+				if (Camera && Camera->ShouldHideEditorMeshFromView(Mesh, View.CameraPosition)) return;
+			}
+			VisibleProxies.Add(Proxy);
 		};
 
 		if (Frustum)

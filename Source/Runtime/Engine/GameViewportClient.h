@@ -8,6 +8,7 @@
 #include "Render/SceneRenderData.h"
 #include "Render/SceneViewTargets.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Core/Delegates/Delegate.h"
 #include <functional>
 
 class UWorld;
@@ -74,6 +75,7 @@ public:
 	void ClearWidgetOverlays();
 	UWidget* FindWidget(const FString& WidgetName) const;
 	void RenderUI(const FSceneView& View);
+	TMulticastDelegate<> OnUIRendered;
 	bool ProcessUIKey(int32 Key, bool bDown);
 	bool BindButtonAction(const FString& WidgetName, std::function<void()> Callback);
 	void RequestSceneChange(const FString& ScenePath, const FString& FallbackPath);

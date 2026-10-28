@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Camera/CameraActor.h"
 #include "Editor/Rendering/EditorViewPasses.h"
 #include "Editor/Rendering/SceneDepthRenderer.h"
 #include "Editor/Rendering/CascadeFloorRenderer.h"
@@ -11,6 +13,7 @@
 #include "Editor/Gizmo/GizmoRenderer.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "Editor/Settings/SettingsPanel.h"
+#include "Editor/Sequencer/SequencerPanel.h"
 #include "Engine/World.h"
 #include "Engine/Level.h"
 #include "GameFramework/Actor/PointLightActor.h"
@@ -30,6 +33,14 @@
 
 namespace
 {
+	bool ShouldRenderOutline(const FOutline* Outline, const FVector& ViewLocation)
+	{
+		if (!Outline || !Outline->GetTarget()) return false;
+		const UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Outline->GetTarget());
+		const ACameraActor* Camera = Mesh ? Cast<ACameraActor>(Mesh->GetOwner()) : nullptr;
+		return !Camera || !Camera->ShouldHideEditorMeshFromView(Mesh, ViewLocation);
+	}
+
 	FRenderGraphRasterPassDesc MakeEditorPass(const char* Name, FRenderGraphTextureRef Color,
 		FRenderGraphTextureRef Depth = {}, ERenderGraphLoadAction DepthLoad = ERenderGraphLoadAction::Load)
 	{
@@ -65,7 +76,7 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 		 Cast<APointLightActor>(Resources.Gizmo->GetTarget()->GetOwner()) ||
 		 Cast<ARectLightActor>(Resources.Gizmo->GetTarget()->GetOwner()));
 	const bool bDrawCascadeBounds = Settings.bDrawCascadeBounds;
-	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds)
+	if (Settings.bDrawBatchLine || bDrawSelectedLight || bDrawCascadeBounds || (Resources.SequencerPanel && Resources.SequencerPanel->IsOpen()))
 		Overlays.EditorLines = [this, ViewClient, bDrawSelectedLight, bDrawCascadeBounds]
 		{
 			RenderEditorLines(ViewClient, bDrawSelectedLight, bDrawCascadeBounds);
@@ -75,7 +86,7 @@ void FEditorViewPasses::ConfigureViewportOverlays(const FEditorOverlayResources&
 		{
 			RenderEditorGrid(ViewClient, ViewportSetting);
 		};
-	if (bIsActiveViewport && Resources.Outline->GetTarget())
+	if (bIsActiveViewport && ShouldRenderOutline(Resources.Outline, View.ViewLocation))
 		Overlays.EditorOutline = [this, ViewportSetting]
 		{
 			OverlayResources.OutlineRenderer->OnRender(*OverlayResources.Outline,
@@ -96,7 +107,7 @@ void FEditorViewPasses::ConfigureSIEOverlays(const FEditorOverlayResources& Reso
 {
 	ConfigureCollisionOverlay(Resources);
 	const FViewportSettings ViewportSetting{ 0, 0, Color->GetWidth(), Color->GetHeight(), 0.0f, 1.0f };
-	if (Resources.Outline->GetTarget())
+	if (ShouldRenderOutline(Resources.Outline, View.ViewLocation))
 		Overlays.SIEOutline = [this, ViewportSetting]
 		{
 			OverlayResources.OutlineRenderer->OnRender(*OverlayResources.Outline,
@@ -193,6 +204,10 @@ void FEditorViewPasses::RenderEditorLines(FEditorViewportClient* ViewClient,
             if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component); Primitive && Primitive->IsCollisionEnabled())
                 Primitive->DrawCollision(*Lines, FVector4(0.2f, 1.f, 0.3f, 1.f));
     }
+	if (OverlayResources.SequencerPanel && OverlayResources.SequencerPanel->IsOpen())
+	{
+		OverlayResources.SequencerPanel->DrawTrajectoryLines(Lines);
+	}
     Lines->OnRender(View.ViewProjectionMatrix);
 }
 

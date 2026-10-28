@@ -34,6 +34,9 @@
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Sequencer/LevelSequenceActor.h"
 
 #include <utility>
 
@@ -66,6 +69,9 @@ namespace
 		(void)USkyLightComponent::StaticClass();
 		(void)UStaticMeshComponent::StaticClass();
 		(void)UTextRenderComponent::StaticClass();
+		(void)ACameraActor::StaticClass();
+		(void)UCameraComponent::StaticClass();
+		(void)ALevelSequenceActor::StaticClass();
 	}
 }
 

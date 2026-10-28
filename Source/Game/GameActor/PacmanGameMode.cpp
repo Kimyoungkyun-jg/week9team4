@@ -19,6 +19,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/GameInstance.h"
 #include "Audio/SoundManager.h"
+#include "Sequencer/LevelSequenceActor.h"
 #include "UI/Widget.h"
 #include <algorithm>
 #include <cmath>
@@ -261,15 +262,13 @@ void APacmanGameMode::ResolveGhostHit()
 	{
 		UWorld* World = GetWorld();
 		AGameHUD* HUD = World ? World->GetHUD() : nullptr;
-		if (HUD && HUD->ShowWidget("Assets/UI/GameOver.ui.json"))
+		FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
+		CommitGameResult(false);
+		bPendingClear = false;
+		if (Viewport)
 		{
-			CommitGameResult(false);
-			GhostHitPhase = EGhostHitPhase::FadeFromBlack;
-			GhostHitElapsed = 0.0f;
-			if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
-			{
-				CameraManager->FadeIn(0.5f, FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), true);
-			}
+			GhostHitPhase = EGhostHitPhase::AwaitingBlackFrame;
+			Viewport->OnUIRendered.AddRaw(this, &APacmanGameMode::OnResultFadeRendered);
 		}
 		else
 		{
@@ -353,6 +352,22 @@ void APacmanGameMode::TickGhostHit(float DeltaTime)
 void APacmanGameMode::ShowGameResult(bool bCleared)
 {
 	if (bResultShown) return;
+	BeginResultFade(bCleared);
+}
+
+void APacmanGameMode::EndPlay()
+{
+	if (UWorld* World = GetWorld())
+		if (AGameHUD* HUD = World->GetHUD())
+			if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+				Viewport->OnUIRendered.RemoveAll(this);
+	if (ResultSequenceActor && IsValid(ResultSequenceActor))
+		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	Super::EndPlay();
+}
+
+void APacmanGameMode::BeginResultFade(bool bCleared)
+{
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	if (!HUD) return;
@@ -388,6 +403,75 @@ void APacmanGameMode::CommitGameResult(bool bCleared)
 			Sound->PlaySFX(bCleared ? "Assets/Sounds/GameClear.wav" : "Assets/Sounds/GameOver.wav", 0.7f);
 }
 
+void APacmanGameMode::OnResultFadeRendered()
+{
+	UWorld* World = GetWorld();
+	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
+	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
+	if (!Viewport) return;
+	Viewport->OnUIRendered.RemoveAll(this);
+
+	ALevelSequenceActor* Sequence = World->SpawnActor<ALevelSequenceActor>();
+	if (Sequence)
+	{
+		Sequence->SetSequenceAssetPath(bPendingClear
+			? "Assets/Sequences/Pacman_Clear.seq.json"
+			: "Assets/Sequences/Game_Over.seq.json");
+		Sequence->PlaySequence();
+		if (Sequence->IsPlayingSequence())
+		{
+			ResultSequenceActor = Sequence;
+			Sequence->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnResultSequenceFinished);
+			Viewport->ClearWidgetRoot();
+		}
+		else World->DestroyActor(Sequence);
+	}
+	if (!ResultSequenceActor)
+	{
+		HTR_LOG(Warning, "PacmanGameMode: failed to play result sequence");
+		if (bPendingClear)
+		{
+			if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD)) PacmanHUD->ShowNameEntry();
+		}
+		else Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+	}
+	if (FadeOverlayHandle)
+	{
+		HUD->RemoveOverlay(FadeOverlayHandle);
+		FadeOverlayHandle = 0;
+		FadeImage = nullptr;
+		FadePhase = EResultFadePhase::Complete;
+	}
+	if (HitOverlayHandle)
+	{
+		if (HitGhost) HitGhost->SetHitFrozen(false);
+		HitGhost = nullptr;
+		HUD->RemoveOverlay(HitOverlayHandle);
+		HitOverlayHandle = 0;
+		HitImage = nullptr;
+		GhostHitPhase = EGhostHitPhase::None;
+		bGhostHitPlaying = false;
+		ReleaseGhostHitCamera();
+	}
+}
+
+void APacmanGameMode::OnResultSequenceFinished()
+{
+	if (ResultSequenceActor && IsValid(ResultSequenceActor))
+		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	ResultSequenceActor = nullptr;
+	if (UWorld* World = GetWorld())
+		if (AGameHUD* HUD = World->GetHUD())
+		{
+			if (bPendingClear)
+			{
+				if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD)) PacmanHUD->ShowNameEntry();
+			}
+			else if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+				Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+		}
+}
+
 void APacmanGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -403,29 +487,17 @@ void APacmanGameMode::Tick(float DeltaTime)
 
 	FadeElapsed += std::max(0.0f, DeltaTime);
 	const float Duration = FadePhase == EResultFadePhase::FadeOut ? 0.4f : 0.5f;
-	if (FadeElapsed < Duration) return;
+	const float T = std::clamp(FadeElapsed / Duration, 0.0f, 1.0f);
+	const float SmoothT = T * T * (3.0f - 2.0f * T);
+	FadeImage->SetTint({0.0f, 0.0f, 0.0f, FadePhase == EResultFadePhase::FadeOut ? SmoothT : 1.0f - SmoothT});
+	if (T < 1.0f || (FadePhase == EResultFadePhase::FadeOut && bPendingClear && FadeElapsed < 0.6f)) return;
 
 	if (FadePhase == EResultFadePhase::FadeOut)
 	{
-		const FString Path = bPendingClear ? "Assets/UI/GameClear.ui.json" : "Assets/UI/GameOver.ui.json";
-		if (HUD)
-		{
-			HUD->ShowWidget(Path);
-		}
-
-		if (HitOverlayHandle && HUD) { HUD->RemoveOverlay(HitOverlayHandle); HitOverlayHandle = 0; }
-		HitImage = nullptr;
-		GhostHitPhase = EGhostHitPhase::None;
-		bGhostHitPlaying = false;
-		ReleaseGhostHitCamera();
-
-		if (CameraManager)
-		{
-			CameraManager->FadeIn(0.5f, FLinearColor(0.0f,0.0f,0.0f,1.0f), true);
-		}
-
-		FadePhase = EResultFadePhase::FadeIn;
-		FadeElapsed = 0.0f;
+		FadePhase = EResultFadePhase::AwaitingBlackFrame;
+		Viewport->OnUIRendered.AddRaw(this, &APacmanGameMode::OnResultFadeRendered);
+		return;
+	}
 	}
 	else if (FadePhase == EResultFadePhase::FadeIn)
 	{
