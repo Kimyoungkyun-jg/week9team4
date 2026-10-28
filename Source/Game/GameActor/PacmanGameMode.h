@@ -12,8 +12,10 @@ class APacmanGameMode : public AGameMode
 	LUA_BIND_START(APacmanGameMode)
 		UserType["Cast"] = [](AGameMode* Mode) { return Cast<APacmanGameMode>(Mode); };
 		LUA_FUNC(HasGameplayStarted)
+		LUA_FUNC(HasResultCinematicStarted)
 		LUA_FUNC(HasClearCinematicStarted)
 		LUA_DELEGATE(OnGameplayStarted)
+		LUA_DELEGATE(OnResultCinematicStarted)
 		LUA_DELEGATE(OnClearCinematicStarted)
 		LUA_FUNC(GetCollectedCoinCount)
 		LUA_FUNC(GetMaxCoinCount)
@@ -38,8 +40,10 @@ public:
 	double GetClearSeconds() const { return ClearSeconds; }
 	void ShowGameResult(bool bCleared);
 	bool HasGameplayStarted() const { return bGameplayStarted; }
+	bool HasResultCinematicStarted() const { return bResultCinematicStarted; }
 	bool HasClearCinematicStarted() const { return bClearCinematicStarted; }
 	TMulticastDelegate<> OnGameplayStarted;
+	TMulticastDelegate<> OnResultCinematicStarted;
 	TMulticastDelegate<> OnClearCinematicStarted;
 
 private:
@@ -51,6 +55,7 @@ private:
 	class ALevelSequenceActor* IntroSequenceActor = nullptr;
 	bool bIntroPlaying = false;
 	bool bGameplayStarted = false;
+	bool bResultCinematicStarted = false;
 	bool bClearCinematicStarted = false;
 	uint64 FadeOverlayHandle = 0;
 	float FadeElapsed = 0.0f;

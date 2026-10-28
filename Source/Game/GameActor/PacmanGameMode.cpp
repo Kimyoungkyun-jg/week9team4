@@ -362,6 +362,7 @@ void APacmanGameMode::EndPlay()
 	if (IntroSequenceActor && IsValid(IntroSequenceActor))
 		IntroSequenceActor->OnSequenceFinished.RemoveAll(this);
 	OnGameplayStarted.Clear();
+	OnResultCinematicStarted.Clear();
 	OnClearCinematicStarted.Clear();
 	Super::EndPlay();
 }
@@ -433,6 +434,8 @@ void APacmanGameMode::OnResultFadeRendered()
 		if (Sequence->IsPlayingSequence())
 		{
 			ResultSequenceActor = Sequence;
+			bResultCinematicStarted = true;
+			OnResultCinematicStarted.Broadcast();
 			if (bPendingClear)
 			{
 				bClearCinematicStarted = true;

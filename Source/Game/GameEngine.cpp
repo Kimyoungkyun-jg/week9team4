@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "GameEngine.h"
+#include "GameActor/CoinActor.h"
 #include "GameActor/PlayerPawn.h"
 #include "GameActor/FlashlightActor.h"
 #include "GameActor/GhostActor.h"
@@ -20,19 +21,33 @@
 #include "Render/SceneRenderer.h"
 #include "Render/Swapchain.h"
 #include "Serialization/JsonArchive.h"
+#include "GameFramework/DefaultPawn.h"
 #include "GameFramework/TestGameMode.h"
 #include "GameFramework/Actor/DirectionalLightActor.h"
 #include "GameFramework/Actor/ExponentialHeightFogActor.h"
+#include "GameFramework/Actor/MapActor.h"
 #include "GameFramework/Actor/ParticleActor.h"
+#include "GameFramework/Actor/PlayerStart.h"
+#include "GameFramework/Actor/PointLightActor.h"
+#include "GameFramework/Actor/RectLightActor.h"
 #include "GameFramework/Actor/SkyLightActor.h"
+#include "GameFramework/Actor/SpotLightActor.h"
 #include "GameFramework/Actor/StaticMeshActor.h"
 #include "GameFramework/Actor/TextRenderActor.h"
 #include "Components/BillboardComponent.h"
+#include "Components/BoxComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Components/ParticleSubUVComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Components/RectLightComponent.h"
+#include "Components/RotatingMovementComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkyLightComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Camera/CameraActor.h"
@@ -43,10 +58,12 @@
 
 namespace
 {
-	// 정적 라이브러리에서 씬이 이름으로 생성하는 클래스의 등록 코드를 링크한다.
+	// 정적 라이브러리에서 씬이 이름으로 생성하는 클래스의 등록 코드를 링크한다
 	void RegisterGameSceneClasses()
 	{
+		(void)ADefaultPawn::StaticClass();
 		(void)ATestGameMode::StaticClass();
+		(void)ACoinActor::StaticClass();
 		(void)APlayerPawn::StaticClass();
 		(void)AFlashlightActor::StaticClass();
 		(void)AGhostActor::StaticClass();
@@ -59,16 +76,29 @@ namespace
 		(void)ASampleHUD::StaticClass();
 		(void)ADirectionalLightActor::StaticClass();
 		(void)AExponentialHeightFogActor::StaticClass();
+		(void)AMapActor::StaticClass();
 		(void)AParticleActor::StaticClass();
+		(void)APlayerStart::StaticClass();
+		(void)APointLightActor::StaticClass();
+		(void)ARectLightActor::StaticClass();
 		(void)ASkyLightActor::StaticClass();
+		(void)ASpotLightActor::StaticClass();
 		(void)AStaticMeshActor::StaticClass();
 		(void)ATextRenderActor::StaticClass();
 		(void)UBillboardComponent::StaticClass();
+		(void)UBoxComponent::StaticClass();
+		(void)UCapsuleComponent::StaticClass();
 		(void)UDirectionalLightComponent::StaticClass();
 		(void)UExponentialHeightFogComponent::StaticClass();
+		(void)ULuaScriptComponent::StaticClass();
 		(void)UParticleSubUVComponent::StaticClass();
+		(void)UPointLightComponent::StaticClass();
+		(void)URectLightComponent::StaticClass();
+		(void)URotatingMovementComponent::StaticClass();
 		(void)USceneComponent::StaticClass();
 		(void)USkyLightComponent::StaticClass();
+		(void)USphereComponent::StaticClass();
+		(void)USpotLightComponent::StaticClass();
 		(void)UStaticMeshComponent::StaticClass();
 		(void)UTextRenderComponent::StaticClass();
 		(void)ACameraActor::StaticClass();
@@ -84,7 +114,7 @@ FEngineConfig UGameEngine::GetConfig() const
 	Desc.Width = 0;
 	Desc.Height = 0;
 	Desc.bBorderless = true;
-	Desc.SyncInterval = 0;   // 0 = VSync 끔 (FPS 측정용)
+	Desc.SyncInterval = 0; // VSync 끔 (FPS 측정용)
 	Desc.bCreateDepthBuffer = false;
 	Desc.bExitOnEscape = false;
 	return Desc;
@@ -163,6 +193,8 @@ void UGameEngine::Tick(float DeltaTime)
 	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseWheel, static_cast<float>(FInputSystem::GetWheelDelta()), DeltaTime);
 	if (bCaptured) Window->RecenterCursor();
 	GameContext->World()->Tick(DeltaTime);
+	// Apply actors added or removed during Tick before rendering queries the scene BVH.
+	GameContext->World()->GetScene().UpdateAllTransforms();
 }
 
 void UGameEngine::Render()
@@ -196,4 +228,3 @@ void UGameEngine::PreExit()
 		GameContext = nullptr;
 	}
 }
-

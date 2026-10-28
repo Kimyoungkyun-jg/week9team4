@@ -5,6 +5,8 @@
 #include "GameFramework/Pawn.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/BillboardComponent.h"
+#include "Components/SceneComponent.h"
+#include "Camera/CameraComponent.h"
 #include "Asset/AssetManager.h"
 #include "Render/Material.h"
 #include "Render/Texture2D.h"
@@ -86,7 +88,19 @@ void ALevelSequenceActor::PlaySequence()
 
 	CurrentFrame = static_cast<float>(SequenceData.StartFrame);
 	PreviousFrame = -1.0f;
+	if (bIsPlayingSequence) RestoreActorStates();
+	CaptureActorStates();
 	FLevelSequenceAsset::SpawnMissingActors(SequenceData, GetWorld());
+	for (const FSequenceSpawnableActor& Entry : SequenceData.SpawnableActors)
+	{
+		if (Entry.ActorName.empty()) continue;
+		AActor* Spawned = FLevelSequenceAsset::FindActorByNameInWorld(GetWorld(), Entry.ActorName);
+		if (!Spawned) continue;
+		bool bExisted = false;
+		for (const FActorState& State : SavedActorStates)
+			if (State.Actor == Spawned) { bExisted = true; break; }
+		if (!bExisted) SpawnedSequenceActors.Add(Spawned);
+	}
 	bIsPlayingSequence = true;
 	bIsPausedSequence = false;
 	bHoldFinalCameraEffects = false;
@@ -127,6 +141,77 @@ void ALevelSequenceActor::StopSequence()
 	bHasActiveCameraCut = false;
 	RestorePlayerInput();
 	RestorePlayerCameraViewTarget();
+	RestoreActorStates();
+}
+
+void ALevelSequenceActor::CaptureActorStates()
+{
+	SavedActorStates.Empty();
+	SpawnedSequenceActors.Empty();
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	for (const FSequenceTrack& Track : SequenceData.Tracks)
+	{
+		if (Track.bMuted || Track.TargetActorName.empty()) continue;
+		if (Track.TrackType != ESequenceTrackType::ActorTransform &&
+			Track.TrackType != ESequenceTrackType::ActorVisibility &&
+			Track.TrackType != ESequenceTrackType::CameraFOV) continue;
+		AActor* Target = FLevelSequenceAsset::FindActorByNameInWorld(World, Track.TargetActorName);
+		if (!Target) continue;
+		bool bSaved = false;
+		for (const FActorState& State : SavedActorStates)
+			if (State.Actor == Target) { bSaved = true; break; }
+		if (bSaved) continue;
+
+		FActorState State;
+		State.Actor = Target;
+		State.Transform = Target->GetActorTransform();
+		State.Camera = Target->GetComponentByClass<UCameraComponent>();
+		if (State.Camera) State.FieldOfView = State.Camera->GetFieldOfView();
+		for (UActorComponent* Component : Target->GetComponents())
+		{
+			if (USceneComponent* Scene = Cast<USceneComponent>(Component))
+				State.Components.Add({ Scene, Scene->IsVisible(), Scene->IsHiddenInGame() });
+		}
+		SavedActorStates.Add(std::move(State));
+	}
+	// 기존에 존재하던 spawnable도 종료 시 제거 대상에서 제외한다.
+	for (const FSequenceSpawnableActor& Entry : SequenceData.SpawnableActors)
+	{
+		AActor* Target = FLevelSequenceAsset::FindActorByNameInWorld(World, Entry.ActorName);
+		if (!Target) continue;
+		bool bSaved = false;
+		for (const FActorState& State : SavedActorStates)
+			if (State.Actor == Target) { bSaved = true; break; }
+		if (bSaved) continue;
+		FActorState State;
+		State.Actor = Target;
+		State.bRestoreState = false;
+		SavedActorStates.Add(std::move(State));
+	}
+}
+
+void ALevelSequenceActor::RestoreActorStates()
+{
+	for (const FActorState& State : SavedActorStates)
+	{
+		if (!State.bRestoreState || !State.Actor || !IsValid(State.Actor) || State.Actor->IsActorBeingDestroyed()) continue;
+		State.Actor->SetActorLocation(State.Transform.Location, false);
+		State.Actor->SetActorRotation(State.Transform.Rotation, false);
+		State.Actor->SetActorScale3D(State.Transform.Scale);
+		if (State.Camera && IsValid(State.Camera)) State.Camera->SetFieldOfView(State.FieldOfView);
+		for (const FComponentState& ComponentState : State.Components)
+		{
+			if (!ComponentState.Component || !IsValid(ComponentState.Component)) continue;
+			ComponentState.Component->SetVisibility(ComponentState.bVisible);
+			ComponentState.Component->SetHiddenInGame(ComponentState.bHiddenInGame);
+		}
+	}
+	SavedActorStates.Empty();
+	for (AActor* Actor : SpawnedSequenceActors)
+		if (Actor && IsValid(Actor) && !Actor->IsActorBeingDestroyed()) Actor->Destroy();
+	SpawnedSequenceActors.Empty();
 }
 
 void ALevelSequenceActor::SetCurrentFrame(float InFrame)
@@ -239,7 +324,7 @@ void ALevelSequenceActor::ApplyFrameEvaluation(float EvalFrame, float PrevEvalFr
 			}
 		}
 	}
-	else if (bOverrodeCameraTarget)
+	else if (bOverrodeCameraTarget) // 컷신 중간에 카메라 씬 없으면 플레이어 카메라 사용했다가 다시 카메라 씬 실행
 	{
 		RestorePlayerCameraViewTarget();
 	}

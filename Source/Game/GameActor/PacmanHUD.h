@@ -16,6 +16,7 @@ protected:
 private:
 	void LayoutNameEntry();
 	void LayoutResultScreen();
+	void LayoutCreditScreen();
 	void LayoutGameUI();
 	void ShowScoreboard();
 	void SaveScore();
