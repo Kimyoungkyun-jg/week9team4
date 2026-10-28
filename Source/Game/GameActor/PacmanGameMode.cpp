@@ -451,9 +451,13 @@ void APacmanGameMode::OnResultFadeRendered()
 
 void APacmanGameMode::OnResultSequenceFinished()
 {
-	if (ResultSequenceActor && IsValid(ResultSequenceActor))
-		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	ALevelSequenceActor* FinishedSequence = ResultSequenceActor;
 	ResultSequenceActor = nullptr;
+	if (FinishedSequence && IsValid(FinishedSequence))
+	{
+		FinishedSequence->OnSequenceFinished.RemoveAll(this);
+		FinishedSequence->Destroy();
+	}
 	if (UWorld* World = GetWorld())
 		if (AGameHUD* HUD = World->GetHUD())
 		{
