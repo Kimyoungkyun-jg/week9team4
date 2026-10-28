@@ -187,15 +187,3 @@ FMatrix UCameraComponent::GetViewProjectionMatrix() const
 {
     return GetViewMatrix() * GetProjectionMatrix();
 }
-
-void UCameraComponent::GetCameraView(FMinimalViewInfo& OutPOV) const
-{
-    OutPOV.Location = GetWorldLocation();
-    OutPOV.Rotation = GetWorldRotation();
-    OutPOV.FieldOfView = FieldOfView;
-    OutPOV.AspectRatio = AspectRatio;
-    OutPOV.NearClip = NearClipPlane;
-    OutPOV.FarClip = FarClipPlane;
-    OutPOV.OrthoWidth = OrthoWidth;
-    OutPOV.bIsPerspective = !bIsOrthogonal;
-}

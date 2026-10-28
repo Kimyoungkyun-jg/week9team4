@@ -478,13 +478,12 @@ void APacmanGameMode::Tick(float DeltaTime)
 	GhostHitCooldown = std::max(0.0f, GhostHitCooldown - DeltaTime);
 	TickGhostHit(DeltaTime);
 
-	if (FadePhase != EResultFadePhase::FadeOut && FadePhase != EResultFadePhase::FadeIn) return;
-
+	if (!FadeImage || (FadePhase != EResultFadePhase::FadeOut && FadePhase != EResultFadePhase::FadeIn)) return;
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
-	APlayerController* PC = World ? World->GetPlayerController() : nullptr;
-	APlayerCameraManager* CameraManager = PC ? PC->GetPlayerCameraManager() : nullptr;
-
+	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
+	if (!Viewport) return;
+	FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 	FadeElapsed += std::max(0.0f, DeltaTime);
 	const float Duration = FadePhase == EResultFadePhase::FadeOut ? 0.4f : 0.5f;
 	const float T = std::clamp(FadeElapsed / Duration, 0.0f, 1.0f);
@@ -498,9 +497,11 @@ void APacmanGameMode::Tick(float DeltaTime)
 		Viewport->OnUIRendered.AddRaw(this, &APacmanGameMode::OnResultFadeRendered);
 		return;
 	}
-	}
-	else if (FadePhase == EResultFadePhase::FadeIn)
+	else
 	{
+		HUD->RemoveOverlay(FadeOverlayHandle);
+		FadeOverlayHandle = 0;
+		FadeImage = nullptr;
 		FadePhase = EResultFadePhase::Complete;
 	}
 }

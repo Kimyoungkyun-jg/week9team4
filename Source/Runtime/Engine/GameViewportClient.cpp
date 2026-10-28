@@ -504,8 +504,18 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 				{ bHasEffectsTrack = true; break; }
 			if (!bHasEffectsTrack) return false;
 			const FSequenceCameraEffects Effects = FLevelSequenceAsset::EvaluateCameraEffects(Sequence->GetSequenceData(), Sequence->GetCurrentFrame());
-			OutView.FadeOpacity = Effects.FadeOpacity;
-			OutView.LetterboxSize = Effects.LetterboxSize;
+			OutView.FadeOpacity = 0.0f;
+			OutView.LetterboxSize = 0.0f;
+			if (Effects.FadeOpacity > 0.0f)
+			{
+				OutView.bCameraFade = true;
+				OutView.FadeAmount = std::max(OutView.FadeAmount, Effects.FadeOpacity);
+				OutView.FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			}
+			if (Effects.LetterboxSize > 0.0f)
+			{
+				OutView.LetterboxRatio = std::max(OutView.LetterboxRatio, Effects.LetterboxSize);
+			}
 			return true;
 		};
 		bool bApplied = false;
@@ -535,11 +545,17 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 		{
 			if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
 			{
-				OutView.bCameraFade = PCM->HasActiveFade();
-				OutView.bFadeHUD = PCM->IsFadeHUD();
-				OutView.FadeColor = PCM->GetFadeColor();
-				OutView.FadeAmount = PCM->GetFadeAmount();
-				OutView.LetterboxRatio = PCM->GetLetterboxRatio();
+				if (PCM->HasActiveFade())
+				{
+					OutView.bCameraFade = true;
+					OutView.bFadeHUD = PCM->IsFadeHUD();
+					OutView.FadeColor = PCM->GetFadeColor();
+					OutView.FadeAmount = std::max(OutView.FadeAmount, PCM->GetFadeAmount());
+				}
+				if (PCM->GetLetterboxRatio() > 0.0f)
+				{
+					OutView.LetterboxRatio = std::max(OutView.LetterboxRatio, PCM->GetLetterboxRatio());
+				}
 			}
 		}
 	}

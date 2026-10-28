@@ -105,7 +105,6 @@ namespace LuaBindings
 				}
 			}
 		});
-		});
 		Lua.set_function("CastToMovementComponent", [](sol::object CompObj) -> UMovementComponent* {
 			if (!CompObj.valid() || CompObj.is<sol::nil_t>()) return nullptr;
 			if (CompObj.is<UMovementComponent*>()) return CompObj.as<UMovementComponent*>();
