@@ -29,6 +29,7 @@ class APlayerPawn : public ACharacter
 		LUA_FUNC(ConfigureFlashlight)
 		LUA_FUNC(ConfigureFlashlightSwing)
 		LUA_FUNC(ConfigureFlashlightAttack)
+		LUA_FUNC(ConfigureFlashlightHitCameraShake)
 		// LuaScriptComponent exposes Owner as AActor; resolve this game type explicitly.
 		UserType["Cast"] = [](AActor* Actor) { return Cast<APlayerPawn>(Actor); };
 	LUA_BIND_END()
@@ -52,6 +53,7 @@ public:
 	void ConfigureFlashlight(float DrainPerSecond, float AttackCost, float SwingSeconds, float AttackReach);
 	void ConfigureFlashlightSwing(const FVector& Pivot, const FRotator& CoordinateRotation, float HalfAngle, float HandRadius);
 	void ConfigureFlashlightAttack(float WindupSeconds, float RecoverySeconds, float CapsuleRadius, float HitStopSeconds, float GhostStaggerSeconds, float FlashMultiplier, float TrailAngleStep);
+	void ConfigureFlashlightHitCameraShake(bool bEnabled, float Duration, float Scale, float Frequency, const FVector& LocationAmplitude, const FRotator& RotationAmplitude);
 	int32 GetLife() const { return Life; }
 	void SetLife(int32 InLife);
 	void RespawnAtPlayerStart();

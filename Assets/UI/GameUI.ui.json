@@ -283,7 +283,7 @@
                         200.0,
                         28.0
                     ],
-                    "Text": "SLOW MOTION [T]",
+                    "Text": "SLOW MOTION [Shift]",
                     "WidgetName": "SlomoLabel",
                     "ZOrder": 0,
                     "bVisible": true
