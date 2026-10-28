@@ -38,6 +38,9 @@ struct FSceneView
 	FLinearColor FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	float FadeAmount = 0.0f;
 
+	// 레터박스 정보
+	float LetterboxRatio = 0.0f;
+
 	FViewContext ToViewContext() const
 	{
 		FViewContext Context{};

@@ -103,7 +103,8 @@ void FGameViewportClient::RenderUI(const FSceneView& View)
 	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
 
 	const bool bHasFade = View.bCameraFade && View.FadeAmount > 0.0f;
-	if ((!WidgetRoot && WidgetOverlays.IsEmpty() && !bHasFade) || !ViewTargets.SceneColor) return;
+	const bool bHasLetterbox = View.LetterboxRatio > 0.0f;
+	if ((!WidgetRoot && WidgetOverlays.IsEmpty() && !bHasFade && !bHasLetterbox) || !ViewTargets.SceneColor) return;
 
 	if (!WidgetRenderer)
 	{
@@ -126,6 +127,11 @@ void FGameViewportClient::RenderUI(const FSceneView& View)
 		WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
 	for (const FWidgetOverlay& Overlay : WidgetOverlays)
 		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
+
+	if (View.LetterboxRatio > 0.0f)
+	{
+		WidgetRenderer->DrawLetterboxOverlay(View.LetterboxRatio, ViewTargets.SceneColor.get());
+	}
 
 	// 3. [bFadeHUD == true] UI까지 전체 페이드: UI를 모두 덮어씌움
 	if (bHasFade && View.bFadeHUD)
@@ -504,6 +510,7 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 				OutView.bFadeHUD = PCM->IsFadeHUD();
 				OutView.FadeColor = PCM->GetFadeColor();
 				OutView.FadeAmount = PCM->GetFadeAmount();
+				OutView.LetterboxRatio = PCM->GetLetterboxRatio();
 			}
 		}
 	}

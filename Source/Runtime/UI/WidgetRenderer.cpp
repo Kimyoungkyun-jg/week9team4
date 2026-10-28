@@ -218,3 +218,37 @@ void FWidgetRenderer::DrawQuad(const FRect& Rect, float U0, float V0, float U1, 
 	RenderCommand::BindShaderResource(0, Texture, EShaderBindFlagBits::Pixel);
 	RenderCommand::Draw(6);
 }
+
+void FWidgetRenderer::DrawLetterboxOverlay(float Ratio, FTexture2D* Target)
+{
+	if (!Target || !Target->GetRTV() || !VertexBuffer || !ConstantBuffer || Ratio <= 0.0f) return;
+	UTexture2D* White = UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
+	if (!White || !White->GetResource()) return;
+
+	TargetWidth = Target->GetWidth();
+	TargetHeight = Target->GetHeight();
+	ClipRadius = 0.0f;
+	bMinimapTerrain = false;
+
+	RenderCommand::BindRenderPassNoClear(Target, nullptr, TargetWidth, TargetHeight);
+	RenderCommand::BindPipelineState(PipelineState);
+	RenderCommand::BindVertexBuffer(VertexBuffer.get());
+	RenderCommand::BindConstantBuffer(0, ConstantBuffer.get(), EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
+	RenderCommand::BindSamplerState(0, ESamplerState::LinearClamp, EShaderBindFlagBits::Pixel);
+
+	const float TotalW = static_cast<float>(TargetWidth);
+	const float TotalH = static_cast<float>(TargetHeight);
+	const float BarH = TotalH * FMath::Clamp(Ratio, 0.0f, 0.5f); // 최대 화면의 절반까지
+	const FLinearColor BlackColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+	// 상단 바 (Top Bar)
+	const FRect TopRect{ 0.0f, 0.0f, TotalW, BarH };
+	DrawQuad(TopRect, 0.0f, 0.0f, 1.0f, 1.0f, White, BlackColor);
+
+	// 하단 바 (Bottom Bar)
+	const FRect BottomRect{ 0.0f, TotalH - BarH, TotalW, BarH };
+	DrawQuad(BottomRect, 0.0f, 0.0f, 1.0f, 1.0f, White, BlackColor);
+
+	RenderCommand::UnbindShaderResources(0, 1, EShaderBindFlagBits::Pixel);
+	RenderCommand::EndRenderPass();
+}

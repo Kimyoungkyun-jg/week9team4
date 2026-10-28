@@ -8,6 +8,7 @@ function Player:BeginPlay()
     self.bIsSlomo = false;
     self.SlomoDilation = 0.3
     self.bIsFadedOut = false
+    self.bIsLetterboxActive = false
 end
 
 function Player:Tick(deltaTime)
@@ -61,6 +62,19 @@ function Player:Tick(deltaTime)
             self.bIsFadedOut = false
             FadeIn(1.5)
             Log("Camera FadeIn Triggered (1.5s)")
+        end
+    end
+
+    -- 키보드 L 키: Letterbox Enter / Exit 토글 테스트
+    if Input.IsKeyPressed(KeyCode.L) then
+        if not self.bIsLetterboxActive then
+            self.bIsLetterboxActive = true
+            EnterLetterbox(0.5, 0.12) -- 0.5초 동안 상하 12% 레터박스 진입
+            Log("Camera EnterLetterbox Triggered (0.5s, 12%)")
+        else
+            self.bIsLetterboxActive = false
+            ExitLetterbox(0.5) -- 0.5초 동안 레터박스 퇴장
+            Log("Camera ExitLetterbox Triggered (0.5s)")
         end
     end
 end

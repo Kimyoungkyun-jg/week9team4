@@ -54,10 +54,18 @@ public:
 	void FadeIn(float Duration = 1.0f, const FLinearColor& Color = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), bool bInFadeHUD = true);
 	void FadeOut(float Duration = 1.0f, const FLinearColor& Color = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), bool bHold = true, bool bInFadeHUD = true);
 
+	void EnterLetterbox(float Duration = 0.5f, float TargetRatio = 0.12f);
+	void ExitLetterbox(float Duration = 0.5f);
+	void StartLetterbox(float FromRatio, float ToRatio, float Duration);
+	void StopLetterbox();
+	const float GetLetterboxRatio() const { return CurrentLetterboxRatio; }
+
+
 protected:
 	void UpdateViewTarget(float DeltaTime);
 	void ApplyCameraModifiers(float DeltaTime);
 	void UpdateCameraFade(float DeltaTime);
+	void UpdateCameraLetterbox(float DeltaTime);
 
 	bool bEnableFading = false;
 	bool bHoldWhenFinished = false; // 페이드 완료 후 그 상태를 유지할 지 여부
@@ -69,6 +77,12 @@ protected:
 	FVector2 FadeAlpha = FVector2(0.0f, 0.0f);
 	float FadeTime = 0.0f;
 	float FadeTimeRemaining = 0.0f;
+
+	bool bEnableLetterbox = false;
+	float CurrentLetterboxRatio = 0.0f;
+	FVector2 LetterboxRatio;
+	float LetterboxTime = 0.0f;
+	float LetterboxTimeRemaining = 0.0f;
 
 	// 카메라 동작 방식과 현재 시점 대상.
 	FName CameraStyle = FName("Default");

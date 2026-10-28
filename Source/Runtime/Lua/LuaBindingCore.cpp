@@ -108,7 +108,18 @@ namespace LuaBindings
 			),
 			"StopCameraFade", &APlayerCameraManager::StopCameraFade,
 			"HasActiveFade", &APlayerCameraManager::HasActiveFade,
-			"GetFadeAmount", &APlayerCameraManager::GetFadeAmount
+			"GetFadeAmount", &APlayerCameraManager::GetFadeAmount,
+			"EnterLetterbox", sol::overload(
+				[](APlayerCameraManager& Self) { Self.EnterLetterbox(); },
+				[](APlayerCameraManager& Self, float Duration) { Self.EnterLetterbox(Duration); },
+				[](APlayerCameraManager& Self, float Duration, float TargetRatio) { Self.EnterLetterbox(Duration, TargetRatio); }
+			),
+			"ExitLetterbox", sol::overload(
+				[](APlayerCameraManager& Self) { Self.ExitLetterbox(); },
+				[](APlayerCameraManager& Self, float Duration) { Self.ExitLetterbox(Duration); }
+			),
+			"StopLetterbox", &APlayerCameraManager::StopLetterbox,
+			"GetLetterboxRatio", &APlayerCameraManager::GetLetterboxRatio
 		);
 
 		// 7. 편리한 전역 Fade 함수 바인딩
@@ -135,6 +146,36 @@ namespace LuaBindings
 					{
 						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 1.0f;
 						PCM->FadeOut(Duration);
+					}
+				}
+			}
+		});
+
+		// 8. 편리한 전역 Letterbox 함수 바인딩
+		Lua.set_function("EnterLetterbox", [&GameInstance](sol::variadic_args va) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				if (APlayerController* PC = World->GetPlayerController())
+				{
+					if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+					{
+						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 0.5f;
+						float Ratio = (va.size() > 1 && va[1].is<float>()) ? va[1].as<float>() : 0.12f;
+						PCM->EnterLetterbox(Duration, Ratio);
+					}
+				}
+			}
+		});
+
+		Lua.set_function("ExitLetterbox", [&GameInstance](sol::variadic_args va) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				if (APlayerController* PC = World->GetPlayerController())
+				{
+					if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+					{
+						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 0.5f;
+						PCM->ExitLetterbox(Duration);
 					}
 				}
 			}
