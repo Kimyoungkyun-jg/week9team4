@@ -4,6 +4,37 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 
+namespace
+{
+	bool IsUsableCameraTarget(AActor* Target)
+	{
+		// 프레임 사이에 실제 삭제된 Actor도 역참조하지 않는다.
+		return Target && GUObjectArray.Find(Target) != INDEX_NONE &&
+			IsValid(Target) && !Target->IsActorBeingDestroyed();
+	}
+
+	FMinimalViewInfo BlendCameraViews(const FMinimalViewInfo& From, const FMinimalViewInfo& To, float Alpha)
+	{
+		if (Alpha <= 0.0f) return From;
+		if (Alpha >= 1.0f) return To;
+
+		auto Blend = [Alpha](float A, float B) { return A + (B - A) * Alpha; };
+		FMinimalViewInfo Result = From;
+		Result.Location = From.Location + (To.Location - From.Location) * Alpha;
+		// 각 축을 [-180, 180] 범위의 차이로 보간해 179도 -> -179도에서 크게 회전하지 않는다.
+		for (int32 Axis = 0; Axis < 3; ++Axis)
+			Result.Rotation[Axis] = From.Rotation[Axis] +
+				std::remainder(To.Rotation[Axis] - From.Rotation[Axis], 360.0f) * Alpha;
+		Result.FOV = Blend(From.FOV, To.FOV);
+		Result.AspectRatio = Blend(From.AspectRatio, To.AspectRatio);
+		Result.NearClipPlane = Blend(From.NearClipPlane, To.NearClipPlane);
+		Result.FarClipPlane = Blend(From.FarClipPlane, To.FarClipPlane);
+		Result.OrthoWidth = Blend(From.OrthoWidth, To.OrthoWidth);
+		// 투영 방식은 수치 보간할 수 없으므로 전환 완료 시 도착 대상의 방식을 채택한다.
+		return Result;
+	}
+}
+
 APlayerCameraManager::~APlayerCameraManager()
 {
 	RemoveAllCameraModifiers();
@@ -19,6 +50,8 @@ void APlayerCameraManager::EndPlay()
 void APlayerCameraManager::InitializeFor(APlayerController* InController)
 {
 	PCOwner = InController;
+	++ViewTargetRevision;
+	ClearPendingViewTarget();
 	bHasValidCameraPOV = false;
 }
 
@@ -42,7 +75,7 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 	UpdateViewTarget(DeltaTime);
 	if (bHasValidCameraPOV && !IsPendingKillPending())
 	{
-		CameraPOV = ViewTarget.POV;
+		CameraPOV = BaseCameraPOV;
 		ApplyCameraModifiers(DeltaTime, CameraPOV);
 	}
 
@@ -52,9 +85,41 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 	}
 }
 
-void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget)
+void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget, float BlendTime)
 {
-	ViewTarget.Target = NewViewTarget;
+	if (IsPendingKillPending()) return;
+	if (!std::isfinite(BlendTime) || BlendTime <= 0.0f ||
+		!bHasValidCameraPOV || !IsUsableCameraTarget(NewViewTarget))
+	{
+		++ViewTargetRevision;
+		ClearPendingViewTarget();
+		ViewTarget.Target = NewViewTarget;
+		return;
+	}
+
+	// 매 프레임 같은 요청이 들어와도 타이머를 처음으로 되돌리지 않는다.
+	if ((IsBlending() && PendingViewTarget.Target == NewViewTarget) ||
+		(!IsBlending() && ViewTarget.Target == NewViewTarget)) return;
+
+	++ViewTargetRevision;
+	if (IsBlending())
+	{
+		// 전환 중의 블렌딩 결과에서 다시 출발한다. Modifier 적용 후의 POV는 사용하지 않는다.
+		ViewTarget.POV = BaseCameraPOV;
+		bLockOutgoing = true;
+	}
+	PendingViewTarget.Target = NewViewTarget;
+	PendingViewTarget.POV = BaseCameraPOV;
+	BlendDuration = BlendTime;
+	BlendTimeRemaining = BlendTime;
+}
+
+void APlayerCameraManager::ClearPendingViewTarget()
+{
+	PendingViewTarget = FViewTarget{};
+	BlendDuration = 0.0f;
+	BlendTimeRemaining = 0.0f;
+	bLockOutgoing = false;
 }
 
 UCameraModifier* APlayerCameraManager::AddNewCameraModifier(UClass* ModifierClass)
@@ -137,27 +202,66 @@ void APlayerCameraManager::StopCameraFade()
 
 void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
 {
-    if (!IsValid(ViewTarget.Target) || ViewTarget.Target->IsActorBeingDestroyed())
-    {
-        if (!IsValid(PCOwner) || PCOwner->IsActorBeingDestroyed())
-        {
-            SetViewTarget(nullptr);
-            bHasValidCameraPOV = false;
-            return;
-        }
+	if (IsBlending() && !IsUsableCameraTarget(PendingViewTarget.Target))
+		ClearPendingViewTarget();
 
-        // 사라진 Actor를 다시 조회하지 않고,
-        // 이미 계산된 시점을 Controller에 보관한다.
-        if (bHasValidCameraPOV)
-        {
-            PCOwner->SetFallbackCameraView(ViewTarget.POV);
-        }
+	if (!IsUsableCameraTarget(ViewTarget.Target))
+	{
+		if (IsBlending())
+		{
+			// 출발 대상이 사라져도 저장된 POV에서 살아 있는 도착 대상으로 계속 전환한다.
+			ViewTarget.Target = nullptr;
+			bLockOutgoing = true;
+		}
+		else
+		{
+			if (!IsUsableCameraTarget(PCOwner))
+			{
+				ViewTarget.Target = nullptr;
+				bHasValidCameraPOV = false;
+				return;
+			}
+			if (bHasValidCameraPOV) PCOwner->SetFallbackCameraView(BaseCameraPOV);
+			ViewTarget.Target = PCOwner;
+		}
+	}
 
-        SetViewTarget(PCOwner);
-    }
+	const uint64 Revision = ViewTargetRevision;
+	if (!bLockOutgoing)
+	{
+		FMinimalViewInfo View = ViewTarget.POV;
+		ViewTarget.Target->CalcCamera(DeltaTime, View);
+		// CalcCamera 콜백에서 새 요청이 발생하면 그 상태를 덮어쓰지 않는다.
+		if (IsPendingKillPending() || Revision != ViewTargetRevision) return;
+		ViewTarget.POV = View;
+	}
 
-    ViewTarget.Target->CalcCamera(DeltaTime, ViewTarget.POV);
-    bHasValidCameraPOV = true;
+	if (IsBlending() && IsUsableCameraTarget(PendingViewTarget.Target))
+	{
+		FMinimalViewInfo PendingView = PendingViewTarget.POV;
+		PendingViewTarget.Target->CalcCamera(DeltaTime, PendingView);
+		if (IsPendingKillPending() || Revision != ViewTargetRevision) return;
+		if (IsUsableCameraTarget(PendingViewTarget.Target))
+		{
+			PendingViewTarget.POV = PendingView;
+			const float SafeDeltaTime = std::isfinite(DeltaTime) ? FMath::Max(DeltaTime, 0.0f) : 0.0f;
+			BlendTimeRemaining = FMath::Max(BlendTimeRemaining - SafeDeltaTime, 0.0f);
+			const float Alpha = FMath::Clamp(1.0f - BlendTimeRemaining / BlendDuration, 0.0f, 1.0f);
+			BaseCameraPOV = BlendCameraViews(ViewTarget.POV, PendingViewTarget.POV, Alpha);
+			if (BlendTimeRemaining <= 0.0f)
+			{
+				ViewTarget = PendingViewTarget;
+				ClearPendingViewTarget();
+			}
+			bHasValidCameraPOV = true;
+			return;
+		}
+	}
+
+	// 도착 대상이 갱신 도중 사라졌다면 전환을 취소한다.
+	ClearPendingViewTarget();
+	BaseCameraPOV = ViewTarget.POV;
+	bHasValidCameraPOV = true;
 }
 
 void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV)

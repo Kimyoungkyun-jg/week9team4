@@ -42,7 +42,8 @@ public:
 
 	// 외부에서 매 프레임 호출할 카메라 갱신 진입점.
 	void UpdateCamera(float DeltaTime);
-	void SetViewTarget(AActor* NewViewTarget);
+	// BlendTime이 0 이하이면 즉시 전환하고, 양수이면 다음 대상까지 선형 블렌딩한다.
+	void SetViewTarget(AActor* NewViewTarget, float BlendTime = 0.0f);
 
 	// 반환된 Modifier는 Manager 소유이며 제거 후에는 사용하면 안 된다.
 	UCameraModifier* AddNewCameraModifier(UClass* ModifierClass);
@@ -54,9 +55,11 @@ public:
 	void StopCameraFade();
 
 	AActor* GetViewTarget() const { return ViewTarget.Target; }
+	AActor* GetPendingViewTarget() const { return PendingViewTarget.Target; }
+	bool IsBlending() const { return BlendTimeRemaining > 0.0f; }
 	const FMinimalViewInfo& GetCameraPOV() const { return CameraPOV; }
-	// 대체 시점에는 Modifier 적용 전의 POV를 보관해 보정의 재누적을 막는다.
-	const FMinimalViewInfo& GetBaseCameraPOV() const { return ViewTarget.POV; }
+	// 블렌딩 결과를 Modifier와 분리해 대체 시점이나 다음 전환에 효과가 재누적되지 않게 한다.
+	const FMinimalViewInfo& GetBaseCameraPOV() const { return BaseCameraPOV; }
 	bool HasValidCameraPOV() const { return bHasValidCameraPOV; }
 	float GetFadeAmount() const { return FadeAmount; }
 	const FLinearColor& GetFadeColor() const { return FadeColor; }
@@ -76,15 +79,23 @@ protected:
 	// 카메라 동작 방식과 현재 시점 대상.
 	FName CameraStyle = FName("Default");
 	FViewTarget ViewTarget;
+	FViewTarget PendingViewTarget;
+	float BlendDuration = 0.0f;
+	float BlendTimeRemaining = 0.0f;
 
 	APlayerController* PCOwner = nullptr;
 
 private:
 	void FlushRemovedCameraModifiers();
+	void ClearPendingViewTarget();
 
 	TArray<UCameraModifier*> ModifierList;
 	TArray<UCameraModifier*> RemovedModifiers;
+	FMinimalViewInfo BaseCameraPOV;
 	FMinimalViewInfo CameraPOV;
+	// 전환 중 재요청하거나 출발 대상이 사라지면 마지막 출발 POV를 고정한다.
+	bool bLockOutgoing = false;
+	uint64 ViewTargetRevision = 0;
 	bool bHasValidCameraPOV = false;
 	bool bIsUpdatingCamera = false;
 	bool bIsClearingModifiers = false;
