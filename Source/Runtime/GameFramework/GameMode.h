@@ -19,6 +19,10 @@ public:
 	AGameMode();
 	void SpawnPlayer(APawn*& OutPawn, APlayerController*& OutController);
 	virtual bool AllowsPlayerControllerInput() const { return true; }
+	// Camera mode policy is independent of movement/look input permission.
+	virtual bool AllowsCameraModeToggle() const { return true; }
+	// UI/menu modes keep the cursor free; gameplay/test modes can opt in.
+	virtual bool WantsMouseCapture() const { return false; }
 
 	UClass* GetDefaultPawnClass() const { return DefaultPawnClass; }
 	UClass* GetPlayerControllerClass() const { return PlayerControllerClass; }

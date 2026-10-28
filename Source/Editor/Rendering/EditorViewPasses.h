@@ -41,6 +41,7 @@ struct FSceneOverlayCallbacks
 {
 	std::function<void()> EditorLines;
 	std::function<void()> CollisionLines;
+	std::function<void()> SpringArmCameraLines;
 	std::function<void()> EditorGrid;
 	std::function<void()> EditorMapTiles;
 	std::function<void()> EditorOutline;
@@ -70,7 +71,9 @@ public:
 private:
 	FSceneOverlayCallbacks Overlays;
 	void ConfigureCollisionOverlay(const FEditorOverlayResources& Resources);
+	void ConfigureSpringArmCameraOverlay(const FEditorOverlayResources& Resources);
 	void RenderCollisionLines();
+	void RenderSpringArmCameraLines();
 	void RenderEditorLines(FEditorViewportClient* ViewClient, bool bDrawSelectedLight, bool bDrawCascadeBounds);
 	void RenderEditorGrid(FEditorViewportClient* ViewClient, const FViewportSettings& ViewportSetting);
 	void RenderActorUUIDs();

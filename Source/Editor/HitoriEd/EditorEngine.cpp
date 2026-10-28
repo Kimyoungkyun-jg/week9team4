@@ -9,6 +9,7 @@
 #include "GameActor/MainMenuGameMode.h"
 #include "GameActor/MainMenuHUD.h"
 #include "GameActor/PacmanGameMode.h"
+#include "GameActor/SpringArmTestGameMode.h"
 #include "GameActor/PacmanHUD.h"
 
 #include "Core/EngineStatics.h"
@@ -690,8 +691,8 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	if (!Context || !Context->GameViewport) return;
 	FGameViewportClient& GameViewport = *Context->GameViewport;
 	FWindow* InputWindow = IsPIEInWindow() ? PIEWindow.get() : MainWindow;
-	const APacmanGameMode* PacmanMode = Cast<APacmanGameMode>(Context->World()->GetGameMode());
-	const bool bWantsCapture = PacmanMode && PacmanMode->WantsMouseCapture() && !GameViewport.IsSIEMode();
+	const AGameMode* Mode = Context->World()->GetGameMode();
+	const bool bWantsCapture = Mode && Mode->WantsMouseCapture() && !GameViewport.IsSIEMode();
 	if (!bWantsCapture) bMouseCaptureReleasedByUser = false;
 	const FVector2 Mouse = ViewportsPanel->GetLocalMousePosition();
 	const int32 InputViewIndex = IsPIEInWindow() && GameViewport.IsSIEMode()
@@ -781,7 +782,7 @@ void UEditorEngine::TickPIEInput(float DeltaTime)
 	}
 	constexpr EKeyCode Keys[] = { EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
 		EKeyCode::E, EKeyCode::Q, EKeyCode::Space, EKeyCode::Shift,
-		EKeyCode::Backspace, EKeyCode::Enter };
+		EKeyCode::Backspace, EKeyCode::Enter};
 	for (EKeyCode Key : Keys)
 	{
 		const bool bTextEditKey = Key == EKeyCode::Backspace || Key == EKeyCode::Enter;
