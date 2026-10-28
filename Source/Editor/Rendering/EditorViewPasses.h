@@ -8,6 +8,7 @@ class FEditorViewportClient;
 class FGridRenderer;
 class FMapTileRenderer;
 class FMapTileEditor;
+class FSequencerPanel;
 class FGizmoRenderer;
 class FLineBatcher;
 class FOutline;
@@ -35,6 +36,7 @@ struct FEditorOverlayResources
 	FMapTileRenderer* MapTiles = nullptr;
 	const FMapTileEditor* MapTileEditor = nullptr;
 	bool bAllowCollisionDebug = true;
+	const FSequencerPanel* SequencerPanel = nullptr;
 };
 
 struct FSceneOverlayCallbacks

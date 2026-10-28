@@ -30,6 +30,8 @@ struct FSceneView
 	bool bIsPerspective = true;
 	bool bIsWireframe = false;
 	bool bGameView = false;
+	float FadeOpacity = 0.0f;
+	float LetterboxSize = 0.0f;
 
 	FViewContext ToViewContext() const
 	{

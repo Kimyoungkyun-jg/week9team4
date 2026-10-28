@@ -1,16 +1,17 @@
 #pragma once
 
 #include "Editor/EditorUI/EditorPanel.h"
-#include "Sequencer/LevelSequence.h"
-#include "Sequencer/SequencePlayer.h"
-#include <functional>
-#include <utility>
-#include <vector>
+#include "Sequencer/SequenceAsset.h"
+#include "Camera/MinimalViewInfo.h"
+#include "Audio/SoundManager.h"
 
-class AActor;
 class UWorld;
+class FOutlinerPanel;
 class FViewportsPanel;
+class FLineBatcher;
+class FGizmo;
 
+// 언리얼 스타일 컷신 제작을 위한 시퀀서 에디터 패널
 class FSequencerPanel : public IEditorPanel
 {
 public:
@@ -18,82 +19,95 @@ public:
 	void Tick(float DeltaTime) override;
 	void OnRender() override;
 	const char* GetPanelName() const override { return "Sequencer"; }
-	void SetWorld(UWorld* InWorld);
-	void SetViewportsPanel(FViewportsPanel* InPanel) { ViewportsPanel = InPanel; }
-	void SetSelectedActorProvider(std::function<AActor*()> InProvider) { SelectedActorProvider = std::move(InProvider); }
-	void SetActorSelectionCallback(std::function<void(AActor*)> InCallback) { ActorSelectionCallback = std::move(InCallback); }
-	void SetPreviewAllowedQuery(std::function<bool()> InQuery) { PreviewAllowedQuery = std::move(InQuery); }
-	void StopPreview();
-	void ReleaseAsset();
+
+	void SetWorld(UWorld* InWorld) { if (World != InWorld) StopPilotingCamera(); World = InWorld; }
+	void SetOutlinerPanel(FOutlinerPanel* InOutliner) { OutlinerPanel = InOutliner; }
+	void SetViewportsPanel(FViewportsPanel* InViewports) { ViewportsPanel = InViewports; }
+	void SetGizmo(FGizmo* InGizmo) { Gizmo = InGizmo; }
+
+	bool OpenSequenceAsset(const FString& Path);
+	bool SaveSequenceAsset(const FString& Path);
+	void CreateNewSequence();
+
+	void DrawTrajectoryLines(FLineBatcher* LineBatcher) const;
+	bool IsCameraLockActive() const { return bCameraLock && bHasEvaluatedCameraCut; }
+	bool IsPlaying() const { return bIsPlaying; }
+	FSequenceCameraEffects GetCameraEffects() const
+	{ return FLevelSequenceAsset::EvaluateCameraEffects(SequenceData, bIsPlaying ? PlaybackFrameFloat : static_cast<float>(CurrentFrame)); }
+
+	FLevelSequenceData& GetSequenceData() { return SequenceData; }
+	const FLevelSequenceData& GetSequenceData() const { return SequenceData; }
+
+	int32 GetCurrentFrame() const { return CurrentFrame; }
+	void SetCurrentFrameAndEvaluate(int32 InFrame, bool bTriggerAudio);
+
+	int32 GetSelectedTrackIndex() const { return SelectedTrackIndex; }
+	void SetSelectedTrackIndex(int32 InIndex) { SelectedTrackIndex = InIndex; }
+
+	int32 GetSelectedKeyIndex() const { return SelectedKeyIndex; }
+	void SetSelectedKeyIndex(int32 InIndex) { SelectedKeyIndex = InIndex; }
+
+	void AddTrackByType(ESequenceTrackType TrackType);
+	void DeleteTrackAt(int32 TrackIndex);
+	void DuplicateTrackAt(int32 TrackIndex);
+	void ToggleTrackExpandedAt(int32 TrackIndex);
+
+	void AddKeyframeAtCurrentFrame(int32 TrackIndex);
+	void DeleteKeyAt(int32 TrackIndex, int32 KeyIndex);
+	void CopySelectedKey();
+	void PasteCopiedKeyAtCurrentFrame();
+	void PreviewAudioClip(int32 TrackIndex, int32 ClipIndex);
 
 private:
-	enum class EDragMode { None, Scrub, Key, SectionMove, SectionStart, SectionEnd };
-	void NewAsset();
-	void RequestNewAsset();
-	bool OpenAsset(const FString& Path);
-	void RequestOpenAsset(const FString& Path);
-	void SaveAsset();
-	void ResetHistory();
-	void CommitEdit();
-	void Undo();
-	void Redo();
-	void AddBinding(ESequenceBindingType Type, UClass* SpawnClass = nullptr, AActor* SceneActor = nullptr);
-	void AddTrack(ESequenceTrackType Type);
-	void AddSection();
-	void AddKey();
 	void DrawToolbar();
-	void DrawBindings();
-	void DrawTimeline();
-	void DrawInspector();
-	void DrawPreviewImage();
-	void SelectPreviewActor();
-	void FocusSelectedBinding();
-	bool EnsurePreview();
-	void RefreshPreview();
-	void FollowSelectedCamera();
-	void RestoreViewportCamera();
-	AActor* GetSelectedBoundActor();
-	FString NextBindingId() const;
+	void DrawTrackInspector();
+	void EvaluateAtCurrentFrame(bool bTriggerAudio);
+	void UpdateAutoKey();
+	void SyncCameraToActiveViewport();
+	void SpawnCutsceneCamera();
+	void SpawnSequenceActorInLevel();
+	void StartPilotingCamera();
+	void StopPilotingCamera();
+	void SyncPilotedCameraToViewport();
+	int32 FindPilotedTransformTrackIndex() const;
 
-	TUniquePtr<ULevelSequence> Sequence;
-	TUniquePtr<ULevelSequencePlayer> Player;
 	UWorld* World = nullptr;
+	FOutlinerPanel* OutlinerPanel = nullptr;
 	FViewportsPanel* ViewportsPanel = nullptr;
-	std::function<AActor*()> SelectedActorProvider;
-	std::function<void(AActor*)> ActorSelectionCallback;
-	std::function<bool()> PreviewAllowedQuery;
-	AActor* PreviewSelectedActor = nullptr;
-	FString AssetPath;
-	char PathBuffer[512]{};
-	char ActorSearchBuffer[128]{};
-	bool bPickerSpawns = false;
-	FString Status;
-	std::vector<FString> History;
-	FString SavedSnapshot;
-	size_t HistoryIndex = 0;
+	FGizmo* Gizmo = nullptr;
+
+	FLevelSequenceData SequenceData;
+	FSoundManager PreviewSoundManager;
+	FString CurrentAssetPath = "Assets/Sequences/NewSequence.seq.json";
+	char AssetPathBuffer[512] = "Assets/Sequences/NewSequence.seq.json";
+	FString StatusMessage;
+
 	int32 CurrentFrame = 0;
-	int32 SelectedBinding = -1;
-	int32 SelectedTrack = -1;
-	int32 SelectedSection = -1;
-	int32 SelectedKey = -1;
-	float PixelsPerFrame = 8.0f;
-	float PlayRate = 1.0f;
-	bool bLooping = false;
-	bool bDirty = false;
-	enum class EPendingAction { None, New, Open };
-	EPendingAction PendingAction = EPendingAction::None;
-	FString PendingOpenPath;
-	bool bFollowCamera = false;
-	bool bSavedViewportCamera = false;
-	int32 SavedViewportIndex = -1;
-	FVector SavedViewLocation{};
-	FRotator SavedViewRotation{};
-	float SavedViewFov = 60.0f;
-	EDragMode DragMode = EDragMode::None;
-	int32 DragStartFrame = 0;
-	int32 DragOriginalFrame = 0;
-	int32 DragOriginalStart = 0;
-	int32 DragOriginalEnd = 0;
-	std::vector<int32> DragOriginalKeyFrames;
-	bool bDragChanged = false;
+	float PlaybackFrameFloat = 0.0f;
+	float PreviousEvalFrame = -1.0f;
+	int32 FirstFrame = 0;
+	int32 SelectedTrackIndex = -1;
+	int32 SelectedKeyIndex = -1;
+	FSequenceTrack CopiedKeyTrack;
+	bool bHasCopiedKey = false;
+	bool bSequencerExpanded = true;
+	float InspectorWidth = 520.0f;
+
+	bool bIsPlaying = false;
+	bool bCameraLock = true;
+	bool bAutoKey = false;
+	bool bShowTrajectory = true;
+	bool bPilotingCamera = false;
+	FString PilotedCameraName;
+	int32 PilotedViewportIndex = -1;
+	int32 LastPilotFrame = -1;
+	FVector LastPilotViewLocation{};
+	FRotator LastPilotViewRotation{};
+
+	FMinimalViewInfo EvaluatedCameraPOV{};
+	bool bHasEvaluatedCameraCut = false;
+
+	FTransform LastGizmoTransform{};
+	AActor* LastGizmoActor = nullptr;
+	bool bWasGizmoDragging = false;
 };

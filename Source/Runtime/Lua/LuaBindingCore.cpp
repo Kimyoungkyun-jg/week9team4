@@ -6,6 +6,9 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/MovementComponent.h"
 #include "GameFramework/Actor.h"
+#include "Sequencer/LevelSequenceActor.h"
+#include "Engine/World.h"
+#include "Engine/Level.h"
 #include "Core/EngineLog.h"
 
 namespace LuaBindings
@@ -23,6 +26,68 @@ namespace LuaBindings
 			HTR_LOG(Error, "[Lua] {}", Message);
 		});
 		Lua.set_function("EndGame", [&GameInstance]() {
+			GameInstance.RequestEndSession();
+		});
+		Lua.set_function("CastToLevelSequenceActor", [](sol::object ActorObj) -> ALevelSequenceActor* {
+			if (!ActorObj.valid() || ActorObj.is<sol::nil_t>()) return nullptr;
+			if (ActorObj.is<ALevelSequenceActor*>()) return ActorObj.as<ALevelSequenceActor*>();
+			if (ActorObj.is<AActor*>()) return Cast<ALevelSequenceActor>(ActorObj.as<AActor*>());
+			return nullptr;
+		});
+		Lua.set_function("PlayLevelSequence", [&GameInstance](sol::optional<FString> TargetNameOrPath) -> bool {
+			UWorld* World = GameInstance.GetWorld();
+			if (!World || !World->GetPersistentLevel()) return false;
+			const FString Query = TargetNameOrPath.value_or("");
+			for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+			{
+				ALevelSequenceActor* SeqActor = Cast<ALevelSequenceActor>(Actor);
+				if (!SeqActor || !IsValid(SeqActor) || SeqActor->IsActorBeingDestroyed()) continue;
+				if (Query.empty() || SeqActor->GetName() == Query || SeqActor->GetSequenceAssetPath() == Query)
+				{
+					SeqActor->PlaySequence();
+					return true;
+				}
+			}
+			if (!Query.empty() && Query.ends_with(".seq.json"))
+			{
+				if (ALevelSequenceActor* Spawned = World->SpawnActor<ALevelSequenceActor>())
+				{
+					Spawned->SetSequenceAssetPath(Query);
+					Spawned->PlaySequence();
+					return true;
+				}
+			}
+			return false;
+		});
+		Lua.set_function("PauseLevelSequence", [&GameInstance](sol::optional<FString> TargetNameOrPath) {
+			UWorld* World = GameInstance.GetWorld();
+			if (!World || !World->GetPersistentLevel()) return;
+			const FString Query = TargetNameOrPath.value_or("");
+			for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+			{
+				ALevelSequenceActor* SeqActor = Cast<ALevelSequenceActor>(Actor);
+				if (!SeqActor || !IsValid(SeqActor) || SeqActor->IsActorBeingDestroyed()) continue;
+				if (Query.empty() || SeqActor->GetName() == Query || SeqActor->GetSequenceAssetPath() == Query)
+				{
+					SeqActor->PauseSequence();
+				}
+			}
+		});
+		Lua.set_function("StopLevelSequence", [&GameInstance](sol::optional<FString> TargetNameOrPath) {
+			UWorld* World = GameInstance.GetWorld();
+			if (!World || !World->GetPersistentLevel()) return;
+			const FString Query = TargetNameOrPath.value_or("");
+			for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+			{
+				ALevelSequenceActor* SeqActor = Cast<ALevelSequenceActor>(Actor);
+				if (!SeqActor || !IsValid(SeqActor) || SeqActor->IsActorBeingDestroyed()) continue;
+				if (Query.empty() || SeqActor->GetName() == Query || SeqActor->GetSequenceAssetPath() == Query)
+				{
+					SeqActor->StopSequence();
+				}
+			}
+		});
+		if (false) Lua.set_function("UnusedEndGame", [&GameInstance]() {
 			GameInstance.RequestEndSession();
 		});
 		Lua.set_function("CastToMovementComponent", [](sol::object CompObj) -> UMovementComponent* {

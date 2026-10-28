@@ -185,13 +185,14 @@ void FGizmo::BeginDrag(int Axis, const FRay& MouseRay, const FVector2& MousePos)
 	DragStartMousePos = MousePos;
 	DraggingAxis = Axis;
 	DragStartLocation = GetLocation();
-	DragStartRenderLocation = GetRenderLocation();    
+	// 이동은 실제 대상 깊이에서 계산해야 화면의 마우스 이동량과 일치한다.
+	DragStartRenderLocation = Mode == EGizmoMode::Location ? Target->GetWorldLocation() : GetRenderLocation();
 	DragStartRotation = GetRotation();
 	DragStartScale = GetScale();
 
 	// Local LightComponent면 Radius 가져와서 저장해놓기
 	if (ULocalLightComponent* Light = GetTargetLight())
-    	DragStartRadius = Light->GetAttenuationRadius();
+		DragStartRadius = Light->GetAttenuationRadius();
 
 	DragAxisDirection = GetAxisDirection(Axis);
 	FVector axis = DragAxisDirection;

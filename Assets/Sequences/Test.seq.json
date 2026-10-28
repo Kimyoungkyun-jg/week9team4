@@ -1,0 +1,236 @@
+{
+    "EndFrame": 150,
+    "FrameRate": 30,
+    "StartFrame": 0,
+    "Tracks": [
+        {
+            "AudioClips": [],
+            "CameraCuts": [
+                {
+                    "BlendTime": 0.0,
+                    "CameraActorName": "ACameraActor_3",
+                    "EndFrame": 60,
+                    "StartFrame": 0
+                },
+                {
+                    "BlendTime": 0.0,
+                    "CameraActorName": "ACameraActor_4",
+                    "EndFrame": 150,
+                    "StartFrame": 61
+                }
+            ],
+            "FOVKeys": [],
+            "TargetActorName": "",
+            "TrackName": "Camera Cuts",
+            "TrackType": 0,
+            "TransformKeys": [],
+            "bExpanded": true,
+            "bMuted": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "FOVKeys": [],
+            "TargetActorName": "ALevelSequenceActor_0",
+            "TrackName": "ALevelSequenceActor_0 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        -7.111095905303955,
+                        -4.453755855560303,
+                        0.0
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 37,
+                    "InterpMode": 1,
+                    "Location": [
+                        -7.111095905303955,
+                        -17.43178367614746,
+                        0.0
+                    ],
+                    "Rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 58,
+                    "InterpMode": 1,
+                    "Location": [
+                        -7.111095905303955,
+                        -17.43178367614746,
+                        0.0
+                    ],
+                    "Rotation": [
+                        0.0,
+                        127.45648193359375,
+                        -0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "bExpanded": true,
+            "bMuted": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "FOVKeys": [],
+            "TargetActorName": "ACameraActor_3",
+            "TrackName": "ACameraActor_3 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        -13.065238952636719,
+                        8.956599235534668,
+                        13.679147720336914
+                    ],
+                    "Rotation": [
+                        49.799949645996094,
+                        -45.80009841918945,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 58,
+                    "InterpMode": 1,
+                    "Location": [
+                        -13.065238952636719,
+                        -20.87099266052246,
+                        13.679147720336914
+                    ],
+                    "Rotation": [
+                        36.2633056640625,
+                        34.37960433959961,
+                        -15.277164459228516
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "bExpanded": true,
+            "bMuted": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "FOVKeys": [
+                {
+                    "FieldOfView": 60.0,
+                    "Frame": 0,
+                    "InterpMode": 1
+                }
+            ],
+            "TargetActorName": "ACameraActor_3",
+            "TrackName": "ACameraActor_3 FOV",
+            "TrackType": 2,
+            "TransformKeys": [],
+            "bExpanded": true,
+            "bMuted": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "FOVKeys": [],
+            "TargetActorName": "ACameraActor_4",
+            "TrackName": "ACameraActor_4 Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 59,
+                    "InterpMode": 1,
+                    "Location": [
+                        15.048891067504883,
+                        22.257516860961914,
+                        15.182504653930664
+                    ],
+                    "Rotation": [
+                        16.49660873413086,
+                        -136.6863250732422,
+                        -14.240346908569336
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 110,
+                    "InterpMode": 1,
+                    "Location": [
+                        22.458925247192383,
+                        15.452138900756836,
+                        12.740602493286133
+                    ],
+                    "Rotation": [
+                        16.49660873413086,
+                        -136.6863250732422,
+                        -14.240346908569336
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "bExpanded": true,
+            "bMuted": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "FOVKeys": [
+                {
+                    "FieldOfView": 60.0,
+                    "Frame": 0,
+                    "InterpMode": 1
+                }
+            ],
+            "TargetActorName": "ACameraActor_4",
+            "TrackName": "ACameraActor_4 FOV",
+            "TrackType": 2,
+            "TransformKeys": [],
+            "bExpanded": true,
+            "bMuted": false
+        }
+    ],
+    "Version": 1,
+    "bLoop": false
+}

@@ -5527,7 +5527,7 @@
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": -0.13570356369018555
+                                        "Z": -1.0838639736175537
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -8895,8 +8895,8 @@
                                     }
                                 },
                                 "bAutoActivate": true,
-                                "bHiddenInGame": false,
-                                "bVisible": true
+                                "bHiddenInGame": true,
+                                "bVisible": false
                             }
                         },
                         {
@@ -9121,7 +9121,7 @@
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": 200.0
+                                        "Z": 105.05876159667969
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -9162,8 +9162,8 @@
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
-                                        "Y": 0.0,
-                                        "Z": 0.0
+                                        "Y": 0.7648239135742188,
+                                        "Z": 3.2408447265625
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -9171,8 +9171,8 @@
                                         "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 3.0,
-                                        "Y": 3.0,
+                                        "X": 5.0,
+                                        "Y": 5.0,
                                         "Z": 3.0
                                     }
                                 },
@@ -9186,11 +9186,1886 @@
                         }
                     ],
                     "Name": "AStaticMeshActor_3",
-                    "PersistentActorId": "5e8aaeab6a921cb9534161e1e8e0f44c",
                     "Properties": {
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ASkyLightActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USkyLightComponent",
+                            "Name": "USkyLightComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "Intensity": 1.0,
+                                "LightColor": 4294967295,
+                                "ShadowBias": 0.009999999776482582,
+                                "ShadowResolutionScale": 1.0,
+                                "ShadowSharpen": 0.0,
+                                "ShadowSlopeBias": 0.009999999776482582,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadows": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Sky.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "UBillboardComponent",
+                            "Parent": "USkyLightComponent",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ASkyLightActor_0",
+                    "Properties": {
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "USkyLightComponent"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 3.5259926319122314,
+                                        "Y": 0.0,
+                                        "Z": 106.91877746582031
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Pacman/pacman_victory.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 20.0,
+                                        "Y": 20.0,
+                                        "Z": 20.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_1",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ACameraActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCameraComponent",
+                            "Name": "CameraComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "FieldOfView": 90.5999984741211,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 1.2880947589874268,
+                                        "Y": 0.01902821660041809,
+                                        "Z": 108.97828674316406
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 15.20004653930664,
+                                        "Roll": 0.0,
+                                        "Yaw": 2.000171184539795
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "CineCameraMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "CameraComponent",
+                            "Properties": {
+                                "StaticMesh": "Models/Camera/SM_CineCam.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ACameraActor_1",
+                    "Properties": {
+                        "bActorEnableCollision": false
+                    },
+                    "RootComponent": "CameraComponent"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.12014307081699371,
+                                        "Y": -2.403949499130249,
+                                        "Z": 107.09236907958984
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 19.459314346313477,
+                                        "Roll": -4.527487078576087e-07,
+                                        "Yaw": 25.63779067993164
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Fail.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_0",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -0.035294096916913986,
+                                        "Y": -0.26882654428482056,
+                                        "Z": 107.26399230957031
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 28.24521827697754,
+                                        "Roll": 0.0,
+                                        "Yaw": 4.258266448974609
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.00048828125
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0,
+                                            "Y": 0.17543864250183105,
+                                            "Z": 1.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Fail.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_2",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.32984858751296997,
+                                        "Y": 1.8561650514602661,
+                                        "Z": 107.26817321777344
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 35.35637283325195,
+                                        "Roll": 1.1657142639160156,
+                                        "Yaw": -23.287967681884766
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 1.0,
+                                            "Y": 0.4912281036376953,
+                                            "Z": 0.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Fail.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_3",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -8.427492141723633,
+                                        "Y": 44.383216857910156,
+                                        "Z": 107.60575866699219
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 24.365188598632813,
+                                        "Roll": 3.4022979736328125,
+                                        "Yaw": 98.2886734008789
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Win.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.2922334671020508,
+                                        "Z": -0.2712351977825165
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.15241499245166779,
+                                        "Roll": -0.803020179271698,
+                                        "Yaw": -10.744990348815918
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_4",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -10.750650405883789,
+                                        "Y": 44.98326873779297,
+                                        "Z": 107.65280151367188
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 29.946365356445313,
+                                        "Roll": 1.1804813146591187,
+                                        "Yaw": 60.8455924987793
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0,
+                                            "Y": 0.10526299476623535,
+                                            "Z": 1.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Win.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.2922334671020508,
+                                        "Z": -0.2712351977825165
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.15241499245166779,
+                                        "Roll": -0.803020179271698,
+                                        "Yaw": -10.744990348815918
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_5",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -6.229558944702148,
+                                        "Y": 45.31337356567383,
+                                        "Z": 107.55401611328125
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 22.700279235839844,
+                                        "Roll": 7.142868995666504,
+                                        "Yaw": 148.834716796875
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 1.0,
+                                            "Y": 0.6140350699424744,
+                                            "Z": 0.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Ghost/Ghost_Win.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.2922334671020508,
+                                        "Z": -0.2712351977825165
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.15241499245166779,
+                                        "Roll": -0.803020179271698,
+                                        "Yaw": -10.744990348815918
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_6",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": false,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ALevelSequenceActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -8.595983505249023,
+                                        "Y": 45.635799407958984,
+                                        "Z": 105.19967651367188
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": -92.36875915527344
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UBillboardComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Material": {
+                                "Base": "BillboardMaterial",
+                                "Instance": {
+                                    "BaseColor": {
+                                        "W": 1.0,
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "BlendState": "AlphaBlend",
+                                    "FlipNormalY": false,
+                                    "PSOType": 14,
+                                    "Properties": {},
+                                    "SamplerState": "LinearClamp",
+                                    "Shininess": 32.0,
+                                    "SpecularColor": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    },
+                                    "Textures": [
+                                        "Assets/Icons/Toolbar/Play.png"
+                                    ],
+                                    "UVScrollSpeed": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                }
+                            },
+                            "Name": "SequenceIcon",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent_0",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Models/Pacman/pacman_fail.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 20.0,
+                                        "Y": 20.0,
+                                        "Z": 20.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ALevelSequenceActor_7",
+                    "Properties": {
+                        "PlayRate": 1.0,
+                        "SequenceAssetPath": "Assets/Sequences/NewSequence.seq.json",
+                        "bActorEnableCollision": false,
+                        "bAutoPlay": true,
+                        "bLoopSequence": false,
+                        "bOverridePlayerCamera": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -6.242156505584717,
+                                        "Y": 25.200881958007813,
+                                        "Z": 115.2509994506836
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 51.977516174316406,
+                                        "Y": 44.42633819580078,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0,
+                                            "Y": 0.0,
+                                            "Z": 0.0
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 32.0,
+                                        "SpecularColor": {
+                                            "X": 1.0,
+                                            "Y": 1.0,
+                                            "Z": 1.0
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            "FlatNormalTexture"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": true,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": true,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_6",
+                    "Properties": {
+                        "bActorEnableCollision": true
+                    },
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "ACameraActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCameraComponent",
+                            "Name": "CameraComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "FieldOfView": 60.0,
+                                "Transform": {
+                                    "Location": {
+                                        "X": -8.511555671691895,
+                                        "Y": 49.58168029785156,
+                                        "Z": 108.94281768798828
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 22.799867630004883,
+                                        "Roll": 0.0,
+                                        "Yaw": -92.20027160644531
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Collision": {
+                                "Enabled": false,
+                                "GenerateOverlapEvents": false,
+                                "ObjectChannel": 0,
+                                "Responses": [
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2,
+                                    2
+                                ]
+                            },
+                            "Name": "CineCameraMesh",
+                            "OverrideMaterials": [],
+                            "Parent": "CameraComponent",
+                            "Properties": {
+                                "StaticMesh": "Models/Camera/SM_CineCam.obj",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": true,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ACameraActor_2",
+                    "Properties": {
+                        "bActorEnableCollision": false
+                    },
+                    "RootComponent": "CameraComponent"
                 }
             ],
             "Properties": {}

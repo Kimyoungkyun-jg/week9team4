@@ -19,6 +19,8 @@
 #include "GameFramework/Actor/PlayerStart.h"
 #include "GameActor/CoinActor.h"
 #include "GameActor/GhostActor.h"
+#include "Camera/CameraActor.h"
+#include "Sequencer/LevelSequenceActor.h"
 class FViewportsPanel;
 class FSettingsPanel;
 
@@ -46,7 +48,7 @@ public:
 
 	int32 SelectedIndex = 0;
 
-	const char* Items[10] = {"StaticMesh", "Particle", "Text", "HeightFog", "FireBall", "Projectile", "PlayerStart", "MapActor", "Coin", "Ghost" };
+	const char* Items[12] = {"StaticMesh", "Particle", "Text", "HeightFog", "FireBall", "Projectile", "PlayerStart", "MapActor", "Coin", "Ghost", "CameraActor", "LevelSequence" };
 
 	FGizmo* Gizmo = nullptr;
 	int32 GizmoSelectedIndex = 0;
@@ -67,6 +69,8 @@ public:
 		AMapActor::StaticClass(),
 		ACoinActor::StaticClass(),
 		AGhostActor::StaticClass(),
+		ACameraActor::StaticClass(),
+		ALevelSequenceActor::StaticClass(),
 	};
 
 private:

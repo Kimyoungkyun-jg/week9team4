@@ -40,6 +40,7 @@
 #include "Editor/HitoriEd/EditorFileUtils.h"
 #include "Editor/UIEditor/WidgetEditorPanel.h"
 #include "Editor/Sequencer/SequencerPanel.h"
+#include "Sequencer/LevelSequenceActor.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
 #include "Core/EngineLog.h"
@@ -53,6 +54,18 @@ namespace
 	DECLARE_CYCLE_STAT("Capture World", STAT_CaptureWorld);
 	DECLARE_CYCLE_STAT("Build Render Queue", STAT_BuildRenderQueue);
 	DECLARE_CYCLE_STAT("ImGui", STAT_ImGui);
+
+	bool IsLevelSequencePlaying(UWorld* World)
+	{
+		if (!World || !World->GetPersistentLevel()) return false;
+		for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+		{
+			if (!Actor || !IsValid(Actor) || Actor->IsActorBeingDestroyed()) continue;
+			if (ALevelSequenceActor* Sequence = Cast<ALevelSequenceActor>(Actor))
+				if (Sequence->IsPlayingSequence()) return true;
+		}
+		return false;
+	}
 }
 
 #include "Core/SplashScreen.h"
@@ -88,6 +101,9 @@ bool UEditorEngine::Init()
 	AMainMenuHUD::StaticClass();
 	APacmanGameMode::StaticClass();
 	APacmanHUD::StaticClass();
+	ACameraActor::StaticClass();
+	UCameraComponent::StaticClass();
+	ALevelSequenceActor::StaticClass();
 
 	FWorldContext& InitialWorldContext = CreateNewWorldContext(EWorldType::Editor);
 	InitialWorldContext.SetCurrentWorld(UWorld::CreateWorld(EWorldType::Editor, true));
@@ -155,6 +171,15 @@ bool UEditorEngine::Init()
 	ContentDrawerPanel = EditorUI->AddEditorPanel<FContentDrawerPanel>();
 	WidgetEditorPanel = EditorUI->AddEditorPanel<FWidgetEditorPanel>();
 	WidgetEditorPanel->SetViewportsPanel(ViewportsPanel);
+	SequencerPanel = EditorUI->AddEditorPanel<FSequencerPanel>();
+	SequencerPanel->SetViewportsPanel(ViewportsPanel);
+	SequencerPanel->SetGizmo(Gizmo.get());
+	SequencerPanel->SetWorld(EditorWorld);
+	ContentDrawerPanel->SetOpenSequenceAssetCallback([this](const FString& Path)
+	{
+		if (!SequencerPanel->OpenSequenceAsset(Path))
+			HTR_LOG(Error, "Failed to open Sequence asset: {}", Path);
+	});
 	ContentDrawerPanel->SetOpenUIAssetCallback([this](const FString& Path)
 	{
 		if (!WidgetEditorPanel->RequestOpenAsset(Path))
@@ -201,16 +226,11 @@ bool UEditorEngine::Init()
 
 	OutlinerPanel = EditorUI->AddEditorPanel<FOutlinerPanel>();
 	OutlinerPanel->SetWorld(GetActiveWorld());
-	SequencerPanel = EditorUI->AddEditorPanel<FSequencerPanel>();
-	SequencerPanel->SetWorld(EditorWorld);
-	SequencerPanel->SetViewportsPanel(ViewportsPanel);
-	SequencerPanel->SetSelectedActorProvider([this]() { return OutlinerPanel ? OutlinerPanel->GetSelectedActor() : nullptr; });
-	SequencerPanel->SetActorSelectionCallback([this](AActor* Actor) { if (OutlinerPanel) OutlinerPanel->SelectActor(Actor); });
-	SequencerPanel->SetPreviewAllowedQuery([this]() { return !IsPlaying(); });
+	if (SequencerPanel) SequencerPanel->SetOutlinerPanel(OutlinerPanel);
 	OutlinerPanel->SetSelectionCallback(
 		[this](USceneComponent* Root)
 		{
-			Gizmo->SetTarget(Root, true);
+			Gizmo->SetTarget(Root && Root->GetOwner()->IsA<ACameraActor>() ? nullptr : Root, true);
 			DetailsPanel->SetTarget(Root ? Root->GetOwner() : nullptr);
 
 			UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Root);
@@ -228,6 +248,11 @@ bool UEditorEngine::Init()
 			if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))
 			{
 				AActor* Owner = SceneComponent->GetOwner();
+				if (Owner && Owner->IsA<ACameraActor>())
+				{
+					Gizmo->SetTarget(nullptr);
+					return;
+				}
 				if (Owner && SceneComponent == Owner->GetRootComponent())
 				{
 					Gizmo->SetTarget(SceneComponent, true);
@@ -607,11 +632,13 @@ void UEditorEngine::RenderViewports()
 					}
 
 					SceneView = GameClient->CalcSceneView(ViewRect);
+					const bool bSequencePlaying = IsLevelSequencePlaying(CurrentWorld);
+					if (bSequencePlaying) SceneView.bGameView = true;
 
 					FSceneRenderer SceneRenderer(CurrentWorld, SceneView, GameClient->GetRenderData());
 					SceneRenderer.InitViews(Renderer, Options);
 
-					RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode());
+					RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode() && !bSequencePlaying);
 
 					break;
 				}
@@ -619,14 +646,23 @@ void UEditorEngine::RenderViewports()
 		}
 		else
 		{
-			BuildSceneRenderOptions(ViewClient, bIsGameView, Options);
+			const bool bSequencePlaying = (SequencerPanel && SequencerPanel->IsPlaying()) || IsLevelSequencePlaying(CurrentWorld);
+			BuildSceneRenderOptions(ViewClient, bIsGameView || bSequencePlaying, Options);
 
 			SceneView = ViewClient->CalcSceneView(ViewRect);
+			if (SequencerPanel && SequencerPanel->IsOpen() && ViewportsPanel &&
+				SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex())
+			{
+				const FSequenceCameraEffects Effects = SequencerPanel->GetCameraEffects();
+				SceneView.FadeOpacity = Effects.FadeOpacity;
+				SceneView.LetterboxSize = Effects.LetterboxSize;
+			}
+			if (bSequencePlaying) SceneView.bGameView = true;
 
 			FSceneRenderer SceneRenderer(CurrentWorld, SceneView, ViewClient->GetRenderData());
 			SceneRenderer.InitViews(Renderer, Options);
 
-			RenderFrame(ViewClient, SceneView, Options, SceneRenderer, CurrentWorld, bIsGameView);
+			RenderFrame(ViewClient, SceneView, Options, SceneRenderer, CurrentWorld, bIsGameView || bSequencePlaying);
 		}
 	}
 
@@ -647,11 +683,13 @@ void UEditorEngine::RenderViewports()
 
 				FRect ViewRect{ 0.0f, 0.0f, static_cast<float>(Width), static_cast<float>(Height) };
 				FSceneView SceneView = GameClient->CalcSceneView(ViewRect);
+				const bool bSequencePlaying = IsLevelSequencePlaying(Context->World());
+				if (bSequencePlaying) SceneView.bGameView = true;
 
 				FSceneRenderer SceneRenderer(Context->World(), SceneView, GameClient->GetRenderData());
 				SceneRenderer.InitViews(Renderer, Options);
 
-				RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode());
+				RenderGameFrame(GameClient, SceneView, Options, SceneRenderer, GameClient->IsSIEMode() && !bSequencePlaying);
 
 				CopyPIEWindowToBackbuffer();
 			}
@@ -972,7 +1010,7 @@ bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& Sc
 		Outline.get(), OutlineRenderer.get(), Gizmo.get(), TextRenderer.get(), SystemFont,
 		EditorWorld, GetActiveWorld(), SettingsPanel ? &SettingsPanel->GetSettings() : nullptr,
 		MapTileRenderer.get(), DetailsPanel ? &DetailsPanel->GetMapTileEditor() : nullptr,
-		!PlayWorld || IsSimulatingInEditor() };
+		!PlayWorld || IsSimulatingInEditor(), SequencerPanel };
 	if (ViewClient)
 		EditorPasses.ConfigureViewportOverlays(OverlayResources, ViewClient, bIsPIE,
 			ViewportsPanel && SceneView.ViewIndex == ViewportsPanel->GetActiveViewIndex());
@@ -1157,6 +1195,7 @@ void UEditorEngine::OnActiveWorldChanged()
 	if (DetailsPanel) DetailsPanel->SetWorld(UIWorld);
 	if (EditorControlsPanel) EditorControlsPanel->SetWorld(UIWorld);
 	if (SettingsPanel) SettingsPanel->SetWorld(UIWorld);
+	if (SequencerPanel) SequencerPanel->SetWorld(UIWorld);
 	for (FEditorViewportClient* Client : AllViewportClients)
 		if (Client) Client->SetWorld(UIWorld);
 }

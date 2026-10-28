@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "CameraComponent.h"
+#include "Camera/MinimalViewInfo.h"
+
 #include "Input/InputSystem.h"
 #include "../Collision/Ray.h"
 
@@ -103,6 +105,18 @@ FRay UCameraComponent::DeProjection(FVector2 MousePos, float ScreenW, float Scre
 }
 
 // 카메라 Transform의 역변환으로 View 행렬을 만든다.
+void UCameraComponent::GetCameraView(FMinimalViewInfo& OutView) const
+{
+	OutView.Location = GetWorldLocation();
+	OutView.Rotation = GetWorldRotation();
+	OutView.FieldOfView = FieldOfView;
+	OutView.AspectRatio = AspectRatio;
+	OutView.NearClip = NearClipPlane;
+	OutView.FarClip = FarClipPlane;
+	OutView.OrthoWidth = OrthoWidth;
+	OutView.bIsPerspective = !bIsOrthogonal;
+}
+
 FMatrix UCameraComponent::GetViewMatrix() const
 {
     //return GetWorldMatrix().Inverse();

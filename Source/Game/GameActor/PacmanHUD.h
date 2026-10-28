@@ -8,12 +8,12 @@ class APacmanHUD : public AGameHUD
 public:
 	APacmanHUD();
 	void Tick(float DeltaTime) override;
+	void ShowNameEntry();
 
 protected:
 	void OnWidgetShown(const FString& Path) override;
 
 private:
-	void ShowNameEntry();
 	void LayoutNameEntry();
 	void LayoutResultScreen();
 	void LayoutGameUI();
