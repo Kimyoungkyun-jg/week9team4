@@ -6,7 +6,17 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/MovementComponent.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Sequencer/LevelSequenceActor.h"
+#include "Engine/World.h"
+#include "Engine/Level.h"
 #include "Core/EngineLog.h"
+
+sol::object PushWorldToLua(lua_State* L, UWorld* World)
+{
+	return sol::make_object(L, World);
+}
 
 namespace LuaBindings
 {
@@ -24,6 +34,81 @@ namespace LuaBindings
 		});
 		Lua.set_function("EndGame", [&GameInstance]() {
 			GameInstance.RequestEndSession();
+		});
+		Lua.set_function("GetWorld", [&GameInstance]() -> UWorld* {
+			return GameInstance.GetWorld();
+		});
+		Lua.set_function("SetGlobalTimeDilation", [&GameInstance](float Dilation) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				World->SetWorldTimeDilation(Dilation);
+			}
+		});
+		Lua.set_function("GetGlobalTimeDilation", [&GameInstance]() -> float {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				return World->GetWorldTimeDilation();
+			}
+			return 1.0f;
+		});
+		Lua.set_function("CastToLevelSequenceActor", [](sol::object ActorObj) -> ALevelSequenceActor* {
+			if (!ActorObj.valid() || ActorObj.is<sol::nil_t>()) return nullptr;
+			if (ActorObj.is<ALevelSequenceActor*>()) return ActorObj.as<ALevelSequenceActor*>();
+			if (ActorObj.is<AActor*>()) return Cast<ALevelSequenceActor>(ActorObj.as<AActor*>());
+			return nullptr;
+		});
+		Lua.set_function("PlayLevelSequence", [&GameInstance](sol::optional<FString> TargetNameOrPath) -> bool {
+			UWorld* World = GameInstance.GetWorld();
+			if (!World || !World->GetPersistentLevel()) return false;
+			const FString Query = TargetNameOrPath.value_or("");
+			for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+			{
+				ALevelSequenceActor* SeqActor = Cast<ALevelSequenceActor>(Actor);
+				if (!SeqActor || !IsValid(SeqActor) || SeqActor->IsActorBeingDestroyed()) continue;
+				if (Query.empty() || SeqActor->GetName() == Query || SeqActor->GetSequenceAssetPath() == Query)
+				{
+					SeqActor->PlaySequence();
+					return true;
+				}
+			}
+			if (!Query.empty() && Query.ends_with(".seq.json"))
+			{
+				if (ALevelSequenceActor* Spawned = World->SpawnActor<ALevelSequenceActor>())
+				{
+					Spawned->SetSequenceAssetPath(Query);
+					Spawned->PlaySequence();
+					return true;
+				}
+			}
+			return false;
+		});
+		Lua.set_function("PauseLevelSequence", [&GameInstance](sol::optional<FString> TargetNameOrPath) {
+			UWorld* World = GameInstance.GetWorld();
+			if (!World || !World->GetPersistentLevel()) return;
+			const FString Query = TargetNameOrPath.value_or("");
+			for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+			{
+				ALevelSequenceActor* SeqActor = Cast<ALevelSequenceActor>(Actor);
+				if (!SeqActor || !IsValid(SeqActor) || SeqActor->IsActorBeingDestroyed()) continue;
+				if (Query.empty() || SeqActor->GetName() == Query || SeqActor->GetSequenceAssetPath() == Query)
+				{
+					SeqActor->PauseSequence();
+				}
+			}
+		});
+		Lua.set_function("StopLevelSequence", [&GameInstance](sol::optional<FString> TargetNameOrPath) {
+			UWorld* World = GameInstance.GetWorld();
+			if (!World || !World->GetPersistentLevel()) return;
+			const FString Query = TargetNameOrPath.value_or("");
+			for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+			{
+				ALevelSequenceActor* SeqActor = Cast<ALevelSequenceActor>(Actor);
+				if (!SeqActor || !IsValid(SeqActor) || SeqActor->IsActorBeingDestroyed()) continue;
+				if (Query.empty() || SeqActor->GetName() == Query || SeqActor->GetSequenceAssetPath() == Query)
+				{
+					SeqActor->StopSequence();
+				}
+			}
 		});
 		Lua.set_function("CastToMovementComponent", [](sol::object CompObj) -> UMovementComponent* {
 			if (!CompObj.valid() || CompObj.is<sol::nil_t>()) return nullptr;
@@ -56,5 +141,132 @@ namespace LuaBindings
 				return Self.HitComponent ? Self.HitComponent->GetOwner() : nullptr;
 			}
 		);
+
+		// 4. UWorld 바인딩
+		Lua.new_usertype<UWorld>("UWorld", sol::no_constructor,
+			"GetWorldTimeDilation", &UWorld::GetWorldTimeDilation,
+			"SetWorldTimeDilation", &UWorld::SetWorldTimeDilation,
+			"GetPlayerPawn", &UWorld::GetPlayerPawn,
+			"GetGameMode", &UWorld::GetGameMode,
+			"GetPlayerController", &UWorld::GetPlayerController
+		);
+
+		// 5. APlayerController 바인딩
+		Lua.new_usertype<APlayerController>("APlayerController", sol::no_constructor,
+			"IsMoveInputIgnored", &APlayerController::IsMoveInputIgnored,
+			"IsLookInputIgnored", &APlayerController::IsLookInputIgnored,
+			"IsInCinematicMode", &APlayerController::IsInCinematicMode,
+			"GetPlayerCameraManager", [](APlayerController& Self) -> APlayerCameraManager* {
+				return Self.GetPlayerCameraManager();
+			}
+		);
+
+		// 6. APlayerCameraManager 바인딩
+		Lua.new_usertype<APlayerCameraManager>("APlayerCameraManager", sol::no_constructor,
+			"FadeIn", sol::overload(
+				[](APlayerCameraManager& Self) { Self.FadeIn(); },
+				[](APlayerCameraManager& Self, float Duration) { Self.FadeIn(Duration); },
+				[](APlayerCameraManager& Self, float Duration, const FLinearColor& Color) { Self.FadeIn(Duration, Color); },
+				[](APlayerCameraManager& Self, float Duration, const FLinearColor& Color, bool bInFadeHUD) { Self.FadeIn(Duration, Color, bInFadeHUD); }
+			),
+			"FadeOut", sol::overload(
+				[](APlayerCameraManager& Self) { Self.FadeOut(); },
+				[](APlayerCameraManager& Self, float Duration) { Self.FadeOut(Duration); },
+				[](APlayerCameraManager& Self, float Duration, const FLinearColor& Color) { Self.FadeOut(Duration, Color); },
+				[](APlayerCameraManager& Self, float Duration, const FLinearColor& Color, bool bHold) { Self.FadeOut(Duration, Color, bHold); },
+				[](APlayerCameraManager& Self, float Duration, const FLinearColor& Color, bool bHold, bool bInFadeHUD) { Self.FadeOut(Duration, Color, bHold, bInFadeHUD); }
+			),
+			"StopCameraFade", &APlayerCameraManager::StopCameraFade,
+			"HasActiveFade", &APlayerCameraManager::HasActiveFade,
+			"GetFadeAmount", &APlayerCameraManager::GetFadeAmount,
+			"EnterLetterbox", sol::overload(
+				[](APlayerCameraManager& Self) { Self.EnterLetterbox(); },
+				[](APlayerCameraManager& Self, float Duration) { Self.EnterLetterbox(Duration); },
+				[](APlayerCameraManager& Self, float Duration, float TargetRatio) { Self.EnterLetterbox(Duration, TargetRatio); }
+			),
+			"ExitLetterbox", sol::overload(
+				[](APlayerCameraManager& Self) { Self.ExitLetterbox(); },
+				[](APlayerCameraManager& Self, float Duration) { Self.ExitLetterbox(Duration); }
+			),
+			"StopLetterbox", &APlayerCameraManager::StopLetterbox,
+			"GetLetterboxRatio", &APlayerCameraManager::GetLetterboxRatio
+		);
+
+		// 7. 편리한 전역 Fade 함수 바인딩
+		Lua.set_function("FadeIn", [&GameInstance](sol::variadic_args va) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				if (APlayerController* PC = World->GetPlayerController())
+				{
+					if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+					{
+						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 1.0f;
+						PCM->FadeIn(Duration);
+					}
+				}
+			}
+		});
+
+		Lua.set_function("FadeOut", [&GameInstance](sol::variadic_args va) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				if (APlayerController* PC = World->GetPlayerController())
+				{
+					if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+					{
+						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 1.0f;
+						PCM->FadeOut(Duration);
+					}
+				}
+			}
+		});
+
+		// 8. 편리한 전역 Letterbox 함수 바인딩
+		Lua.set_function("EnterLetterbox", [&GameInstance](sol::variadic_args va) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				if (APlayerController* PC = World->GetPlayerController())
+				{
+					if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+					{
+						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 0.5f;
+						float Ratio = (va.size() > 1 && va[1].is<float>()) ? va[1].as<float>() : 0.12f;
+						PCM->EnterLetterbox(Duration, Ratio);
+					}
+				}
+			}
+		});
+
+		Lua.set_function("ExitLetterbox", [&GameInstance](sol::variadic_args va) {
+			if (UWorld* World = GameInstance.GetWorld())
+			{
+				if (APlayerController* PC = World->GetPlayerController())
+				{
+					if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+					{
+						float Duration = (va.size() > 0 && va[0].is<float>()) ? va[0].as<float>() : 0.5f;
+						PCM->ExitLetterbox(Duration);
+					}
+				}
+			}
+		});
 	}
 }
+
+// AActor의 GetWorld를 AActor가 등록된 후에 안전하게 확장 바인딩
+struct FRegisterActorWorldExtension
+{
+	FRegisterActorWorldExtension()
+	{
+		GetLuaAutoRegistry().push_back([](sol::state& Lua) {
+			sol::table ActorType = Lua["AActor"];
+			if (ActorType.valid())
+			{
+				ActorType["GetWorld"] = [](AActor& Self) -> UWorld* {
+					return Self.GetWorld();
+				};
+			}
+		});
+	}
+};
+static FRegisterActorWorldExtension GRegisterActorWorldExtension;

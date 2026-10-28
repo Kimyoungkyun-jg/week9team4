@@ -16,11 +16,11 @@ UShapeComponent::UShapeComponent()
     CollisionSettings.bEnabled = true;
     bCastShadow = bReceiveShadow = false;
 }
-void UShapeComponent::ShapeChanged()
+void UShapeComponent::ShapeChanged(bool bUpdateOverlaps)
 {
     if (!IsValid(this) || IsBeingDestroyed()) return;
     SanitizeDimensions();
-    UpdateCollisionShape();
+    UpdateCollisionShape(bUpdateOverlaps);
 }
 void UShapeComponent::PostEditChangeProperty(const FProperty& Property)
 {

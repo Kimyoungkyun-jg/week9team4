@@ -14,6 +14,9 @@ class AGameMode : public AActor
 		CLASS_PROPERTY(HUDClass, AGameHUD)
 		PROPERTY(CoinCount)
 	REFLECT_END()
+	LUA_BIND_START(AGameMode)
+		LUA_FUNC(AllowsPlayerControllerInput)
+	LUA_BIND_END()
 
 public:
 	AGameMode();

@@ -1,6 +1,8 @@
 #include "EnginePCH.h"
 #include "PlayerPawn.h"
 #include "FlashlightActor.h"
+#include "FlashlightAttackComponent.h"
+#include "Components/LuaScriptComponent.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
 #include "Audio/SoundManager.h"
@@ -14,6 +16,7 @@
 #include "GameFramework/GameHUD.h"
 #include "GameFramework/GameMode.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/WorldSettings.h"
 #include <algorithm>
 #include <string>
 
@@ -37,6 +40,9 @@ APlayerPawn::APlayerPawn()
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator());
 	}
 	CreateDefaultSubobject<UHeadBobComponent>("HeadBob");
+	FlashlightAttack = CreateDefaultSubobject<UFlashlightAttackComponent>("FlashlightAttack");
+	auto* Script = CreateDefaultSubobject<ULuaScriptComponent>("PlayerScript");
+	Script->SetScriptPath("Assets/Scripts/PlayerPawn.lua");
 	// Pacman rules: collision with ghosts is an overlap, and the player cannot jump.
 	GetCharacterMovement()->SetJumpAllowed(false);
 	auto* CollisionComponent = GetCapsuleComponent();
@@ -54,9 +60,22 @@ void APlayerPawn::BeginPlay()
 	const FVector CameraAnchor = Camera && GetCapsuleComponent() ?
 		GetCapsuleComponent()->GetWorldMatrix().Inverse().TransformPosition(Camera->GetWorldLocation()) : FVector::ZeroVector;
 	ViewPitch = FMath::Clamp(GetActorRotation().Pitch, -89.0f, 89.0f);
+	if (auto* Pivot = GetFlashlightPivot())
+		Pivot->SetRelativeLocationAndRotation(CameraAnchor, FRotator(ViewPitch, 0.0f, 0.0f));
+	UWorld* PawnWorld = GetWorld();
+	// Lua BeginPlay runs inside Super::BeginPlay, so its flashlight must exist first.
+	if (Camera && PawnWorld && (PawnWorld->GetWorldType() == EWorldType::PIE || PawnWorld->GetWorldType() == EWorldType::Game))
+	{
+		FlashlightActor = PawnWorld->SpawnActor<AFlashlightActor>();
+		if (FlashlightActor)
+		{
+			FlashlightActor->AttachToComponent(GetFlashlightPivot());
+			FlashlightActor->SetActorRelativeLocation({0.35f, 0.28f, -0.2f});
+			FlashlightActor->SetActorRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+		}
+	}
 	Super::BeginPlay();
 	ResetWalkingEffects();
-	UWorld* PawnWorld = GetWorld();
 	PlayerStartLocation = GetActorLocation();
 	PlayerStartRotation = GetActorRotation();
 	PlayerStartViewPitch = ViewPitch;
@@ -97,18 +116,78 @@ void APlayerPawn::BeginPlay()
 		CollisionComponent->SetGenerateOverlapEvents(true);
 		CollisionComponent->UpdateOverlaps();
 	}
+}
 
-	if (!PawnWorld || (PawnWorld->GetWorldType() != EWorldType::PIE && PawnWorld->GetWorldType() != EWorldType::Game)) return;
+void APlayerPawn::ConfigureFlashlight(float DrainPerSecond, float AttackCost, float SwingSeconds, float AttackReach)
+{
+	if (FlashlightActor) FlashlightActor->SetDrainRatePerSecond(DrainPerSecond);
+	FlashlightAttack->BatteryCost = std::max(0.0f, AttackCost);
+	FlashlightAttack->SwingDuration = std::max(0.001f, SwingSeconds);
+	FlashlightAttack->AttackReach = std::max(0.0f, AttackReach);
+}
 
-	auto* FlashlightPivot = GetFlashlightPivot();
-	if (!FlashlightPivot) return;
+void APlayerPawn::ConfigureFlashlightSwing(const FVector& Pivot, const FRotator& CoordinateRotation, float HalfAngle, float HandRadius)
+{
+	FlashlightAttack->SwingPivot = Pivot;
+	FlashlightAttack->SwingCoordinateRotation = CoordinateRotation;
+	FlashlightAttack->SwingHalfAngle = std::max(0.0f, HalfAngle);
+	FlashlightAttack->SwingHandRadius = std::max(0.0f, HandRadius);
+}
 
-	FlashlightActor = PawnWorld->SpawnActor<AFlashlightActor>();
-	if (!FlashlightActor) return;
-	FlashlightActor->SetActorEnableCollision(false);
-	FlashlightActor->AttachToComponent(FlashlightPivot);
-	FlashlightActor->SetActorRelativeLocation({0.35f, 0.28f, -0.2f});
-	FlashlightActor->SetActorRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+void APlayerPawn::ConfigureFlashlightAttack(float WindupSeconds, float RecoverySeconds, float CapsuleRadius, float HitStopSeconds, float GhostStaggerSeconds, float FlashMultiplier, float TrailAngleStep)
+{
+	FlashlightAttack->WindupDuration = std::max(0.0f, WindupSeconds);
+	FlashlightAttack->RecoveryDuration = std::max(0.0f, RecoverySeconds);
+	FlashlightAttack->CapsuleRadius = std::max(0.0f, CapsuleRadius);
+	FlashlightAttack->HitStopDuration = std::max(0.0f, HitStopSeconds);
+	FlashlightAttack->GhostStaggerDuration = std::max(0.1f, GhostStaggerSeconds);
+	FlashlightAttack->FlashMultiplier = std::max(0.0f, FlashMultiplier);
+	FlashlightAttack->TrailAngleStep = std::max(0.0f, TrailAngleStep);
+}
+
+void APlayerPawn::PrimaryAction()
+{
+	if (FlashlightAttack) FlashlightAttack->TryStartAttack();
+}
+
+bool APlayerPawn::IsInputSuppressed() const
+{
+	return FlashlightAttack && FlashlightAttack->IsHitStopped();
+}
+
+void APlayerPawn::SetSlomoGauge(float NewGauge)
+{
+	SlomoGauge = std::isfinite(NewGauge) ? std::clamp(NewGauge, 0.0f, MaxSlomoGauge) : 0.0f;
+	if (SlomoGauge <= 0.0f) SetSlomoActive(false);
+}
+
+bool APlayerPawn::StartSlomo(float Dilation)
+{
+	if (bIsSlomoActive) return true;
+	UWorld* PawnWorld = GetWorld();
+	const auto* Controller = PawnWorld ? PawnWorld->GetPlayerController() : nullptr;
+	if (IsPendingKillPending() || !PawnWorld || PawnWorld->IsPaused() || IsInputSuppressed() ||
+		SlomoGauge <= 0.0f || GetCustomTimeDilation() <= 0.0f || !std::isfinite(Dilation) || Dilation <= 0.0f ||
+		!PawnWorld->GetWorldSettings() || !PawnWorld->GetWorldSettings()->bAllowTimeDilation ||
+		(PawnWorld->GetGameMode() && !PawnWorld->GetGameMode()->AllowsPlayerControllerInput()) ||
+		(Controller && (Controller->IsMoveInputIgnored() || Controller->IsLookInputIgnored() || Controller->IsInCinematicMode()))) return false;
+	WorldDilationBeforeSlomo = PawnWorld->GetWorldTimeDilation();
+	PlayerDilationBeforeSlomo = GetCustomTimeDilation();
+	PawnWorld->SetWorldTimeDilation(Dilation);
+	SetCustomTimeDilation(PlayerDilationBeforeSlomo * WorldDilationBeforeSlomo / PawnWorld->GetWorldTimeDilation());
+	bIsSlomoActive = true;
+	return true;
+}
+
+void APlayerPawn::SetSlomoActive(bool bActive)
+{
+	if (bActive) { StartSlomo(0.3f); return; }
+	if (!bIsSlomoActive) return;
+	bIsSlomoActive = false;
+	if (UWorld* PawnWorld = GetWorld()) PawnWorld->SetWorldTimeDilation(WorldDilationBeforeSlomo);
+	if (FlashlightAttack && IsValid(FlashlightAttack) && !FlashlightAttack->IsBeingDestroyed())
+		FlashlightAttack->SetPlayerTimeDilation(PlayerDilationBeforeSlomo);
+	else SetCustomTimeDilation(PlayerDilationBeforeSlomo);
 }
 
 void APlayerPawn::Tick(float DeltaTime)
@@ -127,6 +206,24 @@ void APlayerPawn::Tick(float DeltaTime)
 	const FVector FrameMovement = bGrounded ? Movement->GetLastGroundedDisplacement() : FVector::ZeroVector;
 	const bool bMoved = bPlaying && (!Bob || !Bob->IsSuspended()) && FrameMovement.SizeSquared() > 0.00000001f;
 	const bool bStep = FootstepCadence.Advance(DeltaTime, bMoved);
+	const auto* Controller = PawnWorld ? PawnWorld->GetPlayerController() : nullptr;
+	const bool bAllowsGameplay = bPlaying &&
+		(!PawnWorld->GetGameMode() || PawnWorld->GetGameMode()->AllowsPlayerControllerInput()) &&
+		(!Controller || (!Controller->IsMoveInputIgnored() && !Controller->IsLookInputIgnored() && !Controller->IsInCinematicMode()));
+	if (bIsSlomoActive && !bAllowsGameplay) SetSlomoActive(false);
+	// Gauge uses the owner's Tick delta: normal player time in slomo, zero in hitstop.
+	if (bAllowsGameplay && DeltaTime > 0.0f)
+	{
+		if (bIsSlomoActive)
+		{
+			SetSlomoGauge(SlomoGauge - SlomoDrainRate * DeltaTime);
+		}
+		else
+		{
+			SetSlomoGauge(SlomoGauge + SlomoRecoverRate * DeltaTime);
+		}
+	}
+
 	// Camera effects use the completed grounded move, never input or a respawn teleport.
 	if (bPlaying && Bob)
 	{
@@ -246,6 +343,8 @@ void APlayerPawn::SetLife(int32 InLife)
 
 void APlayerPawn::RespawnAtPlayerStart()
 {
+	if (FlashlightAttack) FlashlightAttack->CancelAttack();
+	SetSlomoActive(false);
 	ResetWalkingEffects();
 	if (auto* Movement = GetCharacterMovement())
 	{
@@ -273,7 +372,9 @@ void APlayerPawn::RespawnAtPlayerStart()
 
 void APlayerPawn::EndPlay()
 {
+	if (FlashlightAttack) FlashlightAttack->CancelAttack();
 	ResetWalkingEffects();
+	SetSlomoActive(false);
 	if (FlashlightActor)
 	{
 		FlashlightActor->Destroy();

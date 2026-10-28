@@ -49,8 +49,10 @@ namespace
 			const bool bWorldNormal = Pass == EMeshPassType::WorldNormal;
 			FPipelineState* Base = FRenderResourceManager::GetPSO(bWorldNormal
 				? EPSOType::StaticMesh_WorldNormal : EPSOType::StaticMesh_Forward);
+			const ELightingModel EffectiveModel = Material->ShadingModel == EMaterialShadingModel::Unlit
+				? ELightingModel::Unlit : LightingModel;
 			FShaderProgram* Shader = bWorldNormal ? (Base ? Base->Shader : nullptr)
-				: FRenderResourceManager::GetForwardShaderProgram(LightingModel);
+				: FRenderResourceManager::GetForwardShaderProgram(EffectiveModel);
 			if (!Base || !Shader || !Shader->VertexShader || !Shader->PixelShader) return false;
 			Batch.Pipeline = *Base;
 			Batch.Pipeline.Shader = Shader;
@@ -99,6 +101,7 @@ namespace
 				Params.UVOffset = Material->UVScrollSpeed * EngineTimer::GetTotalTime();
 				Params.TextureFlags.X = GetNormalEncoding(Material->Textures.Num() > 1 ? Material->Textures[1] : nullptr);
 				Params.TextureFlags.Y = Material->bFlipNormalY ? 1.0f : 0.0f;
+				Params.MaterialFlags.X = static_cast<float>(Material->ShadingModel);
 				std::memcpy(Batch.MaterialData.data(), &Params, sizeof(Params));
 				Batch.MaterialDataSize = sizeof(Params);
 			}

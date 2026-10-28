@@ -1,0 +1,123 @@
+{
+	"EndFrame": 150,
+	"FrameRate": 30,
+	"StartFrame": 0,
+	"Tracks": [
+		{
+			"AudioClips": [],
+			"CameraCuts": [
+				{
+					"BlendTime": 0.5,
+					"CameraActorName": "ACameraActor_0",
+					"EndFrame": 150,
+					"StartFrame": 0
+				}
+			],
+			"FOVKeys": [],
+			"TargetActorName": "",
+			"TrackName": "Camera Cuts",
+			"TrackType": 0,
+			"TransformKeys": [],
+			"bExpanded": true,
+			"bMuted": false
+		},
+		{
+			"AudioClips": [],
+			"CameraCuts": [],
+			"FOVKeys": [],
+			"TargetActorName": "ACameraActor_0",
+			"TrackName": "ACameraActor_0 Transform",
+			"TrackType": 1,
+			"TransformKeys": [
+				{
+					"Frame": 0,
+					"InterpMode": 1,
+					"Location": [
+						-8.0,
+						-8.0,
+						5.0
+					],
+					"Rotation": [
+						-15.0,
+						45.0,
+						0.0
+					],
+					"Scale": [
+						1.0,
+						1.0,
+						1.0
+					]
+				},
+				{
+					"Frame": 75,
+					"InterpMode": 1,
+					"Location": [
+						0.0,
+						-10.0,
+						6.0
+					],
+					"Rotation": [
+						-20.0,
+						90.0,
+						0.0
+					],
+					"Scale": [
+						1.0,
+						1.0,
+						1.0
+					]
+				},
+				{
+					"Frame": 150,
+					"InterpMode": 1,
+					"Location": [
+						8.0,
+						-8.0,
+						4.0
+					],
+					"Rotation": [
+						-10.0,
+						135.0,
+						0.0
+					],
+					"Scale": [
+						1.0,
+						1.0,
+						1.0
+					]
+				}
+			],
+			"bExpanded": true,
+			"bMuted": false
+		},
+		{
+			"AudioClips": [],
+			"CameraCuts": [],
+			"FOVKeys": [
+				{
+					"FieldOfView": 65.0,
+					"Frame": 0,
+					"InterpMode": 1
+				},
+				{
+					"FieldOfView": 45.0,
+					"Frame": 75,
+					"InterpMode": 1
+				},
+				{
+					"FieldOfView": 60.0,
+					"Frame": 150,
+					"InterpMode": 1
+				}
+			],
+			"TargetActorName": "ACameraActor_0",
+			"TrackName": "ACameraActor_0 FOV",
+			"TrackType": 2,
+			"TransformKeys": [],
+			"bExpanded": true,
+			"bMuted": false
+		}
+	],
+	"Version": 1,
+	"bLoop": true
+}

@@ -71,6 +71,6 @@ float4 mainPS(PSInput Input) : SV_Target
     float FogAmount = 1.0f - exp(-LineIntegral);
     FogAmount = min(FogAmount, FogMaxOpacity);
 
-    // 안개는 톤 매핑 전 HDR 씬에 섞이므로 에디터에서 고른 sRGB 색을 선형으로 바꿔서 쓴다.
+    // 안개는 선형 LDR 씬에 섞이므로 에디터에서 고른 sRGB 색을 선형으로 바꿔서 쓴다.
     return float4(SRGBToLinear(FogColor.rgb) * FogAmount, FogAmount);
 }

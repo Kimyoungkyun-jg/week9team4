@@ -35,6 +35,9 @@
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Sequencer/LevelSequenceActor.h"
 
 #include <utility>
 
@@ -68,6 +71,9 @@ namespace
 		(void)USkyLightComponent::StaticClass();
 		(void)UStaticMeshComponent::StaticClass();
 		(void)UTextRenderComponent::StaticClass();
+		(void)ACameraActor::StaticClass();
+		(void)UCameraComponent::StaticClass();
+		(void)ALevelSequenceActor::StaticClass();
 	}
 }
 
@@ -173,7 +179,7 @@ void UGameEngine::Render()
 	FSceneRenderer SceneRenderer(GameContext->World(), View, Viewport.GetRenderData());
 	SceneRenderer.InitViews(Renderer, Options);
 	if (!ViewPipeline.Render(SceneRenderer, Renderer, Viewport.GetViewTargets(), GameContext->World(), View, Options)) return;
-	Viewport.RenderUI();
+	Viewport.RenderUI(View);
 
 	FTexture2D* Backbuffer = GetEngineLoop().GetSwapchain()->GetBackbuffer();
 	FTexture2D* SceneColor = Viewport.GetColorTarget();

@@ -3,13 +3,13 @@
 #include "Engine/World.h"
 #include "Engine/Level.h"
 #include "Components/SceneComponent.h"
+#include "Camera/CameraComponent.h"
+#include "Camera/MinimalViewInfo.h"
 #include "Components/ParticleSubUVComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/LuaScriptComponent.h"
 #include "Core/EngineLog.h"
 #include "UObject/Object.h"
-#include "Camera/CameraComponent.h"
-#include "CameraTypes.h"
 
 enum class EAttachmentRule;
 
@@ -403,7 +403,7 @@ void AActor::UnregisterAllComponents()
 	}
 }
 
-void AActor::CalcCamera(float DeltaTime, FMinimalViewInfo& OutView)
+void AActor::CalcCamera(float DeltaTime, FMinimalViewInfo& OutView) const
 {
 	TArray<UCameraComponent*> Cameras = GetComponentsByClass<UCameraComponent>();
 

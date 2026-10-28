@@ -17,6 +17,8 @@ public:
 	FVector ConsumeMovementInputVector();
 	virtual void Jump() {}
 	virtual void StopJumping() {}
+	virtual void PrimaryAction() {}
+	virtual bool IsInputSuppressed() const { return false; }
 	virtual UCameraComponent* GetCameraComponent() const { return nullptr; }
 	virtual void AddControllerYawInput(float Value) {}
 	virtual void AddControllerPitchInput(float Value) {}

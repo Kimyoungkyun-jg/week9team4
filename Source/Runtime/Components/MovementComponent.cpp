@@ -125,7 +125,8 @@ bool UMovementComponent::SafeMoveUpdatedComponent(const FVector& Delta, const FR
 FVector UMovementComponent::GetPenetrationAdjustment(const FHitResult& Hit) const
 {
 	if (!Hit.bStartPenetrating || !IsFiniteVector(Hit.Normal) || !std::isfinite(Hit.PenetrationDepth)) return FVector::ZeroVector;
-	const float Depth = Hit.PenetrationDepth > 0.f ? Hit.PenetrationDepth : 0.001f;
+	// UE also resolves an initial overlap whose MTD depth is zero.
+	const float Depth = Hit.PenetrationDepth > 0.f ? Hit.PenetrationDepth : 0.00125f;
 	return ConstrainDirectionToPlane(Hit.Normal.GetSafeNormal() * (Depth + std::abs(PenetrationPullbackDistance)));
 }
 

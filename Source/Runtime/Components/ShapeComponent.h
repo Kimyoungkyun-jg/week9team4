@@ -15,5 +15,5 @@ public:
     void Serialize(FStructuredArchive::FRecord Record) override;
 protected:
     virtual void SanitizeDimensions() {}
-    void ShapeChanged();
+    void ShapeChanged(bool bUpdateOverlaps = true);
 };

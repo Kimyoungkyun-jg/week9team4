@@ -6,6 +6,7 @@
 #include "Math/Matrix.h"
 #include "Math/Frustum.h"
 #include "Math/Rect.h"
+#include "Math/Color.h"
 #include "Asset/LOD/StaticMeshLODSelector.h"
 #include <algorithm>
 
@@ -30,6 +31,17 @@ struct FSceneView
 	bool bIsPerspective = true;
 	bool bIsWireframe = false;
 	bool bGameView = false;
+	float FadeOpacity = 0.0f;
+	float LetterboxSize = 0.0f;
+
+	// 카메라 페이드 정보
+	bool bCameraFade = false;
+	bool bFadeHUD = true;
+	FLinearColor FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	float FadeAmount = 0.0f;
+
+	// 레터박스 정보
+	float LetterboxRatio = 0.0f;
 
 	FViewContext ToViewContext() const
 	{

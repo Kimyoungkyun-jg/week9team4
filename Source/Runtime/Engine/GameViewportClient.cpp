@@ -2,14 +2,17 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Engine/Level.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/GameMode.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
-#include "Camera/ViewportCameraMovement.h"
+#include "Camera/MinimalViewInfo.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Camera/ViewportCameraMovement.h"
+#include "Sequencer/LevelSequenceActor.h"
 #include <cmath>
 #include "Math/Frustum.h"
 #include "Render/RenderCommand.h"
@@ -97,36 +100,51 @@ void FGameViewportClient::ClearWidgetOverlays()
 	bUIBlockingClick = false;
 }
 
-void FGameViewportClient::RenderUI()
+void FGameViewportClient::RenderUI(const FSceneView& View)
 {
 	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
-	//if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
-	if (!ViewTargets.SceneColor) return;
+
+	const bool bHasFade = View.bCameraFade && View.FadeAmount > 0.0f;
+	const bool bHasLetterbox = View.LetterboxRatio > 0.0f;
+	if ((!WidgetRoot && WidgetOverlays.IsEmpty() && !bHasFade && !bHasLetterbox) || !ViewTargets.SceneColor) return;
+
 	if (!WidgetRenderer)
 	{
 		WidgetRenderer = MakeUnique<FWidgetRenderer>();
 		if (!WidgetRenderer->Init()) { WidgetRenderer.reset(); return; }
 	}
-	WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
+
+	// 1. [bFadeHUD == false] 3D 월드만 페이드: UI 그리기 전에 페이드 적용 (UI는 정상 표시)
+	if (bHasFade && !View.bFadeHUD)
+	{
+		WidgetRenderer->DrawFadeOverlay(
+			View.FadeColor,
+			View.FadeAmount,
+			ViewTargets.SceneColor.get()
+		);
+	}
+
+	// 2. UI 위젯 렌더링
+	if (WidgetRoot)
+		WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
 	for (const FWidgetOverlay& Overlay : WidgetOverlays)
 		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
-
-	if (bSIEMode || !World)
-		return;
-
-	APlayerController* PC = World->GetPlayerController();
-	if (!IsValid(PC) || PC->IsActorBeingDestroyed())
+	if (View.LetterboxRatio > 0.0f)
 	{
-		return;
+		WidgetRenderer->DrawLetterboxOverlay(View.LetterboxRatio, ViewTargets.SceneColor.get());
 	}
 
-	APlayerCameraManager* Manager = PC->GetPlayerCameraManager();
-	if (!IsValid(Manager) || Manager->IsActorBeingDestroyed())
+	// 3. [bFadeHUD == true] UI까지 전체 페이드: UI를 모두 덮어씌움
+	if (bHasFade && View.bFadeHUD)
 	{
-		return;
+		WidgetRenderer->DrawFadeOverlay(
+			View.FadeColor,
+			View.FadeAmount,
+			ViewTargets.SceneColor.get()
+		);
 	}
 
-	WidgetRenderer->RenderFade(ViewTargets.SceneColor.get(), Manager->GetFadeColor(), Manager->GetFadeAmount());
+	OnUIRendered.Broadcast();
 }
 
 void FGameViewportClient::Init(FWorldContext& InWorldContext, UEngine* InEngine)
@@ -240,51 +258,35 @@ void FGameViewportClient::SetFocusedTextInput(UTextInputWidget* Input)
 
 bool FGameViewportClient::TryGetViewInfo(FMinimalViewInfo& OutView) const
 {
-	if (!World)
+	if (!World) return false;
+	const auto IsUsableTarget = [](AActor* Target)
 	{
-		return false;
-	}
-
-	// 일반 게임에서는 Manager가 계산한 결과를 사용한다.
+		return Target && GUObjectArray.Find(Target) != INDEX_NONE &&
+			IsValid(Target) && !Target->IsActorBeingDestroyed();
+	};
 	if (!bSIEMode)
 	{
-		APlayerController* PC = World->GetPlayerController();
-
-		if (IsValid(PC) && !PC->IsActorBeingDestroyed())
-		{
-			APlayerCameraManager* Manager =	PC->GetPlayerCameraManager();
-
-			if (IsValid(Manager) &&	!Manager->IsActorBeingDestroyed() && Manager->HasValidCameraPOV())
-			{
-				OutView = Manager->GetCameraPOV();
-				return true;
-			}
-		}
+		APlayerController* Controller = World->GetPlayerController();
+		if (IsUsableTarget(Controller))
+			if (APlayerCameraManager* Manager = Controller->GetPlayerCameraManager())
+				if (const FMinimalViewInfo* CachedPOV = Manager->GetCameraCachePOV())
+				{
+					OutView = *CachedPOV;
+					return true;
+				}
 	}
-
-	// SIE에서는 자유 카메라를 사용한다.
-	// Manager가 없을 때도 기존 컴포넌트 경로를 사용한다.
-	UCameraComponent* ViewCamera = CameraComponent;
-
-	if (!IsValid(ViewCamera) && !bSIEMode)
+	else if (CameraComponent && GUObjectArray.Find(CameraComponent) != INDEX_NONE &&
+		IsValid(CameraComponent) && !CameraComponent->IsBeingDestroyed())
 	{
-		ViewCamera = FindPlayerCamera();
-	}
-		
-	if (!IsValid(ViewCamera))
-	{
-		ACameraActor* MainCamera = World->GetMainCamera();
-
-		if (IsValid(MainCamera) && !MainCamera->IsActorBeingDestroyed())
-		{
-			ViewCamera = MainCamera->GetCameraComponent();
-		}
+		CameraComponent->GetCameraView(OutView);
+		return true;
 	}
 
-	if (!IsValid(ViewCamera) || ViewCamera->IsBeingDestroyed()) { return false; }
-
-	ViewCamera->GetCameraView(0.0f, OutView);
-	return true;
+	AActor* Fallback = bSIEMode ? static_cast<AActor*>(World->GetMainCamera()) : World->GetPlayerPawn();
+	if (!IsUsableTarget(Fallback)) Fallback = World->GetMainCamera();
+	if (!IsUsableTarget(Fallback)) return false;
+	Fallback->CalcCamera(0.0f, OutView);
+	return IsUsableTarget(Fallback);
 }
 
 UButtonWidget* FGameViewportClient::HitTestButton(bool* bBlocked) const
@@ -408,9 +410,12 @@ UCameraComponent* FGameViewportClient::FindPlayerCamera() const
 	if (!World) return nullptr;
 	if (APawn* Pawn = World->GetPlayerPawn())
 	{
-		if (UCameraComponent* Camera = Pawn->GetCameraComponent()) return Camera;
+		if (GUObjectArray.Find(Pawn) == INDEX_NONE || !IsValid(Pawn) || Pawn->IsActorBeingDestroyed()) return nullptr;
+		if (UCameraComponent* Camera = Pawn->GetCameraComponent();
+			Camera && GUObjectArray.Find(Camera) != INDEX_NONE && IsValid(Camera) && !Camera->IsBeingDestroyed()) return Camera;
 		for (UActorComponent* Component : Pawn->GetComponents())
-			if (UCameraComponent* Camera = Cast<UCameraComponent>(Component)) return Camera;
+			if (Component && GUObjectArray.Find(Component) != INDEX_NONE && IsValid(Component) && !Component->IsBeingDestroyed())
+				if (UCameraComponent* Camera = Cast<UCameraComponent>(Component)) return Camera;
 	}
 	return nullptr;
 }
@@ -465,35 +470,94 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 		static_cast<uint32>(std::max(InViewRect.Height, 1.0f))
 	);
 
-	FMinimalViewInfo CameraView;
-
-	if (!TryGetViewInfo(CameraView))
+	const float Aspect = static_cast<float>(Width) / static_cast<float>(Height);
+	FMinimalViewInfo POV;
+	const bool bHasPOV = TryGetViewInfo(POV);
+	if (!bHasPOV)
 	{
-		CameraView.Location = FVector(-5.0f, -10.0f, 10.0f);
-		CameraView.Rotation = FRotator(30.0f, 45.0f, 0.0f);
-		CameraView.FarClipPlane = 1000.0f;
+		POV.Location = FVector(-5.0f, -10.0f, 10.0f);
+		POV.Rotation = FRotator(30.0f, 45.0f, 0.0f);
+		POV.FarClipPlane = 1000.0f;
 	}
 
-	CameraView.AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
-	OutView.ViewLocation = CameraView.Location;
-	OutView.ViewRotation = CameraView.Rotation;
-	OutView.ViewForward = CameraView.Rotation.Quaternion().GetForwardVector();
-
-	OutView.FieldOfView = CameraView.FOV;
-	OutView.AspectRatio = CameraView.AspectRatio;
-	OutView.NearClip = CameraView.NearClipPlane;
-	OutView.FarClip = CameraView.FarClipPlane;
-	OutView.OrthoWidth = CameraView.OrthoWidth;
-	OutView.bIsPerspective = !CameraView.bIsOrthogonal;
+	OutView.ViewLocation = POV.Location;
+	OutView.ViewRotation = POV.Rotation;
+	OutView.ViewForward = POV.Rotation.Quaternion().GetForwardVector();
+	OutView.FieldOfView = std::isfinite(POV.FOV) ? std::clamp(POV.FOV, 1.0f, 179.0f) : 60.0f;
+	OutView.AspectRatio = Aspect;
+	OutView.NearClip = std::isfinite(POV.NearClipPlane) ? std::max(POV.NearClipPlane, 0.001f) : 0.1f;
+	OutView.FarClip = std::isfinite(POV.FarClipPlane) ? std::max(POV.FarClipPlane, OutView.NearClip + 0.001f) : 10000.0f;
+	OutView.OrthoWidth = std::isfinite(POV.OrthoWidth) ? std::max(POV.OrthoWidth, 0.001f) : 16.0f;
+	OutView.bIsPerspective = !POV.bIsOrthogonal;
 	OutView.bIsWireframe = false;
-
-	OutView.ViewMatrix = CameraView.GetViewMatrix();
-	OutView.ProjectionMatrix = CameraView.GetProjectionMatrix();
+	if (World && World->GetPersistentLevel())
+	{
+		const auto ApplySequenceEffects = [&OutView](ALevelSequenceActor* Sequence)
+		{
+			if (!Sequence || !IsValid(Sequence) || Sequence->IsActorBeingDestroyed() ||
+				!Sequence->HasCameraEffectsView()) return false;
+			bool bHasEffectsTrack = false;
+			for (const FSequenceTrack& Track : Sequence->GetSequenceData().Tracks)
+				if (!Track.bMuted && Track.TrackType == ESequenceTrackType::CameraEffects && !Track.CameraEffectsKeys.IsEmpty())
+				{ bHasEffectsTrack = true; break; }
+			if (!bHasEffectsTrack) return false;
+			const FSequenceCameraEffects Effects = FLevelSequenceAsset::EvaluateCameraEffects(Sequence->GetSequenceData(), Sequence->GetCurrentFrame());
+			OutView.FadeOpacity = 0.0f;
+			OutView.LetterboxSize = 0.0f;
+			if (Effects.FadeOpacity > 0.0f)
+			{
+				OutView.bCameraFade = true;
+				OutView.FadeAmount = std::max(OutView.FadeAmount, Effects.FadeOpacity);
+				OutView.FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			}
+			if (Effects.LetterboxSize > 0.0f)
+			{
+				OutView.LetterboxRatio = std::max(OutView.LetterboxRatio, Effects.LetterboxSize);
+			}
+			return true;
+		};
+		bool bApplied = false;
+		if (APlayerController* Controller = World->GetPlayerController())
+			bApplied = ApplySequenceEffects(Cast<ALevelSequenceActor>(Controller->GetViewTarget()));
+		if (!bApplied)
+		{
+			const TArray<AActor*>& Actors = World->GetPersistentLevel()->GetActors();
+			for (int32 Index = Actors.Num() - 1; Index >= 0; --Index)
+				if (ApplySequenceEffects(Cast<ALevelSequenceActor>(Actors[Index]))) break;
+		}
+	}
+	OutView.ViewMatrix = FMatrix::MakeTranslation(POV.Location * -1.0f) *
+		POV.Rotation.Quaternion().ToFMatrix().GetTransposed();
+	OutView.ProjectionMatrix = !POV.bIsOrthogonal
+		? Perspective(FMath::DegreesToRadians(OutView.FieldOfView), Aspect, OutView.NearClip, OutView.FarClip)
+		: Ortho(OutView.OrthoWidth, Aspect, OutView.NearClip, OutView.FarClip);
 	OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
 
 	OutView.Frustum = ExtractFrustumPlanes(OutView.ViewProjectionMatrix);
 
 	OutView.FrustumCorners = GenerateFrustumCorners(OutView.ViewProjectionMatrix.Inverse());
+
+	// 플레이어 컨트롤러의 카메라 매니저로부터 카메라 페이드 정보 수집
+	if (World)
+	{
+		if (APlayerController* PC = World->GetPlayerController())
+		{
+			if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+			{
+				if (PCM->HasActiveFade())
+				{
+					OutView.bCameraFade = true;
+					OutView.bFadeHUD = PCM->IsFadeHUD();
+					OutView.FadeColor = PCM->GetFadeColor();
+					OutView.FadeAmount = std::max(OutView.FadeAmount, PCM->GetFadeAmount());
+				}
+				if (PCM->GetLetterboxRatio() > 0.0f)
+				{
+					OutView.LetterboxRatio = std::max(OutView.LetterboxRatio, PCM->GetLetterboxRatio());
+				}
+			}
+		}
+	}
 
 	return OutView;
 }
@@ -561,7 +625,8 @@ void FGameViewportClient::EndSIEMode()
 {
 	if (!bSIEMode)
 		return;
-	if (World && World->GetMainCamera())
+	if (World && World->GetMainCamera() && GUObjectArray.Find(World->GetMainCamera()) != INDEX_NONE &&
+		IsValid(World->GetMainCamera()) && !World->GetMainCamera()->IsActorBeingDestroyed())
 		if (UCameraComponent* MainCamera = World->GetMainCamera()->GetCameraComponent())
 			MainCamera->SetExternalInputManaged(bPreviousMainCameraExternalInputManaged);
 	CameraComponent = FindPlayerCamera();

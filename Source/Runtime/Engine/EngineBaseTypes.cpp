@@ -32,14 +32,24 @@ void FTickFunction::SetTickFunctionEnable(bool bEnable)
 void FActorTickFunction::ExecuteTick(float DeltaTime)
 {
 	if (IsValid(Target) && !Target->IsActorBeingDestroyed())
-		Target->TickActor(DeltaTime);
+	{
+		const float FinalDeltaTime = DeltaTime * Target->GetCustomTimeDilation();
+		Target->TickActor(FinalDeltaTime);
+	}
 }
 
 void FActorComponentTickFunction::ExecuteTick(float DeltaTime)
 {
 	if (IsValid(Target) && !Target->IsBeingDestroyed() && Target->IsRegistered() &&
 		(!Target->GetOwner() || !Target->GetOwner()->IsPendingKillPending()))
-		Target->TickComponent(DeltaTime);
+	{
+		float FinalDeltaTime = DeltaTime;
+		if (AActor* Owner = Target->GetOwner())
+		{
+			FinalDeltaTime *= Owner->GetCustomTimeDilation();
+		}
+		Target->TickComponent(FinalDeltaTime);
+	}
 }
 
 FTickTaskManager::~FTickTaskManager()

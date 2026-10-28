@@ -13,6 +13,7 @@
 #include "Engine/Level.h"
 #include "Core/EngineLog.h"
 #include "Serialization/StructuredArchive.h"
+#include "Serialization/StructuredArchiveSlots.h"
 #include <queue>
 #include <algorithm>
 #include <cmath>
@@ -33,6 +34,7 @@ void UGhostAIComponent::BeginPlay()
 	}
 
 	GetCachedMap();
+	if (PatrolPoints.IsEmpty()) InitializeDefaultPatrolPoints();
 
 	UpdateDetectionBoxExtent();
 }
@@ -358,12 +360,14 @@ void UGhostAIComponent::StopMovement()
 void UGhostAIComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
+	// Recoil blocks locomotion; hitstop itself only scales the owner's delta.
+	if (auto* Ghost = Cast<AGhostActor>(GetOwner()); Ghost && Ghost->IsRecoiling()) return;
 
 	if (UWorld* World = GetWorld())
 	{
 		if (APacmanGameMode* Mode = Cast<APacmanGameMode>(World->GetGameMode()))
 		{
-			if (Mode->IsResolvingGhostHit())
+			if (!Mode->AllowsPlayerControllerInput())
 			{
 				return;
 			}

@@ -9,6 +9,9 @@
 class UCameraComponent : public USceneComponent
 {
 	DECLARE_CLASS(UCameraComponent, USceneComponent)
+	REFLECT_START(ClassName)
+		PROPERTY(FieldOfView)
+	REFLECT_END()
 
 public:
 	UCameraComponent() { PrimaryComponentTick.bCanEverTick = true; }   // 이동·회전 입력을 매 프레임 처리한다
@@ -22,6 +25,7 @@ public:
 	FMatrix GetOrthogonalMatrix() const;
 	FMatrix GetProjectionMatrix() const;
 	FMatrix GetViewProjectionMatrix() const;
+	void GetCameraView(FMinimalViewInfo& OutView) const;
 
 	// Picking
 	FRay DeProjection(FVector2 MousePos, float ScreenW, float ScreenH);

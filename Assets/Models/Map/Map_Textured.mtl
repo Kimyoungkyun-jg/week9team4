@@ -1,0 +1,12 @@
+newmtl Floor
+Kd 0.016485 0.016087 0.017081
+d 1
+map_Kd ../../Textures/Environment/concrete_floor_worn_001/concrete_floor_worn_001_diff_2k.png
+map_bump ../../Textures/Environment/concrete_floor_worn_001/concrete_floor_worn_001_nor_dx_2k.png
+
+newmtl Wall
+Kd 0.001079 0 0.541181
+d 1
+map_Kd ../../Textures/Environment/painted_plaster_wall/painted_plaster_wall_diff_2k.png
+map_bump ../../Textures/Environment/painted_plaster_wall/painted_plaster_wall_nor_dx_2k.png
+

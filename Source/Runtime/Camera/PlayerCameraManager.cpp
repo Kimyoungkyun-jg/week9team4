@@ -4,6 +4,7 @@
 #include "Camera/CameraModifier_CameraShake.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
 
 namespace
 {
@@ -14,6 +15,39 @@ namespace
 			IsValid(Target) && !Target->IsActorBeingDestroyed();
 	}
 
+	FQuat SlerpQuat(const FQuat& QuatA, const FQuat& QuatB, float Slerp)
+	{
+		float CosAlpha = QuatA.X * QuatB.X + QuatA.Y * QuatB.Y + QuatA.Z * QuatB.Z + QuatA.W * QuatB.W;
+		FQuat TargetB = QuatB;
+		if (CosAlpha < 0.0f)
+		{
+			CosAlpha = -CosAlpha;
+			TargetB = FQuat(-QuatB.X, -QuatB.Y, -QuatB.Z, -QuatB.W);
+		}
+
+		float ScaleA, ScaleB;
+		if (CosAlpha > 0.9995f)
+		{
+			ScaleA = 1.0f - Slerp;
+			ScaleB = Slerp;
+		}
+		else
+		{
+			const float SinAlpha = std::sqrt(1.0f - CosAlpha * CosAlpha);
+			const float Alpha = std::atan2(SinAlpha, CosAlpha);
+			ScaleA = std::sin((1.0f - Slerp) * Alpha) / SinAlpha;
+			ScaleB = std::sin(Slerp * Alpha) / SinAlpha;
+		}
+
+		FQuat Result(
+			ScaleA * QuatA.X + ScaleB * TargetB.X,
+			ScaleA * QuatA.Y + ScaleB * TargetB.Y,
+			ScaleA * QuatA.Z + ScaleB * TargetB.Z,
+			ScaleA * QuatA.W + ScaleB * TargetB.W
+		);
+		return Result.Normalized();
+	}
+
 	FMinimalViewInfo BlendCameraViews(const FMinimalViewInfo& From, const FMinimalViewInfo& To, float Alpha)
 	{
 		if (Alpha <= 0.0f) return From;
@@ -22,10 +56,7 @@ namespace
 		auto Blend = [Alpha](float A, float B) { return A + (B - A) * Alpha; };
 		FMinimalViewInfo Result = From;
 		Result.Location = From.Location + (To.Location - From.Location) * Alpha;
-		// 각 축을 [-180, 180] 범위의 차이로 보간해 179도 -> -179도에서 크게 회전하지 않는다.
-		for (int32 Axis = 0; Axis < 3; ++Axis)
-			Result.Rotation[Axis] = From.Rotation[Axis] +
-				std::remainder(To.Rotation[Axis] - From.Rotation[Axis], 360.0f) * Alpha;
+		Result.Rotation = SlerpQuat(From.Rotation.Quaternion(), To.Rotation.Quaternion(), Alpha).ToFRotator();
 		Result.FOV = Blend(From.FOV, To.FOV);
 		Result.AspectRatio = Blend(From.AspectRatio, To.AspectRatio);
 		Result.NearClipPlane = Blend(From.NearClipPlane, To.NearClipPlane);
@@ -34,6 +65,11 @@ namespace
 		// 투영 방식은 수치 보간할 수 없으므로 전환 완료 시 도착 대상의 방식을 채택한다.
 		return Result;
 	}
+}
+
+APlayerCameraManager::APlayerCameraManager()
+{
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 APlayerCameraManager::~APlayerCameraManager()
@@ -45,6 +81,10 @@ APlayerCameraManager::~APlayerCameraManager()
 void APlayerCameraManager::EndPlay()
 {
 	RemoveAllCameraModifiers();
+	bHasValidCameraPOV = false;
+	ViewTarget.Target = nullptr;
+	ClearPendingViewTarget();
+	PCOwner = nullptr;
 	Super::EndPlay();
 }
 
@@ -82,19 +122,27 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 
 	if (!IsPendingKillPending())
 	{
-		UpdateCameraFade(DeltaTime);
+		const float EffectDelta = std::isfinite(DeltaTime) ? FMath::Max(DeltaTime, 0.0f) : 0.0f;
+		UpdateCameraFade(EffectDelta);
+		UpdateCameraLetterbox(EffectDelta);
 	}
 }
 
 void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget, float BlendTime)
 {
-	if (IsPendingKillPending()) return;
+	SetViewTargetWithBlend(NewViewTarget, BlendTime, VTBlend_Linear);
+}
+
+void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewViewTarget, float BlendTime, EViewTargetBlendFunction BlendFunc, float BlendExp, bool bInLockOutgoing)
+{
+	if (IsPendingKillPending() || (NewViewTarget && (!IsUsableCameraTarget(NewViewTarget) || NewViewTarget->GetWorld() != GetWorld()))) return;
 	if (!std::isfinite(BlendTime) || BlendTime <= 0.0f ||
 		!bHasValidCameraPOV || !IsUsableCameraTarget(NewViewTarget))
 	{
 		++ViewTargetRevision;
 		ClearPendingViewTarget();
 		ViewTarget.Target = NewViewTarget;
+		bHasValidCameraPOV = false;
 		return;
 	}
 
@@ -103,7 +151,7 @@ void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget, float BlendTime)
 		(!IsBlending() && ViewTarget.Target == NewViewTarget)) return;
 
 	++ViewTargetRevision;
-	if (IsBlending())
+	if (IsBlending() || bInLockOutgoing)
 	{
 		// 전환 중의 블렌딩 결과에서 다시 출발한다. Modifier 적용 후의 POV는 사용하지 않는다.
 		ViewTarget.POV = BaseCameraPOV;
@@ -111,8 +159,19 @@ void APlayerCameraManager::SetViewTarget(AActor* NewViewTarget, float BlendTime)
 	}
 	PendingViewTarget.Target = NewViewTarget;
 	PendingViewTarget.POV = BaseCameraPOV;
+	BlendParams = {BlendTime, BlendFunc, std::isfinite(BlendExp) && BlendExp > 0.0f ? BlendExp : 2.0f, bInLockOutgoing};
 	BlendDuration = BlendTime;
 	BlendTimeRemaining = BlendTime;
+}
+
+AActor* APlayerCameraManager::GetViewTarget() const
+{
+	return IsUsableCameraTarget(ViewTarget.Target) ? ViewTarget.Target : nullptr;
+}
+
+AActor* APlayerCameraManager::GetPendingViewTarget() const
+{
+	return IsUsableCameraTarget(PendingViewTarget.Target) ? PendingViewTarget.Target : nullptr;
 }
 
 void APlayerCameraManager::ClearPendingViewTarget()
@@ -215,24 +274,81 @@ int32 APlayerCameraManager::GetActiveCameraShakeCount() const
 	return Modifier ? Modifier->GetActiveCameraShakeCount() : 0;
 }
 
-void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color)
+void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color, bool bHold, bool bInFadeHUD)
 {
 	FadeColor = Color;
 	FadeAlpha = FVector2(FMath::Clamp(FromAlpha, 0.0f, 1.0f), FMath::Clamp(ToAlpha, 0.0f, 1.0f));
-
-	FadeTime = FMath::Max(Duration, 0.0f);
+	FadeTime = std::isfinite(Duration) ? FMath::Max(Duration, 0.0f) : 0.0f;
 	FadeTimeRemaining = FadeTime;
+	bHoldWhenFinished = bHold;
+	bFadeHUD = bInFadeHUD;
 
-	// 시간이 0 이하라면 즉시 목표 알파를 적용한다.
-	FadeAmount = FadeTime > 0.0f ? FadeAlpha.X : FadeAlpha.Y;
+	if (FadeTime <= 0.0f)
+	{
+		FadeAmount = FadeAlpha.Y;
+		FadeTimeRemaining = 0.0f;
+		bEnableFading = bHold;
+		return;
+	}
+
+	FadeAmount = FadeAlpha.X;
+	bEnableFading = true;
 }
 
 void APlayerCameraManager::StopCameraFade()
 {
+	bEnableFading = false;
 	FadeAmount = 0.0f;
-	FadeAlpha = FVector2(0.0f, 0.0f);
 	FadeTime = 0.0f;
 	FadeTimeRemaining = 0.0f;
+	bFadeHUD = true;
+}
+
+void APlayerCameraManager::FadeIn(float Duration, const FLinearColor& Color, bool bInFadeHUD)
+{
+	StartCameraFade(1.0f, 0.0f, Duration, Color, false, bInFadeHUD);
+}
+
+void APlayerCameraManager::FadeOut(float Duration, const FLinearColor& Color, bool bHold, bool bInFadeHUD)
+{
+	StartCameraFade(0.0f, 1.0f, Duration, Color, bHold, bInFadeHUD);
+}
+
+void APlayerCameraManager::EnterLetterbox(float Duration, float TargetRatio)
+{
+	StartLetterbox(CurrentLetterboxRatio, TargetRatio, Duration);
+}
+
+void APlayerCameraManager::ExitLetterbox(float Duration)
+{
+	StartLetterbox(CurrentLetterboxRatio, 0.0f, Duration);
+}
+
+void APlayerCameraManager::StartLetterbox(float FromRatio, float ToRatio, float Duration)
+{
+	bEnableLetterbox = true;
+	LetterboxRatio = FVector2(FromRatio, ToRatio);
+	LetterboxTime = Duration;
+	LetterboxTimeRemaining = Duration;
+
+	if (Duration <= 0.0f)
+	{
+		CurrentLetterboxRatio = ToRatio;
+		LetterboxTimeRemaining = 0.0f;
+		bEnableLetterbox = false;
+	}
+	else
+	{
+		CurrentLetterboxRatio = FromRatio;
+	}
+}
+
+void APlayerCameraManager::StopLetterbox()
+{
+	bEnableLetterbox = false;
+	CurrentLetterboxRatio = 0.0f;
+	LetterboxTime = 0.0f;
+	LetterboxTimeRemaining = 0.0f;
 }
 
 void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
@@ -257,7 +373,8 @@ void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
 				return;
 			}
 			if (bHasValidCameraPOV) PCOwner->SetFallbackCameraView(BaseCameraPOV);
-			ViewTarget.Target = PCOwner;
+			AActor* Pawn = PCOwner->GetPawn();
+			ViewTarget.Target = IsUsableCameraTarget(Pawn) ? Pawn : PCOwner;
 		}
 	}
 
@@ -268,6 +385,11 @@ void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
 		ViewTarget.Target->CalcCamera(DeltaTime, View);
 		// CalcCamera 콜백에서 새 요청이 발생하면 그 상태를 덮어쓰지 않는다.
 		if (IsPendingKillPending() || Revision != ViewTargetRevision) return;
+		if (!IsUsableCameraTarget(ViewTarget.Target))
+		{
+			bHasValidCameraPOV = false;
+			return;
+		}
 		ViewTarget.POV = View;
 	}
 
@@ -281,7 +403,17 @@ void APlayerCameraManager::UpdateViewTarget(float DeltaTime)
 			PendingViewTarget.POV = PendingView;
 			const float SafeDeltaTime = std::isfinite(DeltaTime) ? FMath::Max(DeltaTime, 0.0f) : 0.0f;
 			BlendTimeRemaining = FMath::Max(BlendTimeRemaining - SafeDeltaTime, 0.0f);
-			const float Alpha = FMath::Clamp(1.0f - BlendTimeRemaining / BlendDuration, 0.0f, 1.0f);
+			float Alpha = FMath::Clamp(1.0f - BlendTimeRemaining / BlendDuration, 0.0f, 1.0f);
+			switch (BlendParams.BlendFunction)
+			{
+			case VTBlend_Cubic: Alpha = Alpha * Alpha * (3.0f - 2.0f * Alpha); break;
+			case VTBlend_EaseIn: Alpha = std::pow(Alpha, BlendParams.BlendExp); break;
+			case VTBlend_EaseOut: Alpha = 1.0f - std::pow(1.0f - Alpha, BlendParams.BlendExp); break;
+			case VTBlend_EaseInOut:
+				Alpha = Alpha < 0.5f ? 0.5f * std::pow(2.0f * Alpha, BlendParams.BlendExp)
+					: 1.0f - 0.5f * std::pow(2.0f * (1.0f - Alpha), BlendParams.BlendExp); break;
+			default: break;
+			}
 			BaseCameraPOV = BlendCameraViews(ViewTarget.POV, PendingViewTarget.POV, Alpha);
 			if (BlendTimeRemaining <= 0.0f)
 			{
@@ -313,14 +445,38 @@ void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInf
 
 void APlayerCameraManager::UpdateCameraFade(float DeltaTime)
 {
-	if (FadeTime <= 0.0f || FadeTimeRemaining <= 0.0f)
+	if (!bEnableFading) return;
+
+	FadeTimeRemaining -= DeltaTime;
+
+	if (FadeTimeRemaining <= 0.0f)
 	{
+		FadeTimeRemaining = 0.0f;
+		FadeAmount = FadeAlpha.Y;
+		if (!bHoldWhenFinished)
+		{
+			bEnableFading = false;
+		}
+		return;
+	}
+	float Progress = 1.0f - (FadeTimeRemaining / FadeTime);
+	Progress = std::clamp(Progress, 0.0f, 1.0f);
+	FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * Progress;
+}
+
+void APlayerCameraManager::UpdateCameraLetterbox(float DeltaTime)
+{
+	if (!bEnableLetterbox) return;
+
+	LetterboxTimeRemaining -= DeltaTime;
+	if (LetterboxTimeRemaining <= 0.0f)
+	{
+		LetterboxTimeRemaining = 0.0f;
+		CurrentLetterboxRatio = LetterboxRatio.Y;
+		bEnableLetterbox = false;
 		return;
 	}
 
-	FadeTimeRemaining = FMath::Max(FadeTimeRemaining - FMath::Max(DeltaTime, 0.0f), 0.0f);
-
-	const float Progress = FMath::Clamp(1.0f - FadeTimeRemaining / FadeTime, 0.0f, 1.0f);
-
-	FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * Progress;
+	float Progress = 1.0f - std::clamp(LetterboxTimeRemaining / LetterboxTime, 0.0f, 1.0f);
+	CurrentLetterboxRatio = LetterboxRatio.X + (LetterboxRatio.Y - LetterboxRatio.X) * Progress;
 }

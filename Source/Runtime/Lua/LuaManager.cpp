@@ -34,6 +34,9 @@ void FLuaManager::Shutdown()
 
 	// 1. C++ 참조를 캡처한 전역 바인딩 해제 (댕글링 포인터 방지)
 	Lua["EndGame"] = sol::nil;
+	Lua["PlayLevelSequence"] = sol::nil;
+	Lua["PauseLevelSequence"] = sol::nil;
+	Lua["StopLevelSequence"] = sol::nil;
 	Lua["Log"] = sol::nil;
 	Lua["LogWarning"] = sol::nil;
 	Lua["LogError"] = sol::nil;

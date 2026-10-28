@@ -6,6 +6,8 @@ class UWorld;
 class FFireBallRenderer;
 class FHeightFogRenderer;
 class FFXAARenderer;
+class FGammaCorrectionRenderer;
+class FVignettingRenderer;
 class FTextRenderer;
 class FSkyboxRenderer;
 
@@ -18,6 +20,8 @@ public:
 		FRenderGraphTextureRef FinalColor;
 		FRenderGraphTextureRef Depth;
 		bool bUseFXAA = false;
+		bool bUseGammaCorrection = false;
+		bool bUseVignetting = false;
 	};
 
 	FSceneViewPipeline();
@@ -40,5 +44,7 @@ private:
 	TUniquePtr<FFireBallRenderer> FireBall;
 	TUniquePtr<FHeightFogRenderer> HeightFog;
 	TUniquePtr<FFXAARenderer> FXAA;
+	TUniquePtr<FGammaCorrectionRenderer> GammaCorrection;
+	TUniquePtr<FVignettingRenderer> Vignetting;
 	TUniquePtr<FTextRenderer> Text;
 };

@@ -17,7 +17,8 @@ void UGameInstance::Init()
 	SoundManager->Initialize();
 	for (const char* Path : {"Assets/Sounds/coin.wav", "Assets/Sounds/footstep00.wav",
 		"Assets/Sounds/footstep01.wav", "Assets/Sounds/footstep02.wav", "Assets/Sounds/footstep03.wav",
-		"Assets/Sounds/footstep04.wav", "Assets/Sounds/Damaged.wav", "Assets/Sounds/GameClear.wav", "Assets/Sounds/GameOver.wav"})
+		"Assets/Sounds/footstep04.wav", "Assets/Sounds/Damaged.wav", "Assets/Sounds/GameClear.wav", "Assets/Sounds/GameOver.wav",
+		"Assets/Sounds/lightsaver.wav", "Assets/Sounds/ghostheart.wav"})
 		SoundManager->Preload(Path);
 	LuaManager = MakeUnique<FLuaManager>();
 	LuaManager->Init(*this);

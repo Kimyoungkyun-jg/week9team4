@@ -84,8 +84,8 @@ void UBillboardComponent::SubmitToRenderQueue(FRenderQueue& RenderQueue, const F
 
 	// Light Component light 가져와서 IconParams로 전달
 	IconParams.Tint = TintSource ? TintSource->GetLightColor().ToVector4() : FVector4(1, 1, 1, 1);
-	// 현재 반투명 패스는 톤 매핑 이후 SceneColor(LDR)에 그려진다.
-	IconParams.DecodeSRGB = 0.0f;
+	// 현재 반투명 패스는 톤 매핑 이후 선형 SceneColor(LDR)에 그려진다.
+	IconParams.DecodeSRGB = 1.0f;
 	FRenderPacket Packet;
 	Packet.Mesh = QuadMesh;
 	Packet.Material = Material;
