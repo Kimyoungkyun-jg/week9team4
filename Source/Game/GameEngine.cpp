@@ -193,6 +193,8 @@ void UGameEngine::Tick(float DeltaTime)
 	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseWheel, static_cast<float>(FInputSystem::GetWheelDelta()), DeltaTime);
 	if (bCaptured) Window->RecenterCursor();
 	GameContext->World()->Tick(DeltaTime);
+	// Apply actors added or removed during Tick before rendering queries the scene BVH.
+	GameContext->World()->GetScene().UpdateAllTransforms();
 }
 
 void UGameEngine::Render()
