@@ -34,10 +34,14 @@ public:
 	APlayerCameraManager& operator=(APlayerCameraManager&&) = delete;
 
 	// 외부에서 매 프레임 호출할 카메라 갱신 진입점.
+	// PlayerController::BeginPlay에서 호출. (추후 Controller 소유자 보관 등 초기화 확장용 스텁)
 	void Initialize(class APlayerController* InPC) { (void)InPC; }
 	void UpdateCamera(float DeltaTime);
 	void SetViewTarget(AActor* NewViewTarget);
+	// 현재 설정된 시점 대상 액터 반환
 	AActor* GetViewTarget() const { return ViewTarget.Target; }
+	// GameViewportClient에서 호출: 현재는 nullptr를 반환하여 폰의 기본 CameraComponent로 Fallback되도록 처리
+	// (추후 카메라 캐시 시스템 완성 시 캐싱된 POV를 반환하도록 구현 필요)
 	const struct FMinimalViewInfo* GetCameraCachePOV() const { return nullptr; }
 	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color, bool bHold = false, bool bInFadeHUD = true);
 	void StopCameraFade();
