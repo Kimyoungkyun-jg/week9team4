@@ -20,6 +20,7 @@ class FWidgetRenderer
 public:
 	bool Init();
 	void Render(UCanvasWidget* Root, FTexture2D* Target);
+	void DrawFadeOverlay(const FLinearColor& Color, float Alpha, FTexture2D* Target);
 
 private:
 	void DrawWidget(UWidget* Widget);

@@ -5,6 +5,7 @@
 
 class APawn;
 class AGameHUD;
+class APlayerCameraManager;
 
 class APlayerController : public AActor
 {
@@ -21,12 +22,16 @@ public:
 	APawn* GetPawn() const { return PossessedPawn; }
 	AGameHUD* GetHUD() const { return HUD; }
 	void SetHUD(AGameHUD* InHUD) { HUD = InHUD; }
+	APlayerCameraManager* GetPlayerCameraManager();
+	void SetPlayerCameraManager(APlayerCameraManager* InCameraManager) { PlayerCameraManager = InCameraManager; }
+	void SpawnPlayerCameraManager();
 	void InputKey(int32 Key, bool bDown);
 	void InputAxis(EGameInputAxis Axis, float Delta);
 	void ClearInputState();
 private:
 	APawn* PossessedPawn = nullptr;
 	AGameHUD* HUD = nullptr;
+	APlayerCameraManager* PlayerCameraManager = nullptr;
 	bool bKeyDown[256]{};
 	float MouseAxisX = 0.0f;
 	float MouseAxisY = 0.0f;

@@ -9,6 +9,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/CharacterMovementComponent.h"
 #include "GameFramework/GameHUD.h"
+#include "Components/LuaScriptComponent.h"
 #include <algorithm>
 #include <string>
 
@@ -22,6 +23,9 @@ APlayerPawn::APlayerPawn()
 	CollisionComponent->SetCollisionResponseToChannel(ECollisionChannel::WorldStatic, ECollisionResponse::Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECollisionChannel::WorldDynamic, ECollisionResponse::Overlap);
 	CollisionComponent->SetGenerateOverlapEvents(true);
+
+	ULuaScriptComponent* ScriptComp = CreateDefaultSubobject<ULuaScriptComponent>("PlayerScript");
+	ScriptComp->SetScriptPath("Assets/Scripts/player.lua");
 }
 
 void APlayerPawn::BeginPlay()

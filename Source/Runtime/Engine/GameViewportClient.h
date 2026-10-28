@@ -7,6 +7,7 @@
 #include "Render/SceneView.h"
 #include "Render/SceneRenderData.h"
 #include "Render/SceneViewTargets.h"
+#include "Camera/PlayerCameraManager.h"
 #include <functional>
 
 class UWorld;
@@ -17,6 +18,7 @@ class UCanvasWidget;
 class UWidget;
 class UButtonWidget;
 class UTextInputWidget;
+class APlayerCameraManager;
 class FWidgetRenderer;
 
 struct FWorldContext;
@@ -71,7 +73,7 @@ public:
 	bool RemoveWidgetOverlay(uint64 Handle);
 	void ClearWidgetOverlays();
 	UWidget* FindWidget(const FString& WidgetName) const;
-	void RenderUI();
+	void RenderUI(const FSceneView& View);
 	bool ProcessUIKey(int32 Key, bool bDown);
 	bool BindButtonAction(const FString& WidgetName, std::function<void()> Callback);
 	void RequestSceneChange(const FString& ScenePath, const FString& FallbackPath);
@@ -110,6 +112,7 @@ private:
 	UGameInstance* GameInstance = nullptr;
 	UEngine* Engine = nullptr;
 	UCameraComponent* CameraComponent = nullptr;
+	APlayerCameraManager* ActiveCameraManager = nullptr;
 	bool bSIEMode = false;
 	bool bPreviousMainCameraExternalInputManaged = false;
 	bool bSIEKeyDown[256]{};

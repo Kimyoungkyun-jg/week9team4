@@ -124,6 +124,9 @@ public:
 	bool IsPaused() const { return bIsPaused; }
 	void SetPaused(bool bPaused);
 
+	float GetWorldTimeDilation() const { return WorldTimeDilation; }
+	void SetWorldTimeDilation(float InTimeDilation) { WorldTimeDilation = std::max(0.0f, InTimeDilation); }
+
 	FScene& GetScene() { return Scene; }
 	FTickTaskManager& GetTickTaskManager() { return TickTaskManager; }
 
@@ -207,6 +210,8 @@ private:
 	FString InitialUIOverride;
 	bool bIsPaused = false;
 	bool bBegunPlay = false;
+
+	float WorldTimeDilation = 1.0f;
 
 	FPathTracker PathTracker;
 

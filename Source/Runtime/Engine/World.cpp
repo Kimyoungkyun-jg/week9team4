@@ -137,6 +137,7 @@ void UWorld::Tick(float DeltaTime)
 		Scene.UpdateAllTransforms();
 	}
 
+	DeltaTime *= WorldTimeDilation;
 	if (WorldType != EWorldType::Editor)
 	{
 		while (!BeginPlayList.IsEmpty())

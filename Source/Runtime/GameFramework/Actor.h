@@ -61,6 +61,8 @@ class AActor : public UObject
 		LUA_FUNC(GetActorLocation)
 		LUA_FUNC(GetActorRotation)
 		LUA_FUNC(GetActorScale3D)
+		LUA_FUNC(GetCustomTimeDilation)
+		LUA_FUNC(SetCustomTimeDilation)
 		UserType["SetActorLocation"] = [](AActor& Self, const FVector& Loc, sol::optional<bool> bSweep) {
 			Self.SetActorLocation(Loc, bSweep.value_or(false));
 		};
@@ -204,6 +206,9 @@ public:
 		return OutComponents;
 	}
 
+	void SetCustomTimeDilation(float InDilation) { CustomTimeDilation = std::max(0.0f, InDilation); }
+	float GetCustomTimeDilation() const { return CustomTimeDilation; }
+
 	virtual void RegisterAllComponents();
 	// Parameter : 바로 다시 Register 할껀지
 	virtual void UnregisterAllComponents();
@@ -223,4 +228,5 @@ private:
 	bool bIsEndingPlay = false;
 	bool bActorIsBeingDestroyed = false;
 
+	float CustomTimeDilation = 1.0f;
 };

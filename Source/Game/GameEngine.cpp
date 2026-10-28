@@ -171,7 +171,7 @@ void UGameEngine::Render()
 	FSceneRenderer SceneRenderer(GameContext->World(), View, Viewport.GetRenderData());
 	SceneRenderer.InitViews(Renderer, Options);
 	if (!ViewPipeline.Render(SceneRenderer, Renderer, Viewport.GetViewTargets(), GameContext->World(), View, Options)) return;
-	Viewport.RenderUI();
+	Viewport.RenderUI(View);
 
 	FTexture2D* Backbuffer = GetEngineLoop().GetSwapchain()->GetBackbuffer();
 	FTexture2D* SceneColor = Viewport.GetColorTarget();

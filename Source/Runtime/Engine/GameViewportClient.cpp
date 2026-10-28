@@ -8,6 +8,7 @@
 #include "GameFramework/GameMode.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Camera/ViewportCameraMovement.h"
 #include <cmath>
 #include "Math/Frustum.h"
@@ -96,18 +97,44 @@ void FGameViewportClient::ClearWidgetOverlays()
 	bUIBlockingClick = false;
 }
 
-void FGameViewportClient::RenderUI()
+void FGameViewportClient::RenderUI(const FSceneView& View)
 {
 	if (FocusedTextInput) FocusedTextInput->AppendText(FInputSystem::ConsumeTextInput());
-	if ((!WidgetRoot && WidgetOverlays.IsEmpty()) || !ViewTargets.SceneColor) return;
+
+	const bool bHasFade = View.bCameraFade && View.FadeAmount > 0.0f;
+	if ((!WidgetRoot && WidgetOverlays.IsEmpty() && !bHasFade) || !ViewTargets.SceneColor) return;
+
 	if (!WidgetRenderer)
 	{
 		WidgetRenderer = MakeUnique<FWidgetRenderer>();
 		if (!WidgetRenderer->Init()) { WidgetRenderer.reset(); return; }
 	}
-	WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
+
+	// 1. [bFadeHUD == false] 3D 월드만 페이드: UI 그리기 전에 페이드 적용 (UI는 정상 표시)
+	if (bHasFade && !View.bFadeHUD)
+	{
+		WidgetRenderer->DrawFadeOverlay(
+			View.FadeColor,
+			View.FadeAmount,
+			ViewTargets.SceneColor.get()
+		);
+	}
+
+	// 2. UI 위젯 렌더링
+	if (WidgetRoot)
+		WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
 	for (const FWidgetOverlay& Overlay : WidgetOverlays)
 		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
+
+	// 3. [bFadeHUD == true] UI까지 전체 페이드: UI를 모두 덮어씌움
+	if (bHasFade && View.bFadeHUD)
+	{
+		WidgetRenderer->DrawFadeOverlay(
+			View.FadeColor,
+			View.FadeAmount,
+			ViewTargets.SceneColor.get()
+		);
+	}
 }
 
 void FGameViewportClient::Init(FWorldContext& InWorldContext, UEngine* InEngine)
@@ -439,6 +466,21 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 
 	OutView.Frustum = ExtractFrustumPlanes(OutView.ViewProjectionMatrix);
 	OutView.FrustumCorners = GenerateFrustumCorners(OutView.ViewProjectionMatrix.Inverse());
+
+	// 플레이어 컨트롤러의 카메라 매니저로부터 카메라 페이드 정보 수집
+	if (World)
+	{
+		if (APlayerController* PC = World->GetPlayerController())
+		{
+			if (APlayerCameraManager* PCM = PC->GetPlayerCameraManager())
+			{
+				OutView.bCameraFade = PCM->HasActiveFade();
+				OutView.bFadeHUD = PCM->IsFadeHUD();
+				OutView.FadeColor = PCM->GetFadeColor();
+				OutView.FadeAmount = PCM->GetFadeAmount();
+			}
+		}
+	}
 
 	return OutView;
 }

@@ -48,6 +48,31 @@ void FWidgetRenderer::Render(UCanvasWidget* Root, FTexture2D* Target)
 	RenderCommand::EndRenderPass();
 }
 
+void FWidgetRenderer::DrawFadeOverlay(const FLinearColor& Color, float Alpha, FTexture2D* Target)
+{
+	if (!Target || !Target->GetRTV() || !VertexBuffer || !ConstantBuffer || Alpha <= 0.0f) return;
+	UTexture2D* White = UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
+	if (!White || !White->GetResource()) return;
+
+	TargetWidth = Target->GetWidth();
+	TargetHeight = Target->GetHeight();
+	ClipRadius = 0.0f;
+	bMinimapTerrain = false;
+
+	RenderCommand::BindRenderPassNoClear(Target, nullptr, TargetWidth, TargetHeight);
+	RenderCommand::BindPipelineState(PipelineState);
+	RenderCommand::BindVertexBuffer(VertexBuffer.get());
+	RenderCommand::BindConstantBuffer(0, ConstantBuffer.get(), EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
+	RenderCommand::BindSamplerState(0, ESamplerState::LinearClamp, EShaderBindFlagBits::Pixel);
+
+	const FRect FullScreenRect{ 0.0f, 0.0f, static_cast<float>(TargetWidth), static_cast<float>(TargetHeight) };
+	const FLinearColor Tint(Color.R, Color.G, Color.B, Alpha);
+	DrawQuad(FullScreenRect, 0.0f, 0.0f, 1.0f, 1.0f, White, Tint);
+
+	RenderCommand::UnbindShaderResources(0, 1, EShaderBindFlagBits::Pixel);
+	RenderCommand::EndRenderPass();
+}
+
 void FWidgetRenderer::DrawWidget(UWidget* Widget)
 {
 	if (!Widget || !Widget->IsVisible()) return;

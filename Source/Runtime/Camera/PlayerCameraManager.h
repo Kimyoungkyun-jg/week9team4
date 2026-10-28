@@ -29,13 +29,25 @@ public:
 	// 외부에서 매 프레임 호출할 카메라 갱신 진입점.
 	void UpdateCamera(float DeltaTime);
 	void SetViewTarget(AActor* NewViewTarget);
-	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color);
+	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color, bool bHold = false, bool bInFadeHUD = true);
 	void StopCameraFade();
+
+	bool HasActiveFade() const { return bEnableFading && FadeAmount > 0.0f; }
+	float GetFadeAmount() const { return FadeAmount; }
+	const FLinearColor& GetFadeColor() const { return FadeColor; }
+	bool IsFadeHUD() const { return bFadeHUD; }
+
+	void FadeIn(float Duration = 1.0f, const FLinearColor& Color = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), bool bInFadeHUD = true);
+	void FadeOut(float Duration = 1.0f, const FLinearColor& Color = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), bool bHold = true, bool bInFadeHUD = true);
 
 protected:
 	void UpdateViewTarget(float DeltaTime);
 	void ApplyCameraModifiers(float DeltaTime);
 	void UpdateCameraFade(float DeltaTime);
+
+	bool bEnableFading = false;
+	bool bHoldWhenFinished = false; // 페이드 완료 후 그 상태를 유지할 지 여부
+	bool bFadeHUD = true;           // true면 UI까지 페이드, false면 3D 월드만 페이드
 
 	FLinearColor FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	float FadeAmount = 0.0f;

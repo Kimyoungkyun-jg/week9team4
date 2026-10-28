@@ -5,6 +5,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/TestPawn.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include <cstring>
 
 APlayerController::APlayerController()
@@ -16,6 +17,11 @@ void APlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	ProcessPlayerInput(DeltaTime);
+
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->UpdateCamera(DeltaTime);
+	}
 }
 
 void APlayerController::ProcessPlayerInput(float DeltaTime)
@@ -62,6 +68,27 @@ void APlayerController::Possess(APawn* InPawn)
 	UnPossess();
 	PossessedPawn = InPawn;
 	if (PossessedPawn) PossessedPawn->PossessedBy(this);
+	SpawnPlayerCameraManager();
+}
+
+APlayerCameraManager* APlayerController::GetPlayerCameraManager()
+{
+	if (!PlayerCameraManager)
+	{
+		SpawnPlayerCameraManager();
+	}
+	return PlayerCameraManager;
+}
+
+void APlayerController::SpawnPlayerCameraManager()
+{
+	if (!PlayerCameraManager)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			PlayerCameraManager = Cast<APlayerCameraManager>(World->SpawnActor(APlayerCameraManager::StaticClass()));
+		}
+	}
 }
 
 void APlayerController::UnPossess()

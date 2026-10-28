@@ -5,6 +5,9 @@ function Player:BeginPlay()
     -- 액터에 부착된 MovementComponent 탐색 (있으면 사용)
     self.Movement = self.Owner:FindComponentByName("MovementComponent")
     self.Speed = 600.0
+    self.bIsSlomo = false;
+    self.SlomoDilation = 0.3
+    self.bIsFadedOut = false
 end
 
 function Player:Tick(deltaTime)
@@ -31,6 +34,35 @@ function Player:Tick(deltaTime)
         end
     end
     --]]
+    local bKeyDown = Input.IsKeyDown(KeyCode.T)
+    if bKeyDown and not self.bIsSlomo then
+        self.bIsSlomo = true
+        local world = self.Owner:GetWorld()
+        local worldDilation = self.SlomoDilation
+        local playerDilation = (worldDilation > 0.0) and (1.0 / worldDilation) or 1.0
+        world:SetWorldTimeDilation(worldDilation)
+        self.Owner:SetCustomTimeDilation(playerDilation)
+        Log("Slomo On")
+    elseif not bKeyDown and self.bIsSlomo then
+        self.bIsSlomo = false
+        local world = self.Owner:GetWorld()
+        world:SetWorldTimeDilation(1.0)
+        self.Owner:SetCustomTimeDilation(1.0)
+        Log("Slomo Off")
+    end
+
+    -- 키보드 F 키: FadeOut / FadeIn 토글 테스트
+    if Input.IsKeyPressed(KeyCode.F) then
+        if not self.bIsFadedOut then
+            self.bIsFadedOut = true
+            FadeOut(1.5)
+            Log("Camera FadeOut Triggered (1.5s)")
+        else
+            self.bIsFadedOut = false
+            FadeIn(1.5)
+            Log("Camera FadeIn Triggered (1.5s)")
+        end
+    end
 end
 
 function Player:EndPlay()

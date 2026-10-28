@@ -35,8 +35,6 @@ private:
 	int32 MaxCoinCount = 0;
 	int32 LifeCount = 3;
 	class ULuaScriptComponent* ScriptComponent = nullptr;
-	class UImageWidget* FadeImage = nullptr;
-	uint64 FadeOverlayHandle = 0;
 	float FadeElapsed = 0.0f;
 	bool bPendingClear = false;
 	double ClearSeconds = 0.0;
@@ -62,4 +60,5 @@ private:
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 	void ReleaseGhostHitCamera();
+	class APlayerCameraManager* GetPlayerCameraManager() const;
 };

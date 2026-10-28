@@ -949,7 +949,7 @@ void UEditorEngine::RenderGameFrame(FGameViewportClient* GameClient, const FScen
 	const bool bSceneRendered = bIsSIEMode
 		? RenderScene(Targets, SceneView, SceneRenderer, GameClient->GetWorld(), RenderOptions, nullptr, false, true)
 		: ViewPipeline.Render(SceneRenderer, Renderer, Targets, GameClient->GetWorld(), SceneView, RenderOptions);
-	if (bSceneRendered) GameClient->RenderUI();
+	if (bSceneRendered) GameClient->RenderUI(SceneView);
 }
 
 bool UEditorEngine::RenderScene(FSceneViewTargets& Targets, const FSceneView& SceneView,

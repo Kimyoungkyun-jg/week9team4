@@ -12,6 +12,7 @@
 #include "GameFramework/Actor/PointLightActor.h"
 #include "GameFramework/GameHUD.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/LuaScriptComponent.h"
 #include "Components/CharacterMovementComponent.h"
@@ -251,6 +252,10 @@ void APacmanGameMode::ResolveGhostHit()
 		if (HitPlayer) HitPlayer->RespawnAtPlayerStart();
 		GhostHitPhase = EGhostHitPhase::FadeFromBlack;
 		GhostHitElapsed = 0.0f;
+		if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+		{
+			CameraManager->FadeIn(0.35f, FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), false);
+		}
 	}
 	else
 	{
@@ -261,12 +266,16 @@ void APacmanGameMode::ResolveGhostHit()
 			CommitGameResult(false);
 			GhostHitPhase = EGhostHitPhase::FadeFromBlack;
 			GhostHitElapsed = 0.0f;
+			if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+			{
+				CameraManager->FadeIn(0.5f, FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), true);
+			}
 		}
 		else
 		{
 			if (HitGhost) HitGhost->SetHitFrozen(false);
 			HitGhost = nullptr;
-			if (HUD) HUD->RemoveOverlay(HitOverlayHandle);
+			if (HUD && HitOverlayHandle) HUD->RemoveOverlay(HitOverlayHandle);
 			HitOverlayHandle = 0;
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
@@ -302,31 +311,35 @@ void APacmanGameMode::ReleaseGhostHitCamera()
 
 void APacmanGameMode::TickGhostHit(float DeltaTime)
 {
-	if (GhostHitPhase == EGhostHitPhase::None || !HitImage) return;
+	if (GhostHitPhase == EGhostHitPhase::None) return;
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
-	if (Viewport) HitImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
+	if (Viewport && HitImage) HitImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 	GhostHitElapsed += std::max(0.0f, DeltaTime);
 	switch (GhostHitPhase)
 	{
 	case EGhostHitPhase::CloseUp:
-		HitImage->SetTint({0.8f, 0.0f, 0.0f, 0.05f + 0.07f * std::abs(std::sin(GhostHitElapsed * 11.0f))});
-		if (GhostHitElapsed >= 0.55f) { GhostHitPhase = EGhostHitPhase::FadeToBlack; GhostHitElapsed = 0.0f; }
+		if (HitImage) HitImage->SetTint({0.8f, 0.0f, 0.0f, 0.05f + 0.07f * std::abs(std::sin(GhostHitElapsed * 11.0f))});
+		if (GhostHitElapsed >= 0.55f) { 
+			GhostHitPhase = EGhostHitPhase::FadeToBlack; 
+			GhostHitElapsed = 0.0f; 
+			if (HUD && HitOverlayHandle) { HUD->RemoveOverlay(HitOverlayHandle); HitOverlayHandle = 0; }
+			HitImage = nullptr;
+			if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+			{
+				CameraManager->FadeOut(0.22f, FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), true, false);
+			}
+		}
 		break;
 	case EGhostHitPhase::FadeToBlack:
-		HitImage->SetTint({0.0f, 0.0f, 0.0f, std::clamp(GhostHitElapsed / 0.22f, 0.0f, 1.0f)});
 		if (GhostHitElapsed >= 0.22f) ResolveGhostHit();
 		break;
 	case EGhostHitPhase::FadeFromBlack:
-		HitImage->SetTint({0.0f, 0.0f, 0.0f, 1.0f - std::clamp(GhostHitElapsed / 0.35f, 0.0f, 1.0f)});
 		if (GhostHitElapsed >= 0.35f)
 		{
 			if (HitGhost && LifeCount > 0) HitGhost->SetHitFrozen(false);
 			HitGhost = nullptr;
-			if (HUD) HUD->RemoveOverlay(HitOverlayHandle);
-			HitOverlayHandle = 0;
-			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
 			ReleaseGhostHitCamera();
@@ -343,17 +356,14 @@ void APacmanGameMode::ShowGameResult(bool bCleared)
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	if (!HUD) return;
-	FadeOverlayHandle = HUD->AddOverlay("Assets/UI/ResultFade.ui.json", true);
-	FadeImage = Cast<UImageWidget>(HUD->FindWidget("ResultFade"));
-	if (!FadeOverlayHandle || !FadeImage)
+
+	APlayerController* PC = World->GetPlayerController();
+	APlayerCameraManager* CameraManager = PC ? PC->GetPlayerCameraManager() : nullptr;
+	if (CameraManager)
 	{
-		if (FadeOverlayHandle) HUD->RemoveOverlay(FadeOverlayHandle);
-		FadeOverlayHandle = 0;
-		FadeImage = nullptr;
-		return;
+		CameraManager->FadeOut(0.4f, FLinearColor(0.0f, 0.0f,0.0f, 1.0f), true, true);
 	}
-	if (FGameViewportClient* Viewport = HUD->GetGameViewport())
-		FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
+
 	bPendingClear = bCleared;
 	CommitGameResult(bCleared);
 	FadeElapsed = 0.0f;
@@ -383,56 +393,50 @@ void APacmanGameMode::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	GhostHitCooldown = std::max(0.0f, GhostHitCooldown - DeltaTime);
 	TickGhostHit(DeltaTime);
-	if (!FadeImage || (FadePhase != EResultFadePhase::FadeOut && FadePhase != EResultFadePhase::FadeIn)) return;
+
+	if (FadePhase != EResultFadePhase::FadeOut && FadePhase != EResultFadePhase::FadeIn) return;
+
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
-	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
-	if (!Viewport) return;
-	FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
+	APlayerController* PC = World ? World->GetPlayerController() : nullptr;
+	APlayerCameraManager* CameraManager = PC ? PC->GetPlayerCameraManager() : nullptr;
+
 	FadeElapsed += std::max(0.0f, DeltaTime);
 	const float Duration = FadePhase == EResultFadePhase::FadeOut ? 0.4f : 0.5f;
-	const float T = std::clamp(FadeElapsed / Duration, 0.0f, 1.0f);
-	const float SmoothT = T * T * (3.0f - 2.0f * T);
-	FadeImage->SetTint({0.0f, 0.0f, 0.0f, FadePhase == EResultFadePhase::FadeOut ? SmoothT : 1.0f - SmoothT});
-	if (T < 1.0f) return;
+	if (FadeElapsed < Duration) return;
 
 	if (FadePhase == EResultFadePhase::FadeOut)
 	{
 		const FString Path = bPendingClear ? "Assets/UI/GameClear.ui.json" : "Assets/UI/GameOver.ui.json";
-		if (!HUD->ShowWidget(Path))
+		if (HUD)
 		{
-			if (HitGhost) HitGhost->SetHitFrozen(false);
-			HitGhost = nullptr;
-			if (HitOverlayHandle) HUD->RemoveOverlay(HitOverlayHandle);
-			HitOverlayHandle = 0;
-			HitImage = nullptr;
-			GhostHitPhase = EGhostHitPhase::None;
-			bGhostHitPlaying = false;
-			ReleaseGhostHitCamera();
-			HUD->RemoveOverlay(FadeOverlayHandle);
-			FadeOverlayHandle = 0;
-			FadeImage = nullptr;
-			FadePhase = EResultFadePhase::None;
-			bResultShown = false;
-			return;
+			HUD->ShowWidget(Path);
 		}
-		if (HitOverlayHandle)
+
+		if (HitOverlayHandle && HUD) { HUD->RemoveOverlay(HitOverlayHandle); HitOverlayHandle = 0; }
+		HitImage = nullptr;
+		GhostHitPhase = EGhostHitPhase::None;
+		bGhostHitPlaying = false;
+		ReleaseGhostHitCamera();
+
+		if (CameraManager)
 		{
-			HUD->RemoveOverlay(HitOverlayHandle);
-			HitOverlayHandle = 0;
-			HitImage = nullptr;
-			GhostHitPhase = EGhostHitPhase::None;
-			bGhostHitPlaying = false;
-			ReleaseGhostHitCamera();
+			CameraManager->FadeIn(0.5f, FLinearColor(0.0f,0.0f,0.0f,1.0f), true);
 		}
+
 		FadePhase = EResultFadePhase::FadeIn;
 		FadeElapsed = 0.0f;
 	}
-	else
+	else if (FadePhase == EResultFadePhase::FadeIn)
 	{
-		HUD->RemoveOverlay(FadeOverlayHandle);
-		FadeOverlayHandle = 0;
-		FadeImage = nullptr;
 		FadePhase = EResultFadePhase::Complete;
 	}
+}
+
+APlayerCameraManager* APacmanGameMode::GetPlayerCameraManager() const
+{
+	if (UWorld* World = GetWorld())
+		if (APlayerController* PC = World->GetPlayerController())
+			return PC->GetPlayerCameraManager();
+	return nullptr;
 }
