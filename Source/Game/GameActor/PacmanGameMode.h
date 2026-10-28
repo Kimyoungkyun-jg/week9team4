@@ -20,6 +20,7 @@ class APacmanGameMode : public AGameMode
 public:
 	APacmanGameMode();
 	void BeginPlay() override;
+	void EndPlay() override;
 	void Tick(float DeltaTime) override;
 	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying; }
 	bool WantsMouseCapture() const { return !bResultShown; }
@@ -36,15 +37,15 @@ private:
 	int32 LifeCount = 3;
 	class ULuaScriptComponent* ScriptComponent = nullptr;
 	class UImageWidget* FadeImage = nullptr;
-	class ALevelSequenceActor* ClearSequenceActor = nullptr;
+	class ALevelSequenceActor* ResultSequenceActor = nullptr;
 	uint64 FadeOverlayHandle = 0;
 	float FadeElapsed = 0.0f;
 	bool bPendingClear = false;
 	double ClearSeconds = 0.0;
-	enum class EResultFadePhase { None, FadeOut, FadeIn, Complete };
+	enum class EResultFadePhase { None, FadeOut, AwaitingBlackFrame, FadeIn, Complete };
 	EResultFadePhase FadePhase = EResultFadePhase::None;
 	bool bResultShown = false;
-	enum class EGhostHitPhase { None, CloseUp, FadeToBlack, FadeFromBlack };
+	enum class EGhostHitPhase { None, CloseUp, FadeToBlack, AwaitingBlackFrame, FadeFromBlack };
 	EGhostHitPhase GhostHitPhase = EGhostHitPhase::None;
 	float GhostHitElapsed = 0.0f;
 	float GhostHitCooldown = 0.0f;
@@ -61,6 +62,8 @@ private:
 	bool bGhostHitPlaying = false;
 	void CommitGameResult(bool bCleared);
 	void BeginResultFade(bool bCleared);
+	void OnResultFadeRendered();
+	void OnResultSequenceFinished();
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 	void ReleaseGhostHitCamera();

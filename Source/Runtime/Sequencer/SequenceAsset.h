@@ -10,6 +10,7 @@
 
 class UWorld;
 class AActor;
+class FSoundManager;
 
 // 시퀀서 트랙 종류
 enum class ESequenceTrackType : int32
@@ -153,5 +154,6 @@ public:
 		float PrevFrame,
 		bool bTriggerAudio,
 		FMinimalViewInfo* OutCameraPOV,
-		bool* OutHasCameraCut);
+		bool* OutHasCameraCut,
+		FSoundManager* AudioOverride = nullptr);
 };

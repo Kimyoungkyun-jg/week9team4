@@ -29,6 +29,7 @@ struct FSoundManager::FImpl
 	std::unordered_map<std::string, std::unique_ptr<DirectX::SoundEffect>> Cache;
 	std::unordered_set<std::string> FailedPaths;
 	std::vector<FVoice> Voices;
+	std::unique_ptr<DirectX::SoundEffectInstance> Preview;
 	std::unique_ptr<DirectX::SoundEffectInstance> BGM;
 	std::string BGMPath;
 	float BGMVolume = 1.0f;
@@ -80,6 +81,7 @@ struct FSoundManager::FImpl
 	void Collect()
 	{
 		std::erase_if(Voices, [](const FVoice& Voice) { return Voice.Instance->GetState() == DirectX::STOPPED; });
+		if (Preview && Preview->GetState() == DirectX::STOPPED) Preview.reset();
 	}
 };
 
@@ -164,6 +166,26 @@ bool FSoundManager::PlaySFX(const std::string& Path, float Volume)
 	return false;
 }
 
+bool FSoundManager::PlayPreview(const std::string& Path, float Volume)
+{
+	if (!Impl->bReady || Impl->bPaused) return false;
+	if (auto* Effect = Impl->Load(Path))
+	{
+		try
+		{
+			auto Instance = Effect->CreateInstance();
+			Instance->SetVolume(SafeVolume(Volume) * Impl->SFXVolume);
+			Instance->Play(false);
+			Impl->Preview = std::move(Instance);
+			return true;
+		}
+		catch (const std::exception& Error) { Impl->LogFailure(Path, Error.what()); }
+	}
+	return false;
+}
+
+void FSoundManager::StopPreview() { Impl->Preview.reset(); }
+
 bool FSoundManager::PlayBGM(const std::string& Path, bool bLoop)
 {
 	if (!Impl->bReady) return false;
@@ -228,6 +250,6 @@ void FSoundManager::SetPaused(bool bPaused)
 		}
 	}
 }
-void FSoundManager::StopAll() { Impl->Voices.clear(); StopBGM(); }
+void FSoundManager::StopAll() { Impl->Voices.clear(); StopPreview(); StopBGM(); }
 bool FSoundManager::IsAvailable() const { return Impl->bReady; }
 std::size_t FSoundManager::GetActiveSFXCount() const { return Impl->Voices.size(); }

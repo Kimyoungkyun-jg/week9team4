@@ -309,7 +309,8 @@ void FLevelSequenceAsset::EvaluateWorldAtFrame(
 	float PrevFrame,
 	bool bTriggerAudio,
 	FMinimalViewInfo* OutCameraPOV,
-	bool* OutHasCameraCut)
+	bool* OutHasCameraCut,
+	FSoundManager* AudioOverride)
 {
 	if (OutHasCameraCut)
 	{
@@ -374,7 +375,7 @@ void FLevelSequenceAsset::EvaluateWorldAtFrame(
 		else if (Track.TrackType == ESequenceTrackType::Audio && bTriggerAudio)
 		{
 			UGameInstance* GameInstance = World->GetGameInstance();
-			FSoundManager* SoundMgr = GameInstance ? GameInstance->GetSoundManager() : nullptr;
+			FSoundManager* SoundMgr = AudioOverride ? AudioOverride : (GameInstance ? GameInstance->GetSoundManager() : nullptr);
 			if (SoundMgr && SoundMgr->IsAvailable())
 			{
 				for (const FAudioClip& Clip : Track.AudioClips)

@@ -155,6 +155,7 @@ void ALevelSequenceActor::Tick(float DeltaTime)
 		PreviousFrame = CurrentFrame;
 		StopSequence();
 		bHoldFinalCameraEffects = true;
+		OnSequenceFinished.Broadcast();
 		return;
 	}
 

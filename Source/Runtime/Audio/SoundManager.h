@@ -17,6 +17,8 @@ public:
 	void Update();
 	bool Preload(const std::string& Path);
 	bool PlaySFX(const std::string& Path, float Volume = 1.0f);
+	bool PlayPreview(const std::string& Path, float Volume = 1.0f);
+	void StopPreview();
 	bool PlayBGM(const std::string& Path, bool bLoop = true);
 	void StopBGM();
 	void PauseBGM();

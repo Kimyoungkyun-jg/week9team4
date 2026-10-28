@@ -3,6 +3,7 @@
 #include "Editor/EditorUI/EditorPanel.h"
 #include "Sequencer/SequenceAsset.h"
 #include "Camera/MinimalViewInfo.h"
+#include "Audio/SoundManager.h"
 
 class UWorld;
 class FOutlinerPanel;
@@ -55,6 +56,7 @@ public:
 	void DeleteKeyAt(int32 TrackIndex, int32 KeyIndex);
 	void CopySelectedKey();
 	void PasteCopiedKeyAtCurrentFrame();
+	void PreviewAudioClip(int32 TrackIndex, int32 ClipIndex);
 
 private:
 	void DrawToolbar();
@@ -75,6 +77,7 @@ private:
 	FGizmo* Gizmo = nullptr;
 
 	FLevelSequenceData SequenceData;
+	FSoundManager PreviewSoundManager;
 	FString CurrentAssetPath = "Assets/Sequences/NewSequence.seq.json";
 	char AssetPathBuffer[512] = "Assets/Sequences/NewSequence.seq.json";
 	FString StatusMessage;
@@ -88,6 +91,7 @@ private:
 	FSequenceTrack CopiedKeyTrack;
 	bool bHasCopiedKey = false;
 	bool bSequencerExpanded = true;
+	float InspectorWidth = 520.0f;
 
 	bool bIsPlaying = false;
 	bool bCameraLock = true;

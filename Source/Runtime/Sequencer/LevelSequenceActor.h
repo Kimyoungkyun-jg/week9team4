@@ -4,6 +4,7 @@
 #include "Sequencer/SequenceAsset.h"
 #include "Camera/MinimalViewInfo.h"
 #include "Lua/LuaMacros.h"
+#include "Core/Delegates/Delegate.h"
 
 // 레벨에 배치하여 컷신을 재생하는 시퀀스 액터
 class ALevelSequenceActor : public AActor
@@ -40,6 +41,7 @@ public:
 	void PlaySequence();
 	void PauseSequence();
 	void StopSequence();
+	TMulticastDelegate<> OnSequenceFinished;
 
 	bool IsPlayingSequence() const { return bIsPlayingSequence && !bIsPausedSequence; }
 	bool HasCameraEffectsView() const { return bIsPlayingSequence || bHoldFinalCameraEffects; }

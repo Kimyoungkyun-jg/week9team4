@@ -26,9 +26,51 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 
 namespace
 {
+	float ReadWaveDurationSeconds(const FString& Path)
+	{
+		if (Path.empty()) return 0.0f;
+		const auto FilePath = std::filesystem::path(std::u8string(Path.begin(), Path.end()));
+		std::ifstream File(FilePath, std::ios::binary);
+		char Header[12] = {};
+		if (!File.read(Header, sizeof(Header)) || std::memcmp(Header, "RIFF", 4) || std::memcmp(Header + 8, "WAVE", 4)) return 0.0f;
+		uint32 ByteRate = 0;
+		uint32 DataBytes = 0;
+		while (File)
+		{
+			char Chunk[8] = {};
+			if (!File.read(Chunk, sizeof(Chunk))) break;
+			uint32 Size = 0;
+			std::memcpy(&Size, Chunk + 4, sizeof(Size));
+			if (!std::memcmp(Chunk, "fmt ", 4) && Size >= 16)
+			{
+				char Format[16] = {};
+				if (!File.read(Format, sizeof(Format))) break;
+				std::memcpy(&ByteRate, Format + 8, sizeof(ByteRate));
+				File.seekg(static_cast<std::streamoff>(Size - 16) + (Size & 1), std::ios::cur);
+			}
+			else
+			{
+				if (!std::memcmp(Chunk, "data", 4)) DataBytes = Size;
+				File.seekg(static_cast<std::streamoff>(Size) + (Size & 1), std::ios::cur);
+			}
+			if (ByteRate && DataBytes) return static_cast<float>(DataBytes) / static_cast<float>(ByteRate);
+		}
+		return 0.0f;
+	}
+
+	void FitAudioClipDuration(FAudioClip& Clip, FLevelSequenceData& Sequence)
+	{
+		const float Seconds = ReadWaveDurationSeconds(Clip.SoundPath);
+		if (Seconds <= 0.0f) return;
+		const int32 FrameCount = std::max(1, static_cast<int32>(std::ceil(Seconds * std::max(Sequence.FrameRate, 1))));
+		Clip.EndFrame = Clip.StartFrame + FrameCount - 1;
+		Sequence.EndFrame = std::max(Sequence.EndFrame, Clip.EndFrame + 1);
+	}
+
 	template <typename T>
 	void PasteKeyAtFrame(TArray<T>& Keys, T Key, int32 Frame)
 	{
@@ -492,6 +534,7 @@ namespace
 					{
 						Panel->SetSelectedTrackIndex(Index);
 						Panel->SetSelectedKeyIndex(ClipIdx);
+						if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) Panel->PreviewAudioClip(Index, ClipIdx);
 					}
 					if (ClippingRect.Contains(Io.MousePos) && ClipRect.Contains(Io.MousePos) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 					{
@@ -730,11 +773,14 @@ namespace
 bool FSequencerPanel::Init()
 {
 	CreateNewSequence();
+	PreviewSoundManager.Initialize();
 	return true;
 }
 
 void FSequencerPanel::CreateNewSequence()
 {
+	PreviewSoundManager.SetPaused(false);
+	PreviewSoundManager.StopAll();
 	StopPilotingCamera();
 	SequenceData = FLevelSequenceData{};
 	SequenceData.FrameRate = 30;
@@ -769,6 +815,11 @@ bool FSequencerPanel::OpenSequenceAsset(const FString& Path)
 	}
 
 	SequenceData = std::move(Loaded);
+	PreviewSoundManager.SetPaused(false);
+	PreviewSoundManager.StopAll();
+	for (FSequenceTrack& Track : SequenceData.Tracks)
+		if (Track.TrackType == ESequenceTrackType::Audio)
+			for (FAudioClip& Clip : Track.AudioClips) FitAudioClipDuration(Clip, SequenceData);
 	StopPilotingCamera();
 	FLevelSequenceAsset::SpawnMissingActors(SequenceData, World);
 	CurrentAssetPath = Path;
@@ -834,6 +885,7 @@ bool FSequencerPanel::SaveSequenceAsset(const FString& Path)
 
 void FSequencerPanel::Tick(float DeltaTime)
 {
+	PreviewSoundManager.Update();
 	if (!World)
 	{
 		return;
@@ -886,6 +938,7 @@ void FSequencerPanel::Tick(float DeltaTime)
 			{
 				CurrentFrame = SequenceData.EndFrame;
 				EvaluateAtCurrentFrame(true);
+				PreviewSoundManager.StopAll();
 				PlaybackFrameFloat = static_cast<float>(SequenceData.StartFrame);
 				PreviousEvalFrame = -1.0f;
 			}
@@ -895,6 +948,7 @@ void FSequencerPanel::Tick(float DeltaTime)
 				CurrentFrame = SequenceData.EndFrame;
 				EvaluateAtCurrentFrame(true);
 				bIsPlaying = false;
+				PreviewSoundManager.StopAll();
 				return;
 			}
 		}
@@ -915,6 +969,17 @@ void FSequencerPanel::SetCurrentFrameAndEvaluate(int32 InFrame, bool bTriggerAud
 	EvaluateAtCurrentFrame(bTriggerAudio);
 }
 
+void FSequencerPanel::PreviewAudioClip(int32 TrackIndex, int32 ClipIndex)
+{
+	if (TrackIndex < 0 || TrackIndex >= SequenceData.Tracks.Num()) return;
+	const FSequenceTrack& Track = SequenceData.Tracks[TrackIndex];
+	if (Track.TrackType != ESequenceTrackType::Audio || ClipIndex < 0 || ClipIndex >= Track.AudioClips.Num()) return;
+	const FAudioClip& Clip = Track.AudioClips[ClipIndex];
+	if (Clip.SoundPath.empty()) return;
+	if (!PreviewSoundManager.PlayPreview(Clip.SoundPath, Clip.Volume))
+		StatusMessage = "Audio preview failed: " + Clip.SoundPath;
+}
+
 void FSequencerPanel::EvaluateAtCurrentFrame(bool bTriggerAudio)
 {
 	if (!World)
@@ -930,7 +995,8 @@ void FSequencerPanel::EvaluateAtCurrentFrame(bool bTriggerAudio)
 		PreviousEvalFrame,
 		bTriggerAudio,
 		&EvaluatedCameraPOV,
-		&bHasEvaluatedCameraCut);
+		&bHasEvaluatedCameraCut,
+		&PreviewSoundManager);
 	PreviousEvalFrame = EvalFrame;
 
 	if (bPilotingCamera && CurrentFrame != LastPilotFrame)
@@ -1619,21 +1685,33 @@ void FSequencerPanel::DrawToolbar()
 	if (ImGui::Button("|<"))
 	{
 		bIsPlaying = false;
+		PreviewSoundManager.SetPaused(false);
+		PreviewSoundManager.StopAll();
 		SetCurrentFrameAndEvaluate(SequenceData.StartFrame, false);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("<"))
 	{
 		bIsPlaying = false;
+		PreviewSoundManager.SetPaused(false);
+		PreviewSoundManager.StopAll();
 		SetCurrentFrameAndEvaluate(CurrentFrame - 1, false);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button(bIsPlaying ? "Pause" : "Play"))
 	{
 		bIsPlaying = !bIsPlaying;
-		if (bIsPlaying) StopPilotingCamera();
+		if (bIsPlaying)
+		{
+			StopPilotingCamera();
+			PreviewSoundManager.SetPaused(false);
+			PreviewSoundManager.StopPreview();
+			PreviousEvalFrame = PlaybackFrameFloat - 0.001f;
+		}
+		else PreviewSoundManager.SetPaused(true);
 		if (bIsPlaying && CurrentFrame >= SequenceData.EndFrame)
 		{
+			PreviewSoundManager.StopAll();
 			CurrentFrame = SequenceData.StartFrame;
 			PlaybackFrameFloat = static_cast<float>(CurrentFrame);
 			PreviousEvalFrame = -1.0f;
@@ -1643,18 +1721,24 @@ void FSequencerPanel::DrawToolbar()
 	if (ImGui::Button("Stop"))
 	{
 		bIsPlaying = false;
+		PreviewSoundManager.SetPaused(false);
+		PreviewSoundManager.StopAll();
 		SetCurrentFrameAndEvaluate(SequenceData.StartFrame, false);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
 	{
 		bIsPlaying = false;
+		PreviewSoundManager.SetPaused(false);
+		PreviewSoundManager.StopAll();
 		SetCurrentFrameAndEvaluate(CurrentFrame + 1, false);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button(">|"))
 	{
 		bIsPlaying = false;
+		PreviewSoundManager.SetPaused(false);
+		PreviewSoundManager.StopAll();
 		SetCurrentFrameAndEvaluate(SequenceData.EndFrame, false);
 	}
 
@@ -1695,7 +1779,10 @@ void FSequencerPanel::DrawToolbar()
 	ImGui::DragInt("End", &SequenceData.EndFrame, 1.0f, SequenceData.StartFrame + 1, 36000);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(50.0f);
-	ImGui::DragInt("FPS", &SequenceData.FrameRate, 1.0f, 1, 240);
+	if (ImGui::DragInt("FPS", &SequenceData.FrameRate, 1.0f, 1, 240))
+		for (FSequenceTrack& Track : SequenceData.Tracks)
+			if (Track.TrackType == ESequenceTrackType::Audio)
+				for (FAudioClip& Clip : Track.AudioClips) FitAudioClipDuration(Clip, SequenceData);
 
 	ImGui::SameLine();
 	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -2061,6 +2148,7 @@ void FSequencerPanel::DrawTrackInspector()
 				if (ImGui::InputText("Sound Path", SoundBuf, sizeof(SoundBuf)))
 				{
 					Clip.SoundPath = SoundBuf;
+					FitAudioClipDuration(Clip, SequenceData);
 				}
 				if (ImGui::Button("Browse .wav..."))
 				{
@@ -2070,9 +2158,16 @@ void FSequencerPanel::DrawTrackInspector()
 					if (!ChosenWav.empty())
 					{
 						Clip.SoundPath = ChosenWav;
+						FitAudioClipDuration(Clip, SequenceData);
 					}
 				}
-				ImGui::DragInt("Start Frame", &Clip.StartFrame, 1.0f, SequenceData.StartFrame, Clip.EndFrame);
+				ImGui::BeginDisabled(Clip.SoundPath.empty() || !PreviewSoundManager.IsAvailable());
+				if (ImGui::Button("Preview")) PreviewAudioClip(SelectedTrackIndex, i);
+				ImGui::EndDisabled();
+				ImGui::SameLine();
+				if (ImGui::Button("Stop Preview")) PreviewSoundManager.StopPreview();
+				if (ImGui::DragInt("Start Frame", &Clip.StartFrame, 1.0f, SequenceData.StartFrame, SequenceData.EndFrame))
+					FitAudioClipDuration(Clip, SequenceData);
 				ImGui::DragInt("End Frame", &Clip.EndFrame, 1.0f, Clip.StartFrame, SequenceData.EndFrame);
 				ImGui::SliderFloat("Volume", &Clip.Volume, 0.0f, 1.0f, "%.2f");
 				ImGui::Checkbox("Play as BGM", &Clip.bIsBGM);
@@ -2116,8 +2211,15 @@ void FSequencerPanel::OnRender()
 	ImGui::Separator();
 
 	const float TotalWidth = ImGui::GetContentRegionAvail().x;
-	const float InspectorWidth = std::min(340.0f, TotalWidth * 0.32f);
-	const float TimelineWidth = std::max(200.0f, TotalWidth - InspectorWidth - 8.0f);
+	const float RegionHeight = std::max(1.0f, ImGui::GetContentRegionAvail().y);
+	const float SplitterWidth = 8.0f;
+	const float Spacing = ImGui::GetStyle().ItemSpacing.x;
+	const float UsableWidth = std::max(1.0f, TotalWidth - SplitterWidth - Spacing * 2.0f);
+	const float MinTimelineWidth = std::min(240.0f, UsableWidth * 0.45f);
+	const float MinInspectorWidth = std::min(260.0f, UsableWidth - MinTimelineWidth);
+	const float MaxInspectorWidth = UsableWidth - MinTimelineWidth;
+	const float ClampedInspectorWidth = std::clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth);
+	const float TimelineWidth = UsableWidth - ClampedInspectorWidth;
 
 	ImGui::BeginChild("SequencerTimelineRegion", ImVec2(TimelineWidth, 0.0f), ImGuiChildFlags_Borders);
 	{
@@ -2145,7 +2247,16 @@ void FSequencerPanel::OnRender()
 	}
 	ImGui::EndChild();
 
-	ImGui::SameLine();
+	ImGui::SameLine(0.0f, Spacing);
+	ImGui::InvisibleButton("##SequencerInspectorSplitter", ImVec2(SplitterWidth, RegionHeight));
+	const bool bSplitterActive = ImGui::IsItemActive();
+	const bool bSplitterHovered = ImGui::IsItemHovered();
+	if (bSplitterActive || bSplitterHovered) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+	if (bSplitterActive && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		InspectorWidth = std::clamp(InspectorWidth - ImGui::GetIO().MouseDelta.x, MinInspectorWidth, MaxInspectorWidth);
+	ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+		ImGui::GetColorU32(bSplitterActive ? ImGuiCol_SeparatorActive : bSplitterHovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
+	ImGui::SameLine(0.0f, Spacing);
 
 	ImGui::BeginChild("SequencerInspectorRegion", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
 	{

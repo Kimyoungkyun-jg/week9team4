@@ -112,6 +112,7 @@ void FGameViewportClient::RenderUI()
 	WidgetRenderer->Render(WidgetRoot.get(), ViewTargets.SceneColor.get());
 	for (const FWidgetOverlay& Overlay : WidgetOverlays)
 		WidgetRenderer->Render(Overlay.Root.get(), ViewTargets.SceneColor.get());
+	OnUIRendered.Broadcast();
 }
 
 void FGameViewportClient::Init(FWorldContext& InWorldContext, UEngine* InEngine)
@@ -461,15 +462,28 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 	OutView.bIsWireframe = false;
 	if (World && World->GetPersistentLevel())
 	{
-		for (AActor* Actor : World->GetPersistentLevel()->GetActors())
+		const auto ApplySequenceEffects = [&OutView](ALevelSequenceActor* Sequence)
 		{
-			if (!Actor || !IsValid(Actor) || Actor->IsActorBeingDestroyed()) continue;
-			ALevelSequenceActor* Sequence = Cast<ALevelSequenceActor>(Actor);
-			if (!Sequence || !Sequence->HasCameraEffectsView()) continue;
+			if (!Sequence || !IsValid(Sequence) || Sequence->IsActorBeingDestroyed() ||
+				!Sequence->HasCameraEffectsView()) return false;
+			bool bHasEffectsTrack = false;
+			for (const FSequenceTrack& Track : Sequence->GetSequenceData().Tracks)
+				if (!Track.bMuted && Track.TrackType == ESequenceTrackType::CameraEffects && !Track.CameraEffectsKeys.IsEmpty())
+				{ bHasEffectsTrack = true; break; }
+			if (!bHasEffectsTrack) return false;
 			const FSequenceCameraEffects Effects = FLevelSequenceAsset::EvaluateCameraEffects(Sequence->GetSequenceData(), Sequence->GetCurrentFrame());
 			OutView.FadeOpacity = Effects.FadeOpacity;
 			OutView.LetterboxSize = Effects.LetterboxSize;
-			break;
+			return true;
+		};
+		bool bApplied = false;
+		if (APlayerController* Controller = World->GetPlayerController())
+			bApplied = ApplySequenceEffects(Cast<ALevelSequenceActor>(Controller->GetViewTarget()));
+		if (!bApplied)
+		{
+			const TArray<AActor*>& Actors = World->GetPersistentLevel()->GetActors();
+			for (int32 Index = Actors.Num() - 1; Index >= 0; --Index)
+				if (ApplySequenceEffects(Cast<ALevelSequenceActor>(Actors[Index]))) break;
 		}
 	}
 	OutView.ViewMatrix = FMatrix::MakeTranslation(POV.Location * -1.0f) *
