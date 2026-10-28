@@ -17,6 +17,13 @@ PlayerPawn.FlashlightTrailAngleStep = 2.0
 PlayerPawn.FlashlightHitStopDuration = 0.12
 PlayerPawn.FlashlightGhostStaggerDuration = 0.8
 PlayerPawn.FlashlightFlashMultiplier = 3.0
+-- Perlin camera shake on a successful hitstop. Scale = 0 or Enabled = false disables it.
+PlayerPawn.FlashlightHitCameraShakeEnabled = true
+PlayerPawn.FlashlightHitCameraShakeDuration = 0.2
+PlayerPawn.FlashlightHitCameraShakeScale = 1.0
+PlayerPawn.FlashlightHitCameraShakeFrequency = 28.0 -- Noise lattice units per second.
+PlayerPawn.FlashlightHitCameraShakeLocationAmplitude = FVector(0.025, 0.04, 0.025)
+PlayerPawn.FlashlightHitCameraShakeRotationAmplitude = FRotator(1.5, 1.0, 0.6)
 -- Camera-local metres: X forward, Y right, Z up.
 PlayerPawn.FlashlightSwingPivot = FVector(0.5, -0.0, -0.2)
 -- Fan coordinate orientation in degrees: Pitch, Yaw, Roll. (0,0,0) is horizontal.
@@ -44,6 +51,13 @@ function PlayerPawn:ApplyFlashlightSettings()
         PlayerPawn.FlashlightGhostStaggerDuration,
         PlayerPawn.FlashlightFlashMultiplier,
         PlayerPawn.FlashlightTrailAngleStep)
+    player:ConfigureFlashlightHitCameraShake(
+        PlayerPawn.FlashlightHitCameraShakeEnabled,
+        PlayerPawn.FlashlightHitCameraShakeDuration,
+        PlayerPawn.FlashlightHitCameraShakeScale,
+        PlayerPawn.FlashlightHitCameraShakeFrequency,
+        PlayerPawn.FlashlightHitCameraShakeLocationAmplitude,
+        PlayerPawn.FlashlightHitCameraShakeRotationAmplitude)
 end
 
 function PlayerPawn:BeginPlay()

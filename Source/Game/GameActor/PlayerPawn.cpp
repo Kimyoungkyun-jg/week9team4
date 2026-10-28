@@ -145,6 +145,16 @@ void APlayerPawn::ConfigureFlashlightAttack(float WindupSeconds, float RecoveryS
 	FlashlightAttack->TrailAngleStep = std::max(0.0f, TrailAngleStep);
 }
 
+void APlayerPawn::ConfigureFlashlightHitCameraShake(bool bEnabled, float Duration, float Scale, float Frequency, const FVector& LocationAmplitude, const FRotator& RotationAmplitude)
+{
+	FlashlightAttack->bHitCameraShakeEnabled = bEnabled;
+	FlashlightAttack->HitCameraShakeDuration = std::max(0.0f, Duration);
+	FlashlightAttack->HitCameraShakeScale = std::max(0.0f, Scale);
+	FlashlightAttack->HitCameraShakeFrequency = std::max(0.0f, Frequency);
+	FlashlightAttack->HitCameraShakeLocationAmplitude = LocationAmplitude;
+	FlashlightAttack->HitCameraShakeRotationAmplitude = RotationAmplitude;
+}
+
 void APlayerPawn::PrimaryAction()
 {
 	if (FlashlightAttack) FlashlightAttack->TryStartAttack();

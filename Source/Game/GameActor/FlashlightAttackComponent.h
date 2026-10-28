@@ -2,6 +2,7 @@
 
 #include "Components/ActorComponent.h"
 #include "Math/Transform.h"
+#include "Camera/CameraShake.h"
 
 class UPrimitiveComponent;
 
@@ -22,6 +23,12 @@ class UFlashlightAttackComponent : public UActorComponent
 		PROPERTY(SwingHandRadius)
 		PROPERTY(CapsuleRadius)
 		PROPERTY(HitStopDuration)
+		PROPERTY(bHitCameraShakeEnabled)
+		PROPERTY(HitCameraShakeDuration)
+		PROPERTY(HitCameraShakeScale)
+		PROPERTY(HitCameraShakeFrequency)
+		PROPERTY(HitCameraShakeLocationAmplitude)
+		PROPERTY(HitCameraShakeRotationAmplitude)
 		PROPERTY(GhostStaggerDuration)
 		PROPERTY(FlashMultiplier)
 		PROPERTY(TrailAngleStep)
@@ -51,6 +58,13 @@ public:
 	float SwingHandRadius = 0.35f; // Distance from the fan centre to the flashlight root, in metres.
 	float CapsuleRadius = 0.18f;
 	float HitStopDuration = 0.12f;
+	// Perlin impact shake; duration includes its short attack and fade-out.
+	bool bHitCameraShakeEnabled = true;
+	float HitCameraShakeDuration = 0.2f;
+	float HitCameraShakeScale = 1.0f;
+	float HitCameraShakeFrequency = 28.0f; // Noise lattice units per second.
+	FVector HitCameraShakeLocationAmplitude = FVector(0.025f, 0.04f, 0.025f); // Camera-local metres.
+	FRotator HitCameraShakeRotationAmplitude = FRotator(1.5f, 1.0f, 0.6f); // Degrees.
 	float GhostStaggerDuration = 0.8f;
 	float FlashMultiplier = 3.0f;
 	float TrailAngleStep = 2.0f; // Successive visual-only capsules lag by this many fan degrees.
@@ -61,6 +75,8 @@ private:
 	void HandleAttackOverlap(UPrimitiveComponent* Self, UPrimitiveComponent* Other);
 	void BeginHitStop();
 	void EndHitStop();
+	void StartHitCameraShake();
+	void StopHitCameraShake();
 	bool CanContinue() const;
 	EFlashlightAttackPhase Phase = EFlashlightAttackPhase::Idle;
 	float PhaseElapsed = 0.0f;
@@ -69,4 +85,6 @@ private:
 	float HitStopRemaining = 0.0f;
 	float PlayerTimeDilationBeforeStop = 1.0f;
 	float FlashlightTimeDilationBeforeStop = 1.0f;
+	FCameraShakeHandle HitCameraShakeHandle;
+	uint32 HitCameraShakeSeed = 0;
 };
