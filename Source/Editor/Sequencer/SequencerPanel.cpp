@@ -2015,9 +2015,33 @@ void FSequencerPanel::DrawTrackInspector()
 				{
 					if (FEditorViewportClient* Client = ViewportsPanel->GetViewportClient(ViewportsPanel->GetActiveViewIndex()))
 					{
-						Key.Location = Client->GetViewLocation();
-						Key.Rotation = Client->GetViewRotation();
+						const FVector CapturedLoc = Client->GetViewLocation();
+						const FRotator CapturedRot = Client->GetViewRotation();
+						Key.Location = CapturedLoc;
+						Key.Rotation = CapturedRot;
+
+						// 타임라인 커서를 키프레임 프레임과 동기화
+						CurrentFrame = Key.Frame;
+
+						// 월드 대상 액터의 트랜스폼 즉시 갱신
+						if (World)
+						{
+							if (AActor* Target = FLevelSequenceAsset::FindActorByNameInWorld(World, Track.TargetActorName))
+							{
+								Target->SetActorLocation(CapturedLoc, false);
+								Target->SetActorRotation(CapturedRot, false);
+							}
+						}
+
+						// Camera Lock으로 인해 방금 잡은 뷰포트 카메라가 시퀀서 컷으로 덮어씌워지는 것 방지
+						const bool bPrevLock = bCameraLock;
+						bCameraLock = false;
 						EvaluateAtCurrentFrame(false);
+						bCameraLock = bPrevLock;
+
+						// 뷰포트 카메라 위치를 방금 캡처한 위치로 확실하게 유지
+						Client->SetViewLocation(CapturedLoc);
+						Client->SetViewRotation(CapturedRot);
 					}
 				}
 			}

@@ -50,6 +50,9 @@ void ALevelSequenceActor::BeginPlay()
 void ALevelSequenceActor::EndPlay()
 {
 	StopSequence();
+	RestorePlayerInput();
+	OnSequenceFinished.Clear();
+	LuaFinishedCallback = sol::nil;
 	Super::EndPlay();
 }
 
@@ -87,6 +90,22 @@ void ALevelSequenceActor::PlaySequence()
 	bIsPausedSequence = false;
 	bHoldFinalCameraEffects = false;
 
+	if (bDisablePlayerInput)
+	{
+		if (UWorld* CurrentWorld = GetWorld())
+		{
+			if (APlayerController* PC = CurrentWorld->GetPlayerController())
+			{
+				if (!bInputDisabledBySequence)
+				{
+					PC->SetIgnoreMoveInput(true);
+					PC->SetIgnoreLookInput(true);
+					bInputDisabledBySequence = true;
+				}
+			}
+		}
+	}
+
 	ApplyFrameEvaluation(CurrentFrame, PreviousFrame, true);
 	PreviousFrame = CurrentFrame;
 }
@@ -105,6 +124,7 @@ void ALevelSequenceActor::StopSequence()
 	bIsPausedSequence = false;
 	bHoldFinalCameraEffects = false;
 	bHasActiveCameraCut = false;
+	RestorePlayerInput();
 	RestorePlayerCameraViewTarget();
 }
 
@@ -156,6 +176,10 @@ void ALevelSequenceActor::Tick(float DeltaTime)
 		StopSequence();
 		bHoldFinalCameraEffects = true;
 		OnSequenceFinished.Broadcast();
+		if (LuaFinishedCallback.valid())
+		{
+			LuaFinishedCallback();
+		}
 		return;
 	}
 
@@ -220,8 +244,25 @@ void ALevelSequenceActor::ApplyFrameEvaluation(float EvalFrame, float PrevEvalFr
 	}
 }
 
+void ALevelSequenceActor::RestorePlayerInput()
+{
+	if (bInputDisabledBySequence)
+	{
+		bInputDisabledBySequence = false;
+		if (UWorld* CurrentWorld = GetWorld())
+		{
+			if (APlayerController* PC = CurrentWorld->GetPlayerController())
+			{
+				PC->SetIgnoreMoveInput(false);
+				PC->SetIgnoreLookInput(false);
+			}
+		}
+	}
+}
+
 void ALevelSequenceActor::RestorePlayerCameraViewTarget()
 {
+	RestorePlayerInput();
 	if (!bOverrodeCameraTarget)
 	{
 		return;
@@ -244,7 +285,14 @@ void ALevelSequenceActor::RestorePlayerCameraViewTarget()
 			{
 				Fallback = reinterpret_cast<AActor*>(CurrentWorld->GetPlayerPawn());
 			}
-			PC->SetViewTarget(Fallback);
+			if (RestoreBlendTime > 0.0f)
+			{
+				PC->SetViewTargetWithBlend(Fallback, RestoreBlendTime, VTBlend_Cubic, 2.0f);
+			}
+			else
+			{
+				PC->SetViewTarget(Fallback);
+			}
 		}
 	}
 	PreviousCameraTarget = nullptr;

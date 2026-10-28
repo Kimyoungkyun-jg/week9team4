@@ -10,8 +10,27 @@
 class APlayerController;
 class UCameraModifier;
 
+enum EViewTargetBlendFunction
+{
+	VTBlend_Linear,
+	VTBlend_Cubic,
+	VTBlend_EaseIn,
+	VTBlend_EaseOut,
+	VTBlend_EaseInOut,
+	VTBlend_MAX
+};
+
+// 시점 전환 보간 매개변수
+struct FViewTargetTransitionParams
+{
+	float BlendTime = 0.0f;
+	EViewTargetBlendFunction BlendFunction = VTBlend_Cubic;
+	float BlendExp = 2.0f;
+	bool bLockOutgoing = false;
+};
+
 // 카메라 시점 계산의 기준 대상 정보 및 블렌드 지원
-struct FViewTarget
+struct FTViewTarget
 {
 	AActor* Target = nullptr;
 	FMinimalViewInfo POV;
@@ -30,7 +49,11 @@ public:
 
 	void Initialize(APlayerController* InOwner);
 	void SetViewTarget(AActor* InTarget);
+	void SetViewTargetWithBlend(AActor* NewTarget, float BlendTime = 0.0f, EViewTargetBlendFunction BlendFunc = VTBlend_Cubic, float BlendExp = 2.0f, bool bLockOutgoing = false);
 	AActor* GetViewTarget() const;
+	AActor* GetPendingViewTarget() const;
+	bool HasActiveViewTargetBlend() const { return PendingViewTarget.Target != nullptr && BlendTimeToGo > 0.0f; }
+
 	APlayerController* GetOwningPlayerController() const { return PCOwner; }
 	UCameraModifier* AddNewCameraModifier(UClass* ModifierClass);
 	void RemoveCameraModifier(UCameraModifier* Modifier);
@@ -60,9 +83,13 @@ public:
 protected:
 	void UpdateCameraFade(float DeltaTime);
 	void UpdateCameraLetterbox(float DeltaTime);
+	void UpdateViewTarget(FTViewTarget& OutVT, float DeltaTime);
 
 	APlayerController* PCOwner = nullptr;
-	AActor* ViewTarget = nullptr;
+	FTViewTarget ViewTarget;
+	FTViewTarget PendingViewTarget;
+	FViewTargetTransitionParams BlendParams;
+	float BlendTimeToGo = 0.0f;
 	TArray<UCameraModifier*> Modifiers;
 	FMinimalViewInfo CameraCachePOV;
 	bool bHasCameraCache = false;

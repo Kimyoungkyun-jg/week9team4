@@ -22,8 +22,8 @@ public:
 	void BeginPlay() override;
 	void EndPlay() override;
 	void Tick(float DeltaTime) override;
-	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying; }
-	bool WantsMouseCapture() const { return !bResultShown; }
+	bool AllowsPlayerControllerInput() const override { return !bResultShown && !bGhostHitPlaying && !bIntroPlaying; }
+	bool WantsMouseCapture() const { return !bResultShown && !bIntroPlaying; }
 	int32 GetCollectedCoinCount() const { return GetCoinCount(); }
 	int32 GetMaxCoinCount() const { return MaxCoinCount; }
 	int32 GetPlayerLife() const;
@@ -38,6 +38,8 @@ private:
 	class ULuaScriptComponent* ScriptComponent = nullptr;
 	class UImageWidget* FadeImage = nullptr;
 	class ALevelSequenceActor* ResultSequenceActor = nullptr;
+	class ALevelSequenceActor* IntroSequenceActor = nullptr;
+	bool bIntroPlaying = false;
 	uint64 FadeOverlayHandle = 0;
 	float FadeElapsed = 0.0f;
 	bool bPendingClear = false;
@@ -64,6 +66,8 @@ private:
 	void BeginResultFade(bool bCleared);
 	void OnResultFadeRendered();
 	void OnResultSequenceFinished();
+	void PlayIntroSequence();
+	void OnIntroSequenceFinished();
 	void TickGhostHit(float DeltaTime);
 	void ResolveGhostHit();
 	void ReleaseGhostHitCamera();

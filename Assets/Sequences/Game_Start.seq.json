@@ -1,0 +1,204 @@
+{
+    "EndFrame": 90,
+    "FrameRate": 30,
+    "SpawnableActors": [
+        {
+            "ActorName": "IntroCamera",
+            "ClassName": "ACameraActor",
+            "InitialFOV": 80.0,
+            "Location": [
+                -0.5662287473678589,
+                0.004281619563698769,
+                0.6311342120170593
+            ],
+            "Rotation": [
+                13.199984550476074,
+                -2.6000003814697266,
+                0.0
+            ],
+            "Scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "StartFrame": 0,
+    "Tracks": [
+        {
+            "AudioClips": [],
+            "CameraCuts": [
+                {
+                    "BlendTime": 0.0,
+                    "CameraActorName": "IntroCamera",
+                    "EndFrame": 90,
+                    "StartFrame": 0
+                }
+            ],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "",
+            "TrackName": "Camera Cuts",
+            "TrackType": 0,
+            "TransformKeys": [],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [],
+            "FOVKeys": [],
+            "TargetActorName": "IntroCamera",
+            "TrackName": "IntroCamera Transform",
+            "TrackType": 1,
+            "TransformKeys": [
+                {
+                    "Frame": 0,
+                    "InterpMode": 1,
+                    "Location": [
+                        1.9158395528793335,
+                        0.010554462671279907,
+                        1.4310665130615234
+                    ],
+                    "Rotation": [
+                        46.60006332397461,
+                        178.79978942871094,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 23,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.07543712854385376,
+                        2.202749729156494,
+                        1.1018129587173462
+                    ],
+                    "Rotation": [
+                        30.000049591064453,
+                        -85.19995880126953,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 45,
+                    "InterpMode": 1,
+                    "Location": [
+                        -1.2596932649612427,
+                        0.09089494496583939,
+                        1.0305317640304565
+                    ],
+                    "Rotation": [
+                        40.400089263916016,
+                        -2.999999523162842,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 68,
+                    "InterpMode": 1,
+                    "Location": [
+                        0.028483398258686066,
+                        -1.68015456199646,
+                        0.9442006349563599
+                    ],
+                    "Rotation": [
+                        43.20002746582031,
+                        83.59990692138672,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "Frame": 90,
+                    "InterpMode": 1,
+                    "Location": [
+                        -0.5662287473678589,
+                        0.004281619563698769,
+                        0.6311342120170593
+                    ],
+                    "Rotation": [
+                        13.199984550476074,
+                        -2.6000003814697266,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": true
+        },
+        {
+            "AudioClips": [],
+            "CameraCuts": [],
+            "CameraEffectsKeys": [
+                {
+                    "FadeOpacity": 1.0,
+                    "Frame": 0,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.10000000149011612
+                },
+                {
+                    "FadeOpacity": 0.0,
+                    "Frame": 15,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.10000000149011612
+                },
+                {
+                    "FadeOpacity": 0.0,
+                    "Frame": 75,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.10000000149011612
+                },
+                {
+                    "FadeOpacity": 0.0,
+                    "Frame": 90,
+                    "InterpMode": 0,
+                    "LetterboxSize": 0.0
+                }
+            ],
+            "FOVKeys": [],
+            "TargetActorName": "",
+            "TrackName": "Camera Effects",
+            "TrackType": 5,
+            "TransformKeys": [],
+            "VisibilityKeys": [],
+            "bConstantSpeed": false,
+            "bExpanded": true,
+            "bMuted": false,
+            "bSmoothPath": false
+        }
+    ],
+    "Version": 2,
+    "bLoop": false
+}

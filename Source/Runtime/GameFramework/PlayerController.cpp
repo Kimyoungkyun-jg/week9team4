@@ -46,10 +46,47 @@ void APlayerController::SetViewTarget(AActor* InTarget)
 	if (APlayerCameraManager* Manager = GetPlayerCameraManager()) Manager->SetViewTarget(InTarget);
 }
 
+void APlayerController::SetViewTargetWithBlend(AActor* NewTarget, float BlendTime, EViewTargetBlendFunction BlendFunc, float BlendExp, bool bLockOutgoing)
+{
+	if (APlayerCameraManager* Manager = GetPlayerCameraManager())
+	{
+		Manager->SetViewTargetWithBlend(NewTarget, BlendTime, BlendFunc, BlendExp, bLockOutgoing);
+	}
+}
+
 AActor* APlayerController::GetViewTarget() const
 {
 	if (APlayerCameraManager* Manager = GetPlayerCameraManager()) return Manager->GetViewTarget();
 	return nullptr;
+}
+
+void APlayerController::SetIgnoreMoveInput(bool bNewMoveInput)
+{
+	IgnoreMoveInputCount += bNewMoveInput ? 1 : -1;
+	IgnoreMoveInputCount = std::max(0, IgnoreMoveInputCount);
+}
+
+void APlayerController::SetIgnoreLookInput(bool bNewLookInput)
+{
+	IgnoreLookInputCount += bNewLookInput ? 1 : -1;
+	IgnoreLookInputCount = std::max(0, IgnoreLookInputCount);
+}
+
+void APlayerController::SetCinematicMode(bool bInCinematicMode, bool bHidePlayer, bool bAffectsMovement, bool bAffectsTurning)
+{
+	bCinematicMode = bInCinematicMode;
+	if (bAffectsMovement)
+	{
+		SetIgnoreMoveInput(bInCinematicMode);
+	}
+	if (bAffectsTurning)
+	{
+		SetIgnoreLookInput(bInCinematicMode);
+	}
+	if (PossessedPawn && PossessedPawn->GetRootComponent())
+	{
+		PossessedPawn->GetRootComponent()->SetVisibility(!bHidePlayer);
+	}
 }
 
 void APlayerController::UpdateCameraManager(float DeltaTime)
@@ -73,19 +110,27 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 		ClearInputState();
 		return;
 	}
-	const float Forward = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::W)]) -
-		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::S)]);
-	const float Right = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::D)]) -
-		static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::A)]);
-	PossessedPawn->AddControllerYawInput(MouseAxisX * LookSensitivity);
-	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
-	PossessedPawn->AddControllerPitchInput(MouseAxisY * LookSensitivity);
-	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
+
+	if (!IsLookInputIgnored())
+	{
+		PossessedPawn->AddControllerYawInput(MouseAxisX * LookSensitivity);
+		if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
+		PossessedPawn->AddControllerPitchInput(MouseAxisY * LookSensitivity);
+		if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
+	}
 	MouseAxisX = MouseAxisY = 0.0f;
-	const FQuat Rotation = PossessedPawn->GetActorRotation().Quaternion();
-	if (Forward != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetForwardVector(), Forward);
-	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
-	if (Right != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetRightVector(), Right);
+
+	if (!IsMoveInputIgnored())
+	{
+		const float Forward = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::W)]) -
+			static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::S)]);
+		const float Right = static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::D)]) -
+			static_cast<float>(bKeyDown[static_cast<int32>(EKeyCode::A)]);
+		const FQuat Rotation = PossessedPawn->GetActorRotation().Quaternion();
+		if (Forward != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetForwardVector(), Forward);
+		if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
+		if (Right != 0.0f) PossessedPawn->AddMovementInput(Rotation.GetRightVector(), Right);
+	}
 }
 
 void APlayerController::GetPlayerViewCamera(FVector& OutLocation, FRotator& OutRotation) const

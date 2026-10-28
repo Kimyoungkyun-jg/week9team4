@@ -145,13 +145,9 @@ void APacmanGameMode::BeginPlay()
 	}
 
 	MaxCoinCount = std::min(MaxCoinCount, ClearCoinCount);
-	if (AGameHUD* HUD = World->GetHUD())
-	{
-		HUD->SetText("Coins", "0 / " + std::to_string(MaxCoinCount));
-		if (APlayerPawn* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
-			HUD->SetText("Life", std::to_string(LifeCount));
-	}
 	HTR_LOG(Info, "PacmanGameMode: spawned {} coins", MaxCoinCount);
+
+	PlayIntroSequence();
 }
 
 int32 APacmanGameMode::GetPlayerLife() const
@@ -363,6 +359,8 @@ void APacmanGameMode::EndPlay()
 				Viewport->OnUIRendered.RemoveAll(this);
 	if (ResultSequenceActor && IsValid(ResultSequenceActor))
 		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	if (IntroSequenceActor && IsValid(IntroSequenceActor))
+		IntroSequenceActor->OnSequenceFinished.RemoveAll(this);
 	Super::EndPlay();
 }
 
@@ -416,20 +414,30 @@ void APacmanGameMode::OnResultFadeRendered()
 	if (!Viewport) return;
 	Viewport->OnUIRendered.RemoveAll(this);
 
+	// 이전 피격 페이드가 화면을 가리지 않도록 리셋
+	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+	{
+		CameraManager->StopCameraFade();
+	}
+
 	ALevelSequenceActor* Sequence = World->SpawnActor<ALevelSequenceActor>();
 	if (Sequence)
 	{
 		Sequence->SetSequenceAssetPath(bPendingClear
 			? "Assets/Sequences/Pacman_Clear.seq.json"
 			: "Assets/Sequences/Game_Over.seq.json");
+		Sequence->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnResultSequenceFinished);
 		Sequence->PlaySequence();
 		if (Sequence->IsPlayingSequence())
 		{
 			ResultSequenceActor = Sequence;
-			Sequence->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnResultSequenceFinished);
 			Viewport->ClearWidgetRoot();
 		}
-		else World->DestroyActor(Sequence);
+		else
+		{
+			Sequence->OnSequenceFinished.RemoveAll(this);
+			World->DestroyActor(Sequence);
+		}
 	}
 	if (!ResultSequenceActor)
 	{
@@ -447,34 +455,142 @@ void APacmanGameMode::OnResultFadeRendered()
 		FadeImage = nullptr;
 		FadePhase = EResultFadePhase::Complete;
 	}
+
+	// 고스트 피격 상태 완전 정리 (HitOverlayHandle 상태와 무관하게 항상 정리)
+	if (HitGhost) HitGhost->SetHitFrozen(false);
+	HitGhost = nullptr;
 	if (HitOverlayHandle)
 	{
-		if (HitGhost) HitGhost->SetHitFrozen(false);
-		HitGhost = nullptr;
 		HUD->RemoveOverlay(HitOverlayHandle);
 		HitOverlayHandle = 0;
-		HitImage = nullptr;
-		GhostHitPhase = EGhostHitPhase::None;
-		bGhostHitPlaying = false;
-		ReleaseGhostHitCamera();
 	}
+	HitImage = nullptr;
+	GhostHitPhase = EGhostHitPhase::None;
+	bGhostHitPlaying = false;
+	ReleaseGhostHitCamera();
 }
 
 void APacmanGameMode::OnResultSequenceFinished()
 {
-	if (ResultSequenceActor && IsValid(ResultSequenceActor))
-		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	HTR_LOG(Info, "PacmanGameMode: OnResultSequenceFinished called (bPendingClear={})", bPendingClear);
+	ALevelSequenceActor* SequenceToDestroy = ResultSequenceActor;
 	ResultSequenceActor = nullptr;
+
+	if (SequenceToDestroy && IsValid(SequenceToDestroy))
+	{
+		SequenceToDestroy->OnSequenceFinished.RemoveAll(this);
+		SequenceToDestroy->StopSequence();
+		if (UWorld* World = GetWorld())
+		{
+			World->DestroyActor(SequenceToDestroy);
+		}
+	}
+
+	// 혹시 남아있는 카메라 페이드 강제 종료
+	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+	{
+		CameraManager->StopCameraFade();
+	}
+
 	if (UWorld* World = GetWorld())
+	{
 		if (AGameHUD* HUD = World->GetHUD())
 		{
 			if (bPendingClear)
 			{
-				if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD)) PacmanHUD->ShowNameEntry();
+				if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD))
+				{
+					PacmanHUD->ShowNameEntry();
+				}
 			}
 			else if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+			{
 				Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+			}
 		}
+	}
+}
+
+void APacmanGameMode::PlayIntroSequence()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	AGameHUD* HUD = World->GetHUD();
+	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
+
+	// 인트로 컷신 중에는 인게임 HUD를 비워둠
+	if (Viewport)
+	{
+		Viewport->ClearWidgetRoot();
+	}
+
+	IntroSequenceActor = World->SpawnActor<ALevelSequenceActor>();
+	if (IntroSequenceActor)
+	{
+		IntroSequenceActor->SetSequenceAssetPath("Assets/Sequences/Game_Start.seq.json");
+		IntroSequenceActor->SetDisablePlayerInput(true);
+		IntroSequenceActor->SetRestoreBlendTime(1.0f); // 컷신 종료 후 플레이어 1인칭으로 1초간 스르륵 블렌드
+		IntroSequenceActor->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnIntroSequenceFinished);
+		IntroSequenceActor->PlaySequence();
+
+		if (IntroSequenceActor->IsPlayingSequence())
+		{
+			bIntroPlaying = true;
+			HTR_LOG(Info, "PacmanGameMode: Started intro sequence");
+			return;
+		}
+		else
+		{
+			IntroSequenceActor->OnSequenceFinished.RemoveAll(this);
+			World->DestroyActor(IntroSequenceActor);
+			IntroSequenceActor = nullptr;
+		}
+	}
+
+	// 시퀀스 파일이 없거나 재생 실패 시 즉시 인게임 UI 켜고 타이머 시작
+	OnIntroSequenceFinished();
+}
+
+void APacmanGameMode::OnIntroSequenceFinished()
+{
+	HTR_LOG(Info, "PacmanGameMode: Intro sequence finished");
+	bIntroPlaying = false;
+
+	ALevelSequenceActor* SequenceToDestroy = IntroSequenceActor;
+	IntroSequenceActor = nullptr;
+	if (SequenceToDestroy && IsValid(SequenceToDestroy))
+	{
+		SequenceToDestroy->OnSequenceFinished.RemoveAll(this);
+		SequenceToDestroy->StopSequence();
+		if (UWorld* World = GetWorld())
+		{
+			World->DestroyActor(SequenceToDestroy);
+		}
+	}
+
+	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+	{
+		CameraManager->StopCameraFade();
+	}
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	// 1. 인게임 HUD 표시
+	if (AGameHUD* HUD = World->GetHUD())
+	{
+		HUD->ShowWidget("Assets/UI/GameUI.ui.json");
+		HUD->SetText("Coins", "0 / " + std::to_string(MaxCoinCount));
+		if (APlayerPawn* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
+			HUD->SetText("Life", std::to_string(LifeCount));
+	}
+
+	// 2. 게임 타이머 시작 (컷신 이후 실제 플레이 시간만 측정)
+	if (UGameInstance* GameInstance = World->GetGameInstance())
+	{
+		GameInstance->StartRunTimer();
+	}
 }
 
 void APacmanGameMode::Tick(float DeltaTime)
