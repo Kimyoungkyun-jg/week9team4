@@ -4,6 +4,7 @@
 #include "CoinActor.h"
 #include "GhostActor.h"
 #include "PlayerPawn.h"
+#include "FlashlightAttackComponent.h"
 #include "PacmanHUD.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
@@ -12,6 +13,7 @@
 #include "GameFramework/Actor/PointLightActor.h"
 #include "GameFramework/GameHUD.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/LuaScriptComponent.h"
 #include "Components/CharacterMovementComponent.h"
@@ -51,9 +53,6 @@ APacmanGameMode::APacmanGameMode()
 void APacmanGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-	if (UWorld* PlayWorld = GetWorld())
-		if (UGameInstance* GameInstance = PlayWorld->GetGameInstance())
-			if (!GameInstance->IsRunTimerRunning()) GameInstance->StartRunTimer();
 	if (ScriptComponent)
 	{
 		sol::table Script = ScriptComponent->GetScriptInstance();
@@ -144,13 +143,9 @@ void APacmanGameMode::BeginPlay()
 	}
 
 	MaxCoinCount = std::min(MaxCoinCount, ClearCoinCount);
-	if (AGameHUD* HUD = World->GetHUD())
-	{
-		HUD->SetText("Coins", "0 / " + std::to_string(MaxCoinCount));
-		if (APlayerPawn* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
-			HUD->SetText("Life", std::to_string(LifeCount));
-	}
 	HTR_LOG(Info, "PacmanGameMode: spawned {} coins", MaxCoinCount);
+
+	PlayIntroSequence();
 }
 
 int32 APacmanGameMode::GetPlayerLife() const
@@ -162,7 +157,8 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 {
 	UWorld* World = GetWorld();
 	if (!World || !Ghost || !Player || Player != World->GetPlayerPawn() ||
-		bResultShown || bGhostHitPlaying || GhostHitCooldown > 0.0f || LifeCount <= 0) return;
+		!AllowsPlayerControllerInput() || GhostHitCooldown > 0.0f || LifeCount <= 0 ||
+		!Ghost->CanDealContactDamage()) return;
 	AGameHUD* HUD = World->GetHUD();
 	UCameraComponent* Camera = Player->GetCameraComponent();
 	if (!HUD || !Camera || !Ghost->GetEyesMesh()) return;
@@ -186,6 +182,7 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 	SavedCameraFov = Camera->GetFieldOfView();
 	SavedGhostRotation = Ghost->GetActorRotation();
 	bGhostHitPlaying = true;
+	if (auto* Attack = Player->GetFlashlightAttackComponent()) Attack->CancelAttack();
 	if (auto* Movement = Player->GetCharacterMovement()) Movement->SetMovementEnabled(false);
 	Ghost->SetHitFrozen(true);
 	const FVector Offset = Player->GetActorLocation() - Ghost->GetActorLocation();
@@ -252,6 +249,10 @@ void APacmanGameMode::ResolveGhostHit()
 		if (HitPlayer) HitPlayer->RespawnAtPlayerStart();
 		GhostHitPhase = EGhostHitPhase::FadeFromBlack;
 		GhostHitElapsed = 0.0f;
+		if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+		{
+			CameraManager->FadeIn(0.35f, FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), false);
+		}
 	}
 	else
 	{
@@ -269,7 +270,7 @@ void APacmanGameMode::ResolveGhostHit()
 		{
 			if (HitGhost) HitGhost->SetHitFrozen(false);
 			HitGhost = nullptr;
-			if (HUD) HUD->RemoveOverlay(HitOverlayHandle);
+			if (HUD && HitOverlayHandle) HUD->RemoveOverlay(HitOverlayHandle);
 			HitOverlayHandle = 0;
 			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
@@ -305,31 +306,35 @@ void APacmanGameMode::ReleaseGhostHitCamera()
 
 void APacmanGameMode::TickGhostHit(float DeltaTime)
 {
-	if (GhostHitPhase == EGhostHitPhase::None || !HitImage) return;
+	if (GhostHitPhase == EGhostHitPhase::None) return;
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
-	if (Viewport) HitImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
+	if (Viewport && HitImage) HitImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
 	GhostHitElapsed += std::max(0.0f, DeltaTime);
 	switch (GhostHitPhase)
 	{
 	case EGhostHitPhase::CloseUp:
-		HitImage->SetTint({0.8f, 0.0f, 0.0f, 0.05f + 0.07f * std::abs(std::sin(GhostHitElapsed * 11.0f))});
-		if (GhostHitElapsed >= 0.55f) { GhostHitPhase = EGhostHitPhase::FadeToBlack; GhostHitElapsed = 0.0f; }
+		if (HitImage) HitImage->SetTint({0.8f, 0.0f, 0.0f, 0.05f + 0.07f * std::abs(std::sin(GhostHitElapsed * 11.0f))});
+		if (GhostHitElapsed >= 0.55f) {
+			GhostHitPhase = EGhostHitPhase::FadeToBlack;
+			GhostHitElapsed = 0.0f;
+			if (HUD && HitOverlayHandle) { HUD->RemoveOverlay(HitOverlayHandle); HitOverlayHandle = 0; }
+			HitImage = nullptr;
+			if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+			{
+				CameraManager->FadeOut(0.22f, FLinearColor(0.0f, 0.0f, 0.0f, 1.0f), true, false);
+			}
+		}
 		break;
 	case EGhostHitPhase::FadeToBlack:
-		HitImage->SetTint({0.0f, 0.0f, 0.0f, std::clamp(GhostHitElapsed / 0.22f, 0.0f, 1.0f)});
 		if (GhostHitElapsed >= 0.22f) ResolveGhostHit();
 		break;
 	case EGhostHitPhase::FadeFromBlack:
-		HitImage->SetTint({0.0f, 0.0f, 0.0f, 1.0f - std::clamp(GhostHitElapsed / 0.35f, 0.0f, 1.0f)});
 		if (GhostHitElapsed >= 0.35f)
 		{
 			if (HitGhost && LifeCount > 0) HitGhost->SetHitFrozen(false);
 			HitGhost = nullptr;
-			if (HUD) HUD->RemoveOverlay(HitOverlayHandle);
-			HitOverlayHandle = 0;
-			HitImage = nullptr;
 			GhostHitPhase = EGhostHitPhase::None;
 			bGhostHitPlaying = false;
 			ReleaseGhostHitCamera();
@@ -354,6 +359,10 @@ void APacmanGameMode::EndPlay()
 				Viewport->OnUIRendered.RemoveAll(this);
 	if (ResultSequenceActor && IsValid(ResultSequenceActor))
 		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	if (IntroSequenceActor && IsValid(IntroSequenceActor))
+		IntroSequenceActor->OnSequenceFinished.RemoveAll(this);
+	OnGameplayStarted.Clear();
+	OnClearCinematicStarted.Clear();
 	Super::EndPlay();
 }
 
@@ -362,6 +371,7 @@ void APacmanGameMode::BeginResultFade(bool bCleared)
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
 	if (!HUD) return;
+
 	FadeOverlayHandle = HUD->AddOverlay("Assets/UI/ResultFade.ui.json", true);
 	FadeImage = Cast<UImageWidget>(HUD->FindWidget("ResultFade"));
 	if (!FadeOverlayHandle || !FadeImage)
@@ -373,6 +383,7 @@ void APacmanGameMode::BeginResultFade(bool bCleared)
 	}
 	if (FGameViewportClient* Viewport = HUD->GetGameViewport())
 		FadeImage->SetSize({static_cast<float>(Viewport->GetWidth()), static_cast<float>(Viewport->GetHeight())});
+
 	bPendingClear = bCleared;
 	CommitGameResult(bCleared);
 	FadeElapsed = 0.0f;
@@ -405,20 +416,35 @@ void APacmanGameMode::OnResultFadeRendered()
 	if (!Viewport) return;
 	Viewport->OnUIRendered.RemoveAll(this);
 
+	// 이전 피격 페이드가 화면을 가리지 않도록 리셋
+	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+	{
+		CameraManager->StopCameraFade();
+	}
+
 	ALevelSequenceActor* Sequence = World->SpawnActor<ALevelSequenceActor>();
 	if (Sequence)
 	{
 		Sequence->SetSequenceAssetPath(bPendingClear
 			? "Assets/Sequences/Pacman_Clear.seq.json"
 			: "Assets/Sequences/Game_Over.seq.json");
+		Sequence->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnResultSequenceFinished);
 		Sequence->PlaySequence();
 		if (Sequence->IsPlayingSequence())
 		{
 			ResultSequenceActor = Sequence;
-			Sequence->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnResultSequenceFinished);
+			if (bPendingClear)
+			{
+				bClearCinematicStarted = true;
+				OnClearCinematicStarted.Broadcast();
+			}
 			Viewport->ClearWidgetRoot();
 		}
-		else World->DestroyActor(Sequence);
+		else
+		{
+			Sequence->OnSequenceFinished.RemoveAll(this);
+			World->DestroyActor(Sequence);
+		}
 	}
 	if (!ResultSequenceActor)
 	{
@@ -436,34 +462,163 @@ void APacmanGameMode::OnResultFadeRendered()
 		FadeImage = nullptr;
 		FadePhase = EResultFadePhase::Complete;
 	}
+
+	// 고스트 피격 상태 완전 정리 (HitOverlayHandle 상태와 무관하게 항상 정리)
+	if (HitGhost) HitGhost->SetHitFrozen(false);
+	HitGhost = nullptr;
 	if (HitOverlayHandle)
 	{
-		if (HitGhost) HitGhost->SetHitFrozen(false);
-		HitGhost = nullptr;
 		HUD->RemoveOverlay(HitOverlayHandle);
 		HitOverlayHandle = 0;
-		HitImage = nullptr;
-		GhostHitPhase = EGhostHitPhase::None;
-		bGhostHitPlaying = false;
-		ReleaseGhostHitCamera();
 	}
+	HitImage = nullptr;
+	GhostHitPhase = EGhostHitPhase::None;
+	bGhostHitPlaying = false;
+	ReleaseGhostHitCamera();
 }
 
 void APacmanGameMode::OnResultSequenceFinished()
 {
-	if (ResultSequenceActor && IsValid(ResultSequenceActor))
-		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
+	HTR_LOG(Info, "PacmanGameMode: OnResultSequenceFinished called (bPendingClear={})", bPendingClear);
+	ALevelSequenceActor* SequenceToDestroy = ResultSequenceActor;
 	ResultSequenceActor = nullptr;
+
+	if (SequenceToDestroy && IsValid(SequenceToDestroy))
+	{
+		SequenceToDestroy->OnSequenceFinished.RemoveAll(this);
+		SequenceToDestroy->StopSequence();
+		if (UWorld* World = GetWorld())
+		{
+			World->DestroyActor(SequenceToDestroy);
+		}
+	}
+
+	// 혹시 남아있는 카메라 페이드 강제 종료
+	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+	{
+		CameraManager->StopCameraFade();
+	}
+
 	if (UWorld* World = GetWorld())
+	{
 		if (AGameHUD* HUD = World->GetHUD())
 		{
 			if (bPendingClear)
 			{
-				if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD)) PacmanHUD->ShowNameEntry();
+				if (APacmanHUD* PacmanHUD = Cast<APacmanHUD>(HUD))
+				{
+					PacmanHUD->ShowNameEntry();
+				}
 			}
 			else if (FGameViewportClient* Viewport = HUD->GetGameViewport())
+			{
 				Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+			}
 		}
+	}
+}
+
+void APacmanGameMode::PlayIntroSequence()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	AGameHUD* HUD = World->GetHUD();
+	FGameViewportClient* Viewport = HUD ? HUD->GetGameViewport() : nullptr;
+
+	// 인트로 컷신 중에는 인게임 HUD를 비워둠
+	if (Viewport)
+	{
+		Viewport->ClearWidgetRoot();
+	}
+
+	IntroSequenceActor = World->SpawnActor<ALevelSequenceActor>();
+	if (IntroSequenceActor)
+	{
+		IntroSequenceActor->SetSequenceAssetPath("Assets/Sequences/Game_Start.seq.json");
+		IntroSequenceActor->SetDisablePlayerInput(true);
+		IntroSequenceActor->SetRestoreBlendTime(1.0f); // 컷신 종료 후 플레이어 1인칭으로 1초간 스르륵 블렌드
+		IntroSequenceActor->OnSequenceFinished.AddRaw(this, &APacmanGameMode::OnIntroSequenceFinished);
+		IntroSequenceActor->PlaySequence();
+
+		if (IntroSequenceActor->IsPlayingSequence())
+		{
+			bIntroPlaying = true;
+			HTR_LOG(Info, "PacmanGameMode: Started intro sequence");
+			return;
+		}
+		else
+		{
+			IntroSequenceActor->OnSequenceFinished.RemoveAll(this);
+			World->DestroyActor(IntroSequenceActor);
+			IntroSequenceActor = nullptr;
+		}
+	}
+
+	// 시퀀스 파일이 없거나 재생 실패 시 즉시 인게임 UI 켜고 타이머 시작
+	OnIntroSequenceFinished();
+}
+
+void APacmanGameMode::OnIntroSequenceFinished()
+{
+	HTR_LOG(Info, "PacmanGameMode: Intro sequence finished");
+	bIntroPlaying = false;
+
+	ALevelSequenceActor* SequenceToDestroy = IntroSequenceActor;
+	IntroSequenceActor = nullptr;
+	if (SequenceToDestroy && IsValid(SequenceToDestroy))
+	{
+		SequenceToDestroy->OnSequenceFinished.RemoveAll(this);
+		SequenceToDestroy->StopSequence();
+		if (UWorld* World = GetWorld())
+		{
+			World->DestroyActor(SequenceToDestroy);
+		}
+	}
+
+	// Remove the two visual spawnables after the intro hands back the camera.
+	if (UWorld* World = GetWorld())
+	{
+		if (ULevel* Level = World->GetPersistentLevel())
+		{
+			const auto IntroActors = Level->GetActors();
+			for (AActor* Actor : IntroActors)
+			{
+				if (Actor && (Actor->GetName() == "IntroPacman" || Actor->GetName() == "IntroFlashlight"))
+				{
+					World->DestroyActor(Actor);
+				}
+			}
+		}
+	}
+
+	if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
+	{
+		CameraManager->StopCameraFade();
+	}
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	// 1. 인게임 HUD 표시
+	if (AGameHUD* HUD = World->GetHUD())
+	{
+		HUD->ShowWidget("Assets/UI/GameUI.ui.json");
+		HUD->SetText("Coins", "0 / " + std::to_string(MaxCoinCount));
+		if (APlayerPawn* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
+			HUD->SetText("Life", std::to_string(LifeCount));
+	}
+
+	// 2. 게임 타이머 시작 (컷신 이후 실제 플레이 시간만 측정)
+	if (UGameInstance* GameInstance = World->GetGameInstance())
+	{
+		GameInstance->StartRunTimer();
+	}
+	if (!bGameplayStarted)
+	{
+		bGameplayStarted = true;
+		OnGameplayStarted.Broadcast();
+	}
 }
 
 void APacmanGameMode::Tick(float DeltaTime)
@@ -471,6 +626,7 @@ void APacmanGameMode::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	GhostHitCooldown = std::max(0.0f, GhostHitCooldown - DeltaTime);
 	TickGhostHit(DeltaTime);
+
 	if (!FadeImage || (FadePhase != EResultFadePhase::FadeOut && FadePhase != EResultFadePhase::FadeIn)) return;
 	UWorld* World = GetWorld();
 	AGameHUD* HUD = World ? World->GetHUD() : nullptr;
@@ -497,4 +653,12 @@ void APacmanGameMode::Tick(float DeltaTime)
 		FadeImage = nullptr;
 		FadePhase = EResultFadePhase::Complete;
 	}
+}
+
+APlayerCameraManager* APacmanGameMode::GetPlayerCameraManager() const
+{
+	if (UWorld* World = GetWorld())
+		if (APlayerController* PC = World->GetPlayerController())
+			return PC->GetPlayerCameraManager();
+	return nullptr;
 }

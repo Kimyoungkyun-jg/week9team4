@@ -155,6 +155,39 @@ bool UWorld::LineTraceByChannel(const FRay& Ray, float MaxDistance, ECollisionCh
     return OutHit.bBlockingHit;
 }
 
+bool UWorld::SphereSweepSingleByChannel(const FVector& Start, const FVector& End, float Radius, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor)
+{
+    OutHit = FHitResult(1.f);
+    auto Finite = [](const FVector& V) { return std::isfinite(V.X) && std::isfinite(V.Y) && std::isfinite(V.Z); };
+    if (!IsCollisionChannel(Channel) || !std::isfinite(Radius) || Radius < 0.f || !Finite(Start) || !Finite(End)) return false;
+    ++CollisionQueryStats.SweepQueries;
+    UpdateCollisionIndex();
+    const FCollisionGeometry Sphere = MakeCollisionGeometry(FCollisionShape::MakeSphere(Radius), FTransform(FRotator(), Start));
+    const FVector Delta = End - Start;
+    FBox Bounds = Sphere.GetBounds();
+    FCollisionGeometry EndSphere = Sphere;
+    EndSphere.Center = End;
+    Bounds.Expand(EndSphere.GetBounds());
+    CollisionBVH.Query([&](const FBox& Box) { return CollisionBoundsIntersect(Bounds, Box); }, [&](const uint32& Index)
+    {
+        const auto& Entry = CollisionEntries[Index];
+        if (!Entry.Component->IsCollisionEnabled() || Entry.Component->GetOwner() == IgnoreActor ||
+            Entry.Component->GetCollisionSettings().GetResponse(Channel) != ECollisionResponse::Block) return;
+        FHitResult Hit;
+        ++CollisionQueryStats.NarrowPhaseTests;
+        if (!SweepCollisionGeometry(Sphere, Delta, Entry.Geometry, Hit, true)) return;
+        if (OutHit.bBlockingHit && (Hit.Time > OutHit.Time || (Hit.Time == OutHit.Time &&
+            Entry.Component->GetUUID() >= OutHit.HitComponent->GetUUID()))) return;
+        OutHit = Hit;
+        OutHit.bBlockingHit = true;
+        OutHit.HitComponent = Entry.Component;
+        OutHit.TraceStart = Start;
+        OutHit.TraceEnd = End;
+        OutHit.Location = Start + Delta * Hit.Time;
+    });
+    return OutHit.bBlockingHit;
+}
+
 bool UWorld::OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeometry& Geometry, TArray<UPrimitiveComponent*>& OutComponents)
 {
     OutComponents.Reset();

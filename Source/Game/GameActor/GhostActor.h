@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "Collision/CollisionShape.h"
 #include "Lua/LuaMacros.h"
 
 #include "GhostAIComponent.h"
@@ -22,9 +23,12 @@ class AGhostActor : public AActor
 	REFLECT_END()
 
 	LUA_BIND_START(AGhostActor)
+		UserType["Cast"] = [](AActor* Actor) { return Cast<AGhostActor>(Actor); };
+		LUA_DELEGATE(OnFlashlightHit)
 		LUA_FUNC(ChangeEye)
 		LUA_FUNC(RestoreEye)
 		LUA_FUNC(ResetToHome)
+		LUA_FUNC(IsStaggered)
 		UserType["IsPlayerInDetectionRange"] = sol::overload(
 			[](const AGhostActor& Self) { return Self.IsPlayerInDetectionRange(false); },
 			[](const AGhostActor& Self, bool bChase) { return Self.IsPlayerInDetectionRange(bChase); }
@@ -34,6 +38,10 @@ class AGhostActor : public AActor
 		sol::table ActorTable = lua["AActor"];
 		if (ActorTable.valid())
 		{
+			ActorTable["IsStaggered"] = [](AActor& Self) {
+				if (auto* Ghost = Cast<AGhostActor>(&Self)) return Ghost->IsStaggered();
+				return false;
+			};
 			ActorTable["GetAIComponent"] = [](AActor& Self) -> UGhostAIComponent* {
 				if (AGhostActor* Ghost = Cast<AGhostActor>(&Self))
 					return Ghost->GetAIComponent();
@@ -72,6 +80,8 @@ class AGhostActor : public AActor
 	LUA_BIND_END()
 
 public:
+	TMulticastDelegate<> OnFlashlightHit;
+
 	AGhostActor();
 	void BeginPlay() override;
 	void EndPlay() override;
@@ -82,6 +92,14 @@ public:
 	const FVector& GetInitialLocation() const { return InitialLocation; }
 	void SetHitFrozen(bool bFrozen);
 	bool IsHitFrozen() const { return bHitFrozen; }
+	bool IsStaggered() const { return ReactionPhase != EReactionPhase::None; }
+	bool IsHitStopped() const { return ReactionPhase == EReactionPhase::HitStop; }
+	bool IsRecoiling() const { return ReactionPhase == EReactionPhase::Recoil; }
+	bool CanReceiveFlashlightHit() const { return !bHitFrozen; }
+	bool CanDealContactDamage() const { return !bHitFrozen && !IsStaggered(); }
+	void ReceiveFlashlightHit(const FVector& Direction, float HitStopSeconds, float RecoilSeconds);
+	UCapsuleComponent* GetHurtCapsule() const { return HurtCapsule; }
+	USceneComponent* GetHitReactionPivot() const { return HitReactionPivot; }
 
 	void OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, UPrimitiveComponent* OtherComp);
 	bool IsPlayerInDetectionRange(bool bForceChaseRange = false) const;
@@ -97,6 +115,16 @@ public:
 
 private:
 	UCapsuleComponent* CapsuleComponent = nullptr;
+	UCapsuleComponent* HurtCapsule = nullptr;
+	USceneComponent* HitReactionPivot = nullptr;
+	enum class EReactionPhase { None, HitStop, Recoil };
+	EReactionPhase ReactionPhase = EReactionPhase::None;
+	float ReactionRemaining = 0.0f;
+	float TimeDilationBeforeHitStop = 1.0f;
+	float StaggerDuration = 0.8f;
+	ECollisionResponse ContactResponseBeforeHit = ECollisionResponse::Overlap;
+	void FinishHitReaction();
+	FVector ReactionDirection = FVector(1, 0, 0);
 	UBoxComponent* PatrolDetectionBox = nullptr;
 	UBoxComponent* ChaseDetectionBox = nullptr;
 	UStaticMeshComponent* BodyMesh = nullptr;

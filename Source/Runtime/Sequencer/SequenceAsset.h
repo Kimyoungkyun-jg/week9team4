@@ -116,6 +116,8 @@ struct FSequenceSpawnableActor
 	FString ClassName;
 	FTransform InitialTransform{};
 	float InitialFOV = 60.0f;
+	FString StaticMeshPath;
+	bool bActorEnableCollision = true;
 };
 
 // 시퀀스 전체 데이터

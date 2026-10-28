@@ -17,9 +17,13 @@ public:
 	FVector ConsumeMovementInputVector();
 	virtual void Jump() {}
 	virtual void StopJumping() {}
+	virtual void PrimaryAction() {}
+	virtual bool IsInputSuppressed() const { return false; }
 	virtual UCameraComponent* GetCameraComponent() const { return nullptr; }
 	virtual void AddControllerYawInput(float Value) {}
 	virtual void AddControllerPitchInput(float Value) {}
+	// Input hook: game pawns opt in without a Runtime -> Game dependency.
+	virtual void ToggleCameraMode() {}
 	void PossessedBy(APlayerController* NewController) { Controller = NewController; }
 	void UnPossessed() { Controller = nullptr; }
 	APlayerController* GetController() const { return Controller; }

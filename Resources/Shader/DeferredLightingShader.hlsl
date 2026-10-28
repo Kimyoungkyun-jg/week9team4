@@ -77,6 +77,8 @@ float4 mainPS(FPSInput Input) : SV_Target
 
     float4 MaterialData = BaseColorMetallic.Load(int3(Pixel, 0));
     float4 NormalData = NormalRoughness.Load(int3(Pixel, 0));
+    if (NormalData.a > 1.0f)
+        return float4(MaterialData.rgb, 1.0f); // Unlit: no light or shadow evaluation.
     float3 Albedo = MaterialData.rgb;
     float Metallic = MaterialData.a;
     float Roughness = abs(NormalData.a);

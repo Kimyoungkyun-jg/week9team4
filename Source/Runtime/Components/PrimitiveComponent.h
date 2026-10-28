@@ -104,7 +104,7 @@ public:
 	bool bReceiveSpecular = true;
 
 protected:
-	void UpdateCollisionShape();
+	void UpdateCollisionShape(bool bUpdateOverlaps = true);
 	void OnRegister() override;
 	void OnUnregister() override;
 	FCollisionSettings CollisionSettings;

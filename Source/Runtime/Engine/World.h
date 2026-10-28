@@ -24,6 +24,7 @@ class UBillboardComponent;
 class APawn;
 class APlayerController;
 class UGameInstance;
+class AWorldSettings;
 
 struct FViewContext;
 
@@ -61,7 +62,10 @@ public:
 		return CastChecked<T>(SpawnActor(T::StaticClass(), InName, Transform));
 	}
 
-	void Tick(float DeltaTime);
+	void Tick(float DeltaSeconds);
+	// Dilated and corrected World frame delta, before Actor CustomTimeDilation.
+	float GetDeltaSeconds() const { return DeltaTimeSeconds; }
+	AWorldSettings* GetWorldSettings() const;
 
 	void ClearWorld();
 
@@ -96,6 +100,8 @@ public:
 	// bReportInitialPenetration=true: 초기 침투를 모두 보존하고, 이후 Hit도 첫 비침투 블록까지 수집한다.
 	bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent* Primitive, const FVector& Start, const FVector& End, const FQuat& Rotation, bool bReportInitialPenetration = false);
 	bool LineTraceByChannel(const FRay& Ray, float Distance, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
+	// Query-only sphere: closest Block response, including initial penetration; no Hit/Overlap dispatch.
+	bool SphereSweepSingleByChannel(const FVector& Start, const FVector& End, float Radius, ECollisionChannel Channel, FHitResult& OutHit, const AActor* IgnoreActor = nullptr);
 	bool OverlapMulti(const UPrimitiveComponent& Query, const FCollisionGeometry& Geometry, TArray<UPrimitiveComponent*>& OutComponents);
 	void RegisterCollisionComponent(UPrimitiveComponent* Component);
 	void UnregisterCollisionComponent(UPrimitiveComponent* Component);
@@ -123,6 +129,10 @@ public:
 	bool SetPlayerControllerClass(UClass* Class);
 	bool IsPaused() const { return bIsPaused; }
 	void SetPaused(bool bPaused);
+
+	// Compatibility API for Lua: AWorldSettings owns global time dilation.
+	float GetWorldTimeDilation() const;
+	void SetWorldTimeDilation(float InTimeDilation);
 
 	FScene& GetScene() { return Scene; }
 	FTickTaskManager& GetTickTaskManager() { return TickTaskManager; }
@@ -155,6 +165,7 @@ private:
 	FCollisionQueryStats CollisionQueryStats;
 	void UpdateCollisionIndex();
 	friend class AActor;
+	friend class APlayerCameraManager;
 	friend class UActorComponent;
 	friend class USceneComponent;
 	friend class UPrimitiveComponent;
@@ -207,6 +218,8 @@ private:
 	UClass* HUDClassOverride = nullptr;
 	FString InitialUIOverride;
 	bool bIsPaused = false;
+	float DeltaTimeSeconds = 0.0f;
+	float DeltaRealTimeSeconds = 0.0f;
 	bool bBegunPlay = false;
 
 	FPathTracker PathTracker;

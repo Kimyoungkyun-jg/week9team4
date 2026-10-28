@@ -9,6 +9,10 @@ class ASkyLightActor : public ALightActorBase
 
 	REFLECT_START(ClassName)
 	REFLECT_END()
+	LUA_BIND_START(ASkyLightActor)
+		UserType["Cast"] = [](AActor* Actor) { return Cast<ASkyLightActor>(Actor); };
+		LUA_FUNC(GetSkyLightComponent)
+	LUA_BIND_END()
 
 public:
 	ASkyLightActor();

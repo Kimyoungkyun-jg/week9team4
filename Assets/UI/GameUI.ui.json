@@ -2,6 +2,102 @@
     "Root": {
         "Children": [
             {
+                "Class": "UCanvasWidget",
+                "Properties": {
+                    "WidgetName": "BatteryPanel",
+                    "Anchor": [0.0, 1.0],
+                    "Pivot": [0.0, 1.0],
+                    "Position": [32.0, -32.0],
+                    "Size": [240.0, 56.0],
+                    "ZOrder": 1,
+                    "bVisible": true
+                },
+                "Children": [
+                    {
+                        "Class": "UTextWidget",
+                        "Properties": {
+                            "WidgetName": "BatteryLabel",
+                            "Position": [0.0, 0.0],
+                            "Size": [240.0, 20.0],
+                            "Text": "BATTERY",
+                            "FontPath": "Assets/Fonts/Pretendard.json",
+                            "FontSize": 16.0,
+                            "Color": [1.0, 1.0, 1.0, 1.0],
+                            "ZOrder": 0,
+                            "bVisible": true
+                        },
+                        "Children": []
+                    },
+                    {
+                        "Class": "UImageWidget",
+                        "Properties": {
+                            "WidgetName": "BatteryFrame",
+                            "Position": [0.0, 26.0],
+                            "Size": [144.0, 28.0],
+                            "TexturePath": "WhiteTexture",
+                            "Tint": [1.0, 1.0, 1.0, 1.0],
+                            "ZOrder": 0,
+                            "bVisible": true
+                        },
+                        "Children": []
+                    },
+                    {
+                        "Class": "UImageWidget",
+                        "Properties": {
+                            "WidgetName": "BatteryBackground",
+                            "Position": [2.0, 28.0],
+                            "Size": [140.0, 24.0],
+                            "TexturePath": "WhiteTexture",
+                            "Tint": [0.04, 0.05, 0.04, 1.0],
+                            "ZOrder": 1,
+                            "bVisible": true
+                        },
+                        "Children": []
+                    },
+                    {
+                        "Class": "UImageWidget",
+                        "Properties": {
+                            "WidgetName": "BatteryFill",
+                            "Position": [4.0, 30.0],
+                            "Size": [136.0, 20.0],
+                            "TexturePath": "WhiteTexture",
+                            "Tint": [0.8, 0.92, 0.58, 1.0],
+                            "ZOrder": 2,
+                            "bVisible": true
+                        },
+                        "Children": []
+                    },
+                    {
+                        "Class": "UImageWidget",
+                        "Properties": {
+                            "WidgetName": "BatteryCap",
+                            "Position": [144.0, 34.0],
+                            "Size": [5.0, 12.0],
+                            "TexturePath": "WhiteTexture",
+                            "Tint": [1.0, 1.0, 1.0, 1.0],
+                            "ZOrder": 0,
+                            "bVisible": true
+                        },
+                        "Children": []
+                    },
+                    {
+                        "Class": "UTextWidget",
+                        "Properties": {
+                            "WidgetName": "BatteryPercent",
+                            "Position": [160.0, 22.0],
+                            "Size": [80.0, 34.0],
+                            "Text": "100%",
+                            "FontPath": "Assets/Fonts/Pretendard.json",
+                            "FontSize": 28.0,
+                            "Color": [1.0, 1.0, 1.0, 1.0],
+                            "ZOrder": 0,
+                            "bVisible": true
+                        },
+                        "Children": []
+                    }
+                ]
+            },
+            {
                 "Children": [],
                 "Class": "UMinimapWidget",
                 "Properties": {
@@ -156,6 +252,104 @@
                     "Text": "0",
                     "WidgetName": "Coins",
                     "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UTextWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        1.0
+                    ],
+                    "Color": [
+                        0.4,
+                        0.8,
+                        1.0,
+                        1.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 22.0,
+                    "Pivot": [
+                        1.0,
+                        1.0
+                    ],
+                    "Position": [
+                        -32.0,
+                        -50.0
+                    ],
+                    "Size": [
+                        200.0,
+                        28.0
+                    ],
+                    "Text": "SLOW MOTION [Shift]",
+                    "WidgetName": "SlomoLabel",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        1.0
+                    ],
+                    "Pivot": [
+                        1.0,
+                        1.0
+                    ],
+                    "Position": [
+                        -32.0,
+                        -24.0
+                    ],
+                    "Size": [
+                        204.0,
+                        18.0
+                    ],
+                    "TexturePath": "WhiteTexture",
+                    "Tint": [
+                        0.1,
+                        0.1,
+                        0.15,
+                        0.8
+                    ],
+                    "WidgetName": "SlomoBarBG",
+                    "ZOrder": 1,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        1.0,
+                        1.0
+                    ],
+                    "Pivot": [
+                        1.0,
+                        1.0
+                    ],
+                    "Position": [
+                        -34.0,
+                        -26.0
+                    ],
+                    "Size": [
+                        200.0,
+                        14.0
+                    ],
+                    "TexturePath": "WhiteTexture",
+                    "Tint": [
+                        0.2,
+                        0.7,
+                        1.0,
+                        0.95
+                    ],
+                    "WidgetName": "SlomoBar",
+                    "ZOrder": 2,
                     "bVisible": true
                 }
             }

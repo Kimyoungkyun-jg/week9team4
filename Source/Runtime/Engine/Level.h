@@ -6,6 +6,7 @@
 
 class UWorld;
 class AActor;
+class AWorldSettings;
 
 class ULevel : public UObject
 {
@@ -20,6 +21,7 @@ public:
 
     const TArray<AActor*>& GetActors() const  { return Actors; }
     uint32 GetActorNum() const { return Actors.Num(); }
+    AWorldSettings* GetWorldSettings() const { return WorldSettings; }
 
     void AddActor(AActor* Actor);
     void ClearActors();
@@ -33,7 +35,7 @@ private:
     UWorld* OwningWorld = nullptr;
     TArray<AActor*> Actors;
 
-    // AWorldSettings* WorldSettings = nullptr;
+    AWorldSettings* WorldSettings = nullptr;
 
     bool bIsVisible = true;
 

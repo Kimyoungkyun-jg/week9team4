@@ -1,6 +1,6 @@
 local Fog = {}
 
-Fog.Density = 0.6
+Fog.Density = 0.0
 
 Fog.HeightFalloff = 0.02
 
@@ -16,7 +16,7 @@ Fog.MaxOpacity = 1.0
 
 Fog.CutoffDistance = 0.0
 
-Fog.bAnimate = true
+Fog.bAnimate = false
 
 
 function Fog:ApplySettings()

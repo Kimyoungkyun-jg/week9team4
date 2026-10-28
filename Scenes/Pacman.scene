@@ -49,10 +49,74 @@
                                 ]
                             },
                             "Name": "UStaticMeshComponent",
-                            "OverrideMaterials": [],
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.016485000029206276,
+                                            "Y": 0.01608699932694435,
+                                            "Z": 0.01708099991083145
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearWrap",
+                                        "ShadingModel": "DefaultLit",
+                                        "Shininess": 16.0,
+                                        "SpecularColor": {
+                                            "X": 0.05000000074505806,
+                                            "Y": 0.05000000074505806,
+                                            "Z": 0.05000000074505806
+                                        },
+                                        "Textures": [
+                                            "Assets/Textures/Environment/concrete_floor_worn_001/concrete_floor_worn_001_diff_2k.png",
+                                            "Assets/Textures/Environment/concrete_floor_worn_001/concrete_floor_worn_001_nor_dx_2k.png"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0010789999505504966,
+                                            "Y": 0.0,
+                                            "Z": 0.5411810278892517
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearWrap",
+                                        "ShadingModel": "DefaultLit",
+                                        "Shininess": 16.0,
+                                        "SpecularColor": {
+                                            "X": 0.05000000074505806,
+                                            "Y": 0.05000000074505806,
+                                            "Z": 0.05000000074505806
+                                        },
+                                        "Textures": [
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_diff_2k.png",
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_nor_dx_2k.png"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
-                                "StaticMesh": "Models/Map/Map.obj",
+                                "StaticMesh": "Models/Map/Map_Pacman_Textured.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5469,6 +5533,7 @@
                     "Name": "AMapActor_0",
                     "PersistentActorId": "9fe3f33d5dd71755e253e5f55a5178d8",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -5577,6 +5642,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -5673,6 +5739,7 @@
                     "Name": "APlayerStart_0",
                     "PersistentActorId": "50346d0ec3e9ba555ab40572900f9a4b",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": false
                     },
                     "RootComponent": "CollisionCapsule"
@@ -5724,29 +5791,31 @@
                             },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [
+                                {},
                                 {
                                     "Base": "DefaultMaterial",
                                     "Instance": {
                                         "BaseColor": {
                                             "W": 1.0,
-                                            "X": 0.0,
-                                            "Y": 0.0,
-                                            "Z": 0.0
+                                            "X": 0.0073739998042583466,
+                                            "Y": 0.009390000253915787,
+                                            "Z": 0.01145000010728836
                                         },
                                         "BlendState": "Opaque",
                                         "FlipNormalY": false,
                                         "PSOType": 0,
                                         "Properties": {},
-                                        "SamplerState": "LinearClamp",
-                                        "Shininess": 32.0,
+                                        "SamplerState": "LinearWrap",
+                                        "ShadingModel": "DefaultLit",
+                                        "Shininess": 16.0,
                                         "SpecularColor": {
-                                            "X": 1.0,
-                                            "Y": 1.0,
-                                            "Z": 1.0
+                                            "X": 0.05000000074505806,
+                                            "Y": 0.05000000074505806,
+                                            "Z": 0.05000000074505806
                                         },
                                         "Textures": [
-                                            "WhiteTexture",
-                                            "FlatNormalTexture"
+                                            "Assets/Textures/Environment/ceiling_interior/ceiling_interior_diff_2k.png",
+                                            "Assets/Textures/Environment/ceiling_interior/ceiling_interior_nor_dx_2k.png"
                                         ],
                                         "UVScrollSpeed": [
                                             0.0,
@@ -5757,7 +5826,7 @@
                             ],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
-                                "StaticMesh": "Cube",
+                                "StaticMesh": "Models/Map/Ceiling_Pacman_Textured.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5787,6 +5856,7 @@
                     "Name": "AStaticMeshActor_1",
                     "PersistentActorId": "0a6a69aa51e3352decfde494f1ed22dd",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -5863,6 +5933,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -6124,6 +6266,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -6174,10 +6317,43 @@
                                 ]
                             },
                             "Name": "UStaticMeshComponent",
-                            "OverrideMaterials": [],
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0010789999505504966,
+                                            "Y": 0.0,
+                                            "Z": 0.5411810278892517
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearWrap",
+                                        "ShadingModel": "DefaultLit",
+                                        "Shininess": 16.0,
+                                        "SpecularColor": {
+                                            "X": 0.05000000074505806,
+                                            "Y": 0.05000000074505806,
+                                            "Z": 0.05000000074505806
+                                        },
+                                        "Textures": [
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_diff_2k.png",
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_nor_dx_2k.png"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
-                                "StaticMesh": "Cube",
+                                "StaticMesh": "Models/Map/WallBlock_Pacman_Textured.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -6207,6 +6383,7 @@
                     "Name": "AStaticMeshActor_0",
                     "PersistentActorId": "ac15eac9eee28d6f651be7ee7ea0d6e6",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -6257,10 +6434,43 @@
                                 ]
                             },
                             "Name": "UStaticMeshComponent",
-                            "OverrideMaterials": [],
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "W": 1.0,
+                                            "X": 0.0010789999505504966,
+                                            "Y": 0.0,
+                                            "Z": 0.5411810278892517
+                                        },
+                                        "BlendState": "Opaque",
+                                        "FlipNormalY": false,
+                                        "PSOType": 0,
+                                        "Properties": {},
+                                        "SamplerState": "LinearWrap",
+                                        "ShadingModel": "DefaultLit",
+                                        "Shininess": 16.0,
+                                        "SpecularColor": {
+                                            "X": 0.05000000074505806,
+                                            "Y": 0.05000000074505806,
+                                            "Z": 0.05000000074505806
+                                        },
+                                        "Textures": [
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_diff_2k.png",
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_nor_dx_2k.png"
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ]
+                                    }
+                                }
+                            ],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
-                                "StaticMesh": "Cube",
+                                "StaticMesh": "Models/Map/WallBlock_Pacman_Textured.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -6290,6 +6500,7 @@
                     "Name": "AStaticMeshActor_2",
                     "PersistentActorId": "132c47e4dcadc586c631061e8387da97",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -6366,6 +6577,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -6497,6 +6780,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -6663,6 +6947,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -6739,6 +7024,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -6870,6 +7227,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -7036,6 +7394,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -7112,6 +7471,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -7243,6 +7674,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -7409,6 +7841,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -7485,6 +7918,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -7616,6 +8121,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -7782,6 +8288,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -7858,6 +8365,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -8119,6 +8698,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -8195,6 +8775,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -8326,6 +8978,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -8492,6 +9145,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -8568,6 +9222,78 @@
                                 "bHiddenInGame": false,
                                 "bReceiveShadow": false,
                                 "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Collision": {
+                                "Enabled": true,
+                                "GenerateOverlapEvents": true,
+                                "ObjectChannel": 1,
+                                "Responses": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "Name": "FlashlightHurtCapsule",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "CapsuleHalfHeight": 0.5,
+                                "CapsuleRadius": 0.11999999731779099,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.5
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bCastShadow": false,
+                                "bHiddenInGame": false,
+                                "bReceiveShadow": false,
+                                "bReceiveSpecular": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "HitReactionPivot",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
                                 "bVisible": true
                             }
                         },
@@ -8699,6 +9425,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -8865,6 +9592,7 @@
                         "BobbingHeight": 0.25,
                         "BobbingSpeed": 2.0,
                         "BodyRotationSpeed": 30.0,
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -8961,6 +9689,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -9019,6 +9748,7 @@
                     "Name": "AExponentialHeightFogActor_1",
                     "PersistentActorId": "6730af2381c2af12363ba9d64318f0fc",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "UExponentialHeightFogComponent"
@@ -9105,6 +9835,7 @@
                     "Name": "MazeFloor",
                     "PersistentActorId": "4e709f7f5086454d611a3189f838f1b1",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "FloorCollision"
@@ -9187,6 +9918,7 @@
                     ],
                     "Name": "AStaticMeshActor_3",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -9284,6 +10016,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -9326,10 +10059,22 @@
                                 "bReceiveSpecular": true,
                                 "bVisible": true
                             }
+                        },
+                        {
+                            "Class": "ULuaScriptComponent",
+                            "Name": "ULuaScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "LuaScriptPath": "Assets/Scripts/PacmanSkyLight.lua",
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
                         }
                     ],
                     "Name": "ASkyLightActor_0",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "USkyLightComponent"
@@ -9393,6 +10138,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -9484,10 +10230,13 @@
                     ],
                     "Name": "ALevelSequenceActor_1",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -9599,6 +10348,7 @@
                     ],
                     "Name": "ACameraActor_1",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": false
                     },
                     "RootComponent": "CameraComponent"
@@ -9662,6 +10412,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -9753,10 +10504,13 @@
                     ],
                     "Name": "ALevelSequenceActor_0",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -9821,6 +10575,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -9896,6 +10651,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -9944,10 +10700,13 @@
                     ],
                     "Name": "ALevelSequenceActor_2",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10012,6 +10771,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -10087,6 +10847,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -10135,10 +10896,13 @@
                     ],
                     "Name": "ALevelSequenceActor_3",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10203,6 +10967,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -10294,10 +11059,13 @@
                     ],
                     "Name": "ALevelSequenceActor_4",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10362,6 +11130,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -10437,6 +11206,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -10485,10 +11255,13 @@
                     ],
                     "Name": "ALevelSequenceActor_5",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10553,6 +11326,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -10628,6 +11402,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -10676,10 +11451,13 @@
                     ],
                     "Name": "ALevelSequenceActor_6",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/Pacman_Clear.seq.json",
                         "bActorEnableCollision": false,
                         "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10744,6 +11522,7 @@
                                     "PSOType": 14,
                                     "Properties": {},
                                     "SamplerState": "LinearClamp",
+                                    "ShadingModel": "DefaultLit",
                                     "Shininess": 32.0,
                                     "SpecularColor": {
                                         "X": 1.0,
@@ -10835,10 +11614,13 @@
                     ],
                     "Name": "ALevelSequenceActor_7",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "PlayRate": 1.0,
+                        "RestoreBlendTime": 0.0,
                         "SequenceAssetPath": "Assets/Sequences/NewSequence.seq.json",
                         "bActorEnableCollision": false,
-                        "bAutoPlay": true,
+                        "bAutoPlay": false,
+                        "bDisablePlayerInput": true,
                         "bLoopSequence": false,
                         "bOverridePlayerCamera": true
                     },
@@ -10905,6 +11687,7 @@
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
+                                        "ShadingModel": "DefaultLit",
                                         "Shininess": 32.0,
                                         "SpecularColor": {
                                             "X": 1.0,
@@ -10953,6 +11736,7 @@
                     ],
                     "Name": "AStaticMeshActor_6",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": true
                     },
                     "RootComponent": "DefaultSceneRoot"
@@ -11063,9 +11847,52 @@
                     ],
                     "Name": "ACameraActor_2",
                     "Properties": {
+                        "CustomTimeDilation": 1.0,
                         "bActorEnableCollision": false
                     },
                     "RootComponent": "CameraComponent"
+                },
+                {
+                    "Class": "AWorldSettings",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bAutoActivate": true,
+                                "bHiddenInGame": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AWorldSettings_10",
+                    "Properties": {
+                        "CustomTimeDilation": 1.0,
+                        "MaxGlobalTimeDilation": 20.0,
+                        "MaxUndilatedFrameTime": 0.4000000059604645,
+                        "MinGlobalTimeDilation": 9.999999747378752e-05,
+                        "MinUndilatedFrameTime": 0.0005000000237487257,
+                        "bActorEnableCollision": false
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}

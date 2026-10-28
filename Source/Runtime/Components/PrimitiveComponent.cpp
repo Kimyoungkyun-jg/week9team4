@@ -117,7 +117,9 @@ bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& Ne
     UWorld* World = GetWorld();
     UWorld::FScopedObjectExecution ObjectScope(World ? World : (GetOwner() ? GetOwner()->GetWorld() : nullptr));
     const bool bRotated = PreviousRotation.Pitch != NewRotation.Pitch || PreviousRotation.Yaw != NewRotation.Yaw || PreviousRotation.Roll != NewRotation.Roll;
-    const float MinMovementDistSq = bSweep ? 16.f * KINDA_SMALL_NUMBER * KINDA_SMALL_NUMBER : 0.f;
+    // UE's movement threshold is in centimetres; this engine uses metres.
+    constexpr float MinSweptMovement = 4.f * KINDA_SMALL_NUMBER * 0.01f;
+    const float MinMovementDistSq = bSweep ? MinSweptMovement * MinSweptMovement : 0.f;
     const float LengthSquared = Delta.SizeSquared();
     if (LengthSquared <= MinMovementDistSq && !bRotated)
     {
@@ -136,7 +138,9 @@ bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& Ne
         float BlockingNormalDotDelta = FLT_MAX;
         for (FHitResult& TestHit : Hits)
         {
-            TestHit.Time = std::max(0.f, TestHit.Time - 0.001f / Length);
+            // UE PullBackHit, with its distance bounds converted from cm to m.
+            const float TimeBack = std::clamp(0.1f, 0.001f / Length, 0.01f / Length) + 0.001f;
+            TestHit.Time = std::clamp(TestHit.Time - TimeBack, 0.f, 1.f);
             // 초기 침투로 막혔다면 이동하지 못한 구간의 오버랩은 알리지 않는다.
             if (Result.bBlockingHit && TestHit.Time > Result.Time) break;
             if (TestHit.bBlockingHit)
@@ -332,14 +336,14 @@ void UPrimitiveComponent::OnComponentCollisionSettingsChanged(bool bUpdateOverla
     if (bUpdateOverlaps) UpdateOverlaps();
 }
 
-void UPrimitiveComponent::UpdateCollisionShape()
+void UPrimitiveComponent::UpdateCollisionShape(bool bUpdateOverlaps)
 {
     if (!CanNotifyCollision(this)) return;
     UWorld::FScopedObjectExecution ObjectScope(GetWorld() ? GetWorld() : (GetOwner() ? GetOwner()->GetWorld() : nullptr));
     OnTransformDirty();
     if (!CanNotifyCollision(this)) return;
     MarkRenderStateDirty();
-    UpdateOverlaps();
+    if (bUpdateOverlaps) UpdateOverlaps();
 }
 void UPrimitiveComponent::BeginComponentOverlap(UPrimitiveComponent* Other)
 {

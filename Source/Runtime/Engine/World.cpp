@@ -17,6 +17,7 @@
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/GameMode.h"
+#include "GameFramework/WorldSettings.h"
 #include "Input/InputSystem.h"
 
 #include "UObject/UObjectIterator.h"
@@ -37,6 +38,8 @@
 #include "Render/ObjectConstants.h"
 
 #include "UObject/UObjectGlobals.h"
+
+#include "Camera/PlayerCameraManager.h"
 
 namespace
 {
@@ -78,6 +81,7 @@ bool UWorld::Init()
 	PersistentLevel->SetWorld(this);
 	Levels.Add(PersistentLevel);
 	CurrentLevel = PersistentLevel;
+	SpawnActor<AWorldSettings>();
 
 	CreateMainCamera();
 
@@ -88,6 +92,7 @@ AActor* UWorld::SpawnActor(UClass* Class, FName InName, const FTransform* Transf
 {
 	if (bIsClearingWorld || !Class) return nullptr;
 	if (!Class->IsChildOf(AActor::StaticClass())) return nullptr;
+	if (Class->IsChildOf(AWorldSettings::StaticClass()) && GetWorldSettings()) return nullptr;
 
 	AActor* NewActor = NewObject<AActor>(PersistentLevel, Class, InName);
 
@@ -128,10 +133,34 @@ void UWorld::SetPaused(bool bPaused)
 		if (FSoundManager* Sound = Instance->GetSoundManager()) Sound->SetPaused(bPaused);
 }
 
-void UWorld::Tick(float DeltaTime)
+AWorldSettings* UWorld::GetWorldSettings() const
+{
+	return PersistentLevel ? PersistentLevel->GetWorldSettings() : nullptr;
+}
+
+float UWorld::GetWorldTimeDilation() const
+{
+	const AWorldSettings* Settings = GetWorldSettings();
+	return Settings ? Settings->TimeDilation : 1.0f;
+}
+
+void UWorld::SetWorldTimeDilation(float InTimeDilation)
+{
+	if (AWorldSettings* Settings = GetWorldSettings()) Settings->SetTimeDilation(InTimeDilation);
+}
+
+void UWorld::Tick(float DeltaSeconds)
 {
 	if (bIsTicking || bIsClearingWorld || ActiveObjectCalls) return;
 	bIsTicking = true;
+	AWorldSettings* Info = GetWorldSettings();
+	const float RealDeltaSeconds = DeltaSeconds;
+	DeltaSeconds *= Info->GetEffectiveTimeDilation();
+	const float GameDeltaSeconds = Info->FixupDeltaSeconds(DeltaSeconds, RealDeltaSeconds);
+	assert(GameDeltaSeconds >= 0.0f);
+	DeltaSeconds = GameDeltaSeconds;
+	DeltaTimeSeconds = DeltaSeconds;
+	DeltaRealTimeSeconds = RealDeltaSeconds;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UpdateAllTransforms);
 		Scene.UpdateAllTransforms();
@@ -149,14 +178,14 @@ void UWorld::Tick(float DeltaTime)
 		if (!bIsPaused)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ActorTick);
-			TickTaskManager.RunAllTickGroups(DeltaTime);
+			TickTaskManager.RunAllTickGroups(DeltaSeconds);
 
 			for (ULevel* Level : Levels)
 			{
-				PathTracker.Tick(Level->GetActors(), DeltaTime);
+				PathTracker.Tick(Level->GetActors(), DeltaSeconds);
 			}
 			if (IsValid(PlayerController) && !PlayerController->IsActorBeingDestroyed())
-				PlayerController->UpdateCameraManager(DeltaTime);
+				PlayerController->UpdateCameraManager(DeltaSeconds);
 		}
 	}
 	else
@@ -171,7 +200,7 @@ void UWorld::Tick(float DeltaTime)
 			{
 				Comp->SetParticles(10);
 			}
-			Comp->TickComponent(DeltaTime);
+			Comp->TickComponent(DeltaSeconds);
 		}
 	}
 
@@ -488,6 +517,8 @@ bool UWorld::DestroyActor(AActor* Actor)
 
 	if (!Level || Actor->GetWorld() != this)
 		return false;
+	// World settings are level infrastructure, removed only when clearing the level.
+	if (Actor == Level->WorldSettings && !bIsClearingWorld) return false;
 	bool bOwnedByLevel = false;
 	for (AActor* Current : Level->Actors)
 		if (Current == Actor) { bOwnedByLevel = true; break; }
@@ -524,6 +555,7 @@ bool UWorld::DestroyActor(AActor* Actor)
 		}
 	}
 	if (!bRemovedFromLevel) return false;
+	if (Actor == Level->WorldSettings) Level->WorldSettings = nullptr;
 
 	FString ActorName = Actor->GetName();
 	uint32 ActorUUID = Actor->GetUUID();
@@ -839,6 +871,9 @@ UWorld* UWorld::GetDuplicatedWorldForPIE(UWorld * InWorld)
 	}
 
 	UWorld* PIEWorld = CreateWorld(EWorldType::PIE, false);
+	// Duplication will supply the source level's settings actor.
+	PIEWorld->ClearWorld();
+	PIEWorld->FlushPendingDestruction();
 
 	FObjectDuplicationParameters Params(InWorld, nullptr);
 	Params.DuplicationSeed.Add(InWorld, PIEWorld);

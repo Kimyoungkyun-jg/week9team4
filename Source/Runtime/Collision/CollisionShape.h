@@ -65,5 +65,6 @@ struct FCollisionGeometry
 FCollisionGeometry MakeCollisionGeometry(const FCollisionShape& Shape, const FTransform& Transform);
 bool CollisionBoundsIntersect(const FBox& A, const FBox& B);
 bool OverlapCollisionGeometry(const FCollisionGeometry& A, const FCollisionGeometry& B, FHitResult* Hit = nullptr);
-// true이면 탈출/평행 방향의 초기 침투도 보고하여 이동 함수가 무시 여부를 결정하게 한다.
+// true이면 탈출/평행 방향의 초기 접촉도 보고하여 이동 함수가 무시 여부를 결정한다.
+// 초기 접촉의 bStartPenetrating은 MTD 깊이와 독립적이며 깊이가 0이어도 true이다.
 bool SweepCollisionGeometry(const FCollisionGeometry& Moving, const FVector& Delta, const FCollisionGeometry& Target, FHitResult& Hit, bool bReportInitialPenetration = false);

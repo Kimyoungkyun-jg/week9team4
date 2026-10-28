@@ -8,6 +8,9 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Asset/AssetManager.h"
+#include "Render/Mesh.h"
 #include "Serialization/TypeSerializer.h"
 #include "UObject/UObjectHash.h"
 
@@ -292,6 +295,12 @@ void FLevelSequenceAsset::SpawnMissingActors(const FLevelSequenceData& Data, UWo
 		if (Actor && Actor->GetName() == Entry.ActorName)
 		{
 			Actor->SetFlags(EObjectFlags::RF_Transient);
+			if (!Entry.StaticMeshPath.empty())
+			{
+				Actor->SetActorEnableCollision(Entry.bActorEnableCollision);
+				if (auto* Mesh = Actor->GetComponentByClass<UStaticMeshComponent>())
+					Mesh->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>(Entry.StaticMeshPath));
+			}
 			if (UCameraComponent* Camera = Actor->GetComponentByClass<UCameraComponent>())
 				Camera->SetFieldOfView(Entry.InitialFOV);
 		}
@@ -439,7 +448,7 @@ void FLevelSequenceAsset::EvaluateWorldAtFrame(
 
 								ActivePOV.Location = PrevPOV.Location + (ActivePOV.Location - PrevPOV.Location) * Alpha;
 								ActivePOV.Rotation = LerpRotatorShortest(PrevPOV.Rotation, ActivePOV.Rotation, Alpha);
-								ActivePOV.FieldOfView = PrevPOV.FieldOfView + (ActivePOV.FieldOfView - PrevPOV.FieldOfView) * Alpha;
+								ActivePOV.FOV = PrevPOV.FOV + (ActivePOV.FOV - PrevPOV.FOV) * Alpha;
 							}
 						}
 
@@ -529,7 +538,9 @@ FString FLevelSequenceAsset::SerializeToString(const FLevelSequenceData& Data)
 				{"Location", {T.Location.X, T.Location.Y, T.Location.Z}},
 				{"Rotation", {T.Rotation.Pitch, T.Rotation.Yaw, T.Rotation.Roll}},
 				{"Scale", {T.Scale.X, T.Scale.Y, T.Scale.Z}},
-				{"InitialFOV", Entry.InitialFOV}
+				{"InitialFOV", Entry.InitialFOV},
+				{"StaticMeshPath", Entry.StaticMeshPath},
+				{"bActorEnableCollision", Entry.bActorEnableCollision}
 			});
 		}
 		Root["SpawnableActors"] = std::move(SpawnablesJson);
@@ -651,6 +662,8 @@ bool FLevelSequenceAsset::DeserializeFromString(const FString& Content, FLevelSe
 				if (EntryObj.contains("Scale") && EntryObj["Scale"].is_array() && EntryObj["Scale"].size() == 3)
 					Entry.InitialTransform.Scale = FVector(EntryObj["Scale"][0].get<float>(), EntryObj["Scale"][1].get<float>(), EntryObj["Scale"][2].get<float>());
 				Entry.InitialFOV = EntryObj.value("InitialFOV", 60.0f);
+				Entry.StaticMeshPath = EntryObj.value("StaticMeshPath", FString(""));
+				Entry.bActorEnableCollision = EntryObj.value("bActorEnableCollision", true);
 				if (!Entry.ActorName.empty() && !Entry.ClassName.empty()) Parsed.SpawnableActors.Add(std::move(Entry));
 			}
 		}
