@@ -2,6 +2,7 @@
 #include "Sequencer/LevelSequenceActor.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/BillboardComponent.h"
 #include "Asset/AssetManager.h"
@@ -281,13 +282,13 @@ void ALevelSequenceActor::RestorePlayerCameraViewTarget()
 		if (PC->GetViewTarget() == this)
 		{
 			AActor* Fallback = PreviousCameraTarget;
-			if (!Fallback || !IsValid(Fallback) || Fallback->IsActorBeingDestroyed())
+			if (!Fallback || GUObjectArray.Find(Fallback) == INDEX_NONE || !IsValid(Fallback) || Fallback->IsActorBeingDestroyed())
 			{
-				Fallback = reinterpret_cast<AActor*>(CurrentWorld->GetPlayerPawn());
+				Fallback = CurrentWorld->GetPlayerPawn();
 			}
 			if (RestoreBlendTime > 0.0f)
 			{
-				PC->SetViewTargetWithBlend(Fallback, RestoreBlendTime, VTBlend_Cubic, 2.0f);
+				PC->SetViewTargetWithBlend(Fallback, RestoreBlendTime, VTBlend_Cubic, 2.0f, true);
 			}
 			else
 			{

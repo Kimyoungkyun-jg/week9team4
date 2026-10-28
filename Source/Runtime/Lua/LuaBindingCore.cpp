@@ -13,6 +13,11 @@
 #include "Engine/Level.h"
 #include "Core/EngineLog.h"
 
+sol::object PushWorldToLua(lua_State* L, UWorld* World)
+{
+	return sol::make_object(L, World);
+}
+
 namespace LuaBindings
 {
 	void BindCore(sol::state& Lua, UGameInstance& GameInstance)
@@ -142,11 +147,15 @@ namespace LuaBindings
 			"GetWorldTimeDilation", &UWorld::GetWorldTimeDilation,
 			"SetWorldTimeDilation", &UWorld::SetWorldTimeDilation,
 			"GetPlayerPawn", &UWorld::GetPlayerPawn,
+			"GetGameMode", &UWorld::GetGameMode,
 			"GetPlayerController", &UWorld::GetPlayerController
 		);
 
 		// 5. APlayerController 바인딩
 		Lua.new_usertype<APlayerController>("APlayerController", sol::no_constructor,
+			"IsMoveInputIgnored", &APlayerController::IsMoveInputIgnored,
+			"IsLookInputIgnored", &APlayerController::IsLookInputIgnored,
+			"IsInCinematicMode", &APlayerController::IsInCinematicMode,
 			"GetPlayerCameraManager", [](APlayerController& Self) -> APlayerCameraManager* {
 				return Self.GetPlayerCameraManager();
 			}

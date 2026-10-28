@@ -14,6 +14,8 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Render/Mesh.h"
 #include "Render/LineBatcher.h"
 #include "Input/InputSystem.h"
 #include "Core/EngineLog.h"
@@ -852,6 +854,9 @@ bool FSequencerPanel::SaveSequenceAsset(const FString& Path)
 			Entry.ActorName = ActorName;
 			Entry.ClassName = Actor->GetClass()->Name;
 			Entry.InitialTransform = Actor->GetActorTransform();
+			Entry.bActorEnableCollision = Actor->GetActorEnableCollision();
+			if (const auto* Mesh = Actor->GetComponentByClass<UStaticMeshComponent>())
+				if (Mesh->GetStaticMesh()) Entry.StaticMeshPath = Mesh->GetStaticMesh()->GetPath();
 			if (UCameraComponent* Camera = Actor->GetComponentByClass<UCameraComponent>())
 				Entry.InitialFOV = Camera->GetFieldOfView();
 		}

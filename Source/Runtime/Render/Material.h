@@ -14,13 +14,16 @@ enum class EMaterialParamLayout
 	ParticleSubUV
 };
 
+enum class EMaterialShadingModel : uint8 { DefaultLit, Unlit };
+
 struct FStaticMeshMaterialParams
 {
 	FVector4 BaseColor;
 	FVector2 UVOffset;
 	FVector2 TextureFlags; // 텍스처 플래그 및 노멀 반전
+	FVector4 MaterialFlags; // x: EMaterialShadingModel, yzw: reserved
 };
-static_assert(sizeof(FStaticMeshMaterialParams) == 32);
+static_assert(sizeof(FStaticMeshMaterialParams) == 48);
 
 class UMaterial : public UMaterialInterface
 {
@@ -35,6 +38,7 @@ public:
 	TArray<UTexture2D*> Textures;
 	TUniquePtr<FConstantBuffer> ParamBuffer;
 	EPSOType PSOType = EPSOType::StaticMesh_Opaque;
+	EMaterialShadingModel ShadingModel = EMaterialShadingModel::DefaultLit;
 	EBlendState BlendState = EBlendState::Opaque;
 	EDepthStencilState DepthStencilState = EDepthStencilState::Default;
 	ESamplerState SamplerState = ESamplerState::LinearClamp;

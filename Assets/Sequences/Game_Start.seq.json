@@ -5,7 +5,7 @@
         {
             "ActorName": "IntroCamera",
             "ClassName": "ACameraActor",
-            "InitialFOV": 80.0,
+            "InitialFOV": 80,
             "Location": [
                 -0.5662287473678589,
                 0.004281619563698769,
@@ -14,53 +14,57 @@
             "Rotation": [
                 13.199984550476074,
                 -2.6000003814697266,
-                0.0
+                0
             ],
             "Scale": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
             ]
         },
         {
-            "ActorName": "AStaticMeshActor_4",
+            "ActorName": "IntroPacman",
             "ClassName": "AStaticMeshActor",
-            "InitialFOV": 60.0,
+            "InitialFOV": 60,
             "Location": [
-                0.0,
-                0.0,
+                0,
+                0,
                 -1.9059576988220215
             ],
             "Rotation": [
-                0.0,
-                180.0,
-                0.0
+                0,
+                180,
+                0
             ],
             "Scale": [
-                20.0,
-                20.0,
-                20.0
-            ]
+                20,
+                20,
+                20
+            ],
+            "StaticMeshPath": "Models/Pacman/pacman_grab.obj",
+            "bActorEnableCollision": false
         },
         {
-            "ActorName": "AStaticMeshActor_5",
+            "ActorName": "IntroFlashlight",
             "ClassName": "AStaticMeshActor",
-            "InitialFOV": 60.0,
+            "InitialFOV": 60,
             "Location": [
                 1.0315526723861694,
                 0.5235838294029236,
                 -0.48470890522003174
             ],
             "Rotation": [
-                0.0,
-                -90.0,
-                0.0
+                0,
+                -90,
+                0
             ],
             "Scale": [
                 0.30000001192092896,
                 0.30000001192092896,
                 0.30000001192092896
-            ]
+            ],
+            "StaticMeshPath": "Models/Flashlight/Flashlight.obj",
+            "bActorEnableCollision": false
         }
     ],
     "StartFrame": 0,
@@ -69,7 +73,7 @@
             "AudioClips": [],
             "CameraCuts": [
                 {
-                    "BlendTime": 0.0,
+                    "BlendTime": 0,
                     "CameraActorName": "IntroCamera",
                     "EndFrame": 90,
                     "StartFrame": 0
@@ -107,12 +111,12 @@
                     "Rotation": [
                         46.60006332397461,
                         178.79978942871094,
-                        0.0
+                        0
                     ],
                     "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
+                        1,
+                        1,
+                        1
                     ]
                 },
                 {
@@ -126,12 +130,12 @@
                     "Rotation": [
                         30.000049591064453,
                         -85.19995880126953,
-                        0.0
+                        0
                     ],
                     "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
+                        1,
+                        1,
+                        1
                     ]
                 },
                 {
@@ -145,12 +149,12 @@
                     "Rotation": [
                         40.400089263916016,
                         -2.999999523162842,
-                        0.0
+                        0
                     ],
                     "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
+                        1,
+                        1,
+                        1
                     ]
                 },
                 {
@@ -164,12 +168,12 @@
                     "Rotation": [
                         43.20002746582031,
                         83.59990692138672,
-                        0.0
+                        0
                     ],
                     "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
+                        1,
+                        1,
+                        1
                     ]
                 },
                 {
@@ -183,12 +187,12 @@
                     "Rotation": [
                         13.199984550476074,
                         -2.6000003814697266,
-                        0.0
+                        0
                     ],
                     "Scale": [
-                        1.0,
-                        1.0,
-                        1.0
+                        1,
+                        1,
+                        1
                     ]
                 }
             ],
@@ -203,28 +207,28 @@
             "CameraCuts": [],
             "CameraEffectsKeys": [
                 {
-                    "FadeOpacity": 1.0,
+                    "FadeOpacity": 1,
                     "Frame": 0,
                     "InterpMode": 0,
                     "LetterboxSize": 0.10000000149011612
                 },
                 {
-                    "FadeOpacity": 0.0,
+                    "FadeOpacity": 0,
                     "Frame": 15,
                     "InterpMode": 0,
                     "LetterboxSize": 0.10000000149011612
                 },
                 {
-                    "FadeOpacity": 0.0,
+                    "FadeOpacity": 0,
                     "Frame": 75,
                     "InterpMode": 0,
                     "LetterboxSize": 0.10000000149011612
                 },
                 {
-                    "FadeOpacity": 0.0,
+                    "FadeOpacity": 0,
                     "Frame": 90,
                     "InterpMode": 0,
-                    "LetterboxSize": 0.0
+                    "LetterboxSize": 0
                 }
             ],
             "FOVKeys": [],
@@ -243,7 +247,7 @@
             "CameraCuts": [],
             "CameraEffectsKeys": [],
             "FOVKeys": [],
-            "TargetActorName": "AStaticMeshActor_4",
+            "TargetActorName": "IntroPacman",
             "TrackName": "IntroPacman Visibility",
             "TrackType": 4,
             "TransformKeys": [],
@@ -269,34 +273,8 @@
             "CameraCuts": [],
             "CameraEffectsKeys": [],
             "FOVKeys": [],
-            "TargetActorName": "AStaticMeshActor_5",
+            "TargetActorName": "IntroFlashlight",
             "TrackName": "IntroPacman Visibility Copy",
-            "TrackType": 4,
-            "TransformKeys": [],
-            "VisibilityKeys": [
-                {
-                    "Frame": 0,
-                    "bHiddenInGame": false,
-                    "bVisible": true
-                },
-                {
-                    "Frame": 90,
-                    "bHiddenInGame": true,
-                    "bVisible": false
-                }
-            ],
-            "bConstantSpeed": false,
-            "bExpanded": true,
-            "bMuted": false,
-            "bSmoothPath": false
-        },
-        {
-            "AudioClips": [],
-            "CameraCuts": [],
-            "CameraEffectsKeys": [],
-            "FOVKeys": [],
-            "TargetActorName": "AStaticMeshActor_4",
-            "TrackName": "IntroPacman Visibility Copy Copy",
             "TrackType": 4,
             "TransformKeys": [],
             "VisibilityKeys": [

@@ -10,6 +10,8 @@ public:
 	void Reset() { Elapsed = 0.0f; }
 	bool Advance(float DeltaTime, bool bMoved)
 	{
+		// A zero time step pauses cadence without discarding its elapsed time.
+		if (DeltaTime == 0.0f) return false;
 		if (!bMoved || !std::isfinite(DeltaTime) || DeltaTime <= 0.0f) { Reset(); return false; }
 		const float Interval = std::isfinite(IntervalSeconds) ? std::max(0.01f, IntervalSeconds) : 0.35f;
 		Elapsed += DeltaTime;

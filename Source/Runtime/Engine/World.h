@@ -24,6 +24,7 @@ class UBillboardComponent;
 class APawn;
 class APlayerController;
 class UGameInstance;
+class AWorldSettings;
 
 struct FViewContext;
 
@@ -61,7 +62,10 @@ public:
 		return CastChecked<T>(SpawnActor(T::StaticClass(), InName, Transform));
 	}
 
-	void Tick(float DeltaTime);
+	void Tick(float DeltaSeconds);
+	// Dilated and corrected World frame delta, before Actor CustomTimeDilation.
+	float GetDeltaSeconds() const { return DeltaTimeSeconds; }
+	AWorldSettings* GetWorldSettings() const;
 
 	void ClearWorld();
 
@@ -124,8 +128,9 @@ public:
 	bool IsPaused() const { return bIsPaused; }
 	void SetPaused(bool bPaused);
 
-	float GetWorldTimeDilation() const { return WorldTimeDilation; }
-	void SetWorldTimeDilation(float InTimeDilation) { WorldTimeDilation = std::max(0.0f, InTimeDilation); }
+	// Compatibility API for Lua: AWorldSettings owns global time dilation.
+	float GetWorldTimeDilation() const;
+	void SetWorldTimeDilation(float InTimeDilation);
 
 	FScene& GetScene() { return Scene; }
 	FTickTaskManager& GetTickTaskManager() { return TickTaskManager; }
@@ -210,9 +215,9 @@ private:
 	UClass* HUDClassOverride = nullptr;
 	FString InitialUIOverride;
 	bool bIsPaused = false;
+	float DeltaTimeSeconds = 0.0f;
+	float DeltaRealTimeSeconds = 0.0f;
 	bool bBegunPlay = false;
-
-	float WorldTimeDilation = 1.0f;
 
 	FPathTracker PathTracker;
 

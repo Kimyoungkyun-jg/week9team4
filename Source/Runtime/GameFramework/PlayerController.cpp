@@ -3,7 +3,6 @@
 #include "Engine/World.h"
 #include "GameFramework/GameMode.h"
 #include "GameFramework/Pawn.h"
-#include "GameFramework/TestPawn.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include <cstring>
@@ -104,7 +103,14 @@ void APlayerController::ProcessPlayerInput(float DeltaTime)
 {
 	if (IsPendingKillPending() || !IsValid(PossessedPawn) || PossessedPawn->IsActorBeingDestroyed()) return;
 	UWorld* World = GetWorld();
-	if (World && World->GetGameMode() && !World->GetGameMode()->AllowsPlayerControllerInput())
+	if (PossessedPawn->IsInputSuppressed())
+	{
+		// Keep held keys so walking resumes after hitstop without another key-down event.
+		PossessedPawn->ConsumeMovementInputVector();
+		MouseAxisX = MouseAxisY = 0.0f;
+		return;
+	}
+	if (World && (World->IsPaused() || (World->GetGameMode() && !World->GetGameMode()->AllowsPlayerControllerInput())))
 	{
 		// Key-up events may be blocked too; discard the previously held input.
 		ClearInputState();
@@ -170,15 +176,16 @@ void APlayerController::InputKey(int32 Key, bool bDown)
 	if (Key < 0 || Key >= 256) return;
 	const bool bPressed = bDown && !bKeyDown[Key];
 	bKeyDown[Key] = bDown;
+	const bool bCanAct = !IsMoveInputIgnored() && !IsInCinematicMode() &&
+		IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed() && !PossessedPawn->IsInputSuppressed() &&
+		(!GetWorld() || (!GetWorld()->IsPaused() && (!GetWorld()->GetGameMode() || GetWorld()->GetGameMode()->AllowsPlayerControllerInput())));
 	if (Key == static_cast<int32>(EKeyCode::Space) && IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed())
 	{
 		if (!bDown) PossessedPawn->StopJumping();
-		else if (bPressed && (!GetWorld() || !GetWorld()->GetGameMode() || GetWorld()->GetGameMode()->AllowsPlayerControllerInput()))
+		else if (bPressed && bCanAct)
 			PossessedPawn->Jump();
 	}
-	if (bPressed && Key == static_cast<int32>(EKeyCode::LButton))
-		if (IsValid(PossessedPawn) && !PossessedPawn->IsActorBeingDestroyed())
-			if (ATestPawn* Pawn = Cast<ATestPawn>(PossessedPawn)) Pawn->FireProjectile();
+	if (bPressed && bCanAct && Key == static_cast<int32>(EKeyCode::LButton)) PossessedPawn->PrimaryAction();
 }
 
 void APlayerController::InputAxis(EGameInputAxis Axis, float Delta)

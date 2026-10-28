@@ -12,7 +12,7 @@ public:
     bool BuildCollisionShape(FCollisionShape& OutShape) const override;
     float GetUnscaledCapsuleRadius() const { return CapsuleRadius; }
     float GetUnscaledCapsuleHalfHeight() const { return CapsuleHalfHeight; }
-    void SetCapsuleSize(float Radius, float HalfHeight) { CapsuleRadius = Radius; CapsuleHalfHeight = HalfHeight; ShapeChanged(); }
+    void SetCapsuleSize(float Radius, float HalfHeight, bool bUpdateOverlaps = true) { CapsuleRadius = Radius; CapsuleHalfHeight = HalfHeight; ShapeChanged(bUpdateOverlaps); }
 protected:
     void SanitizeDimensions() override;
 private:

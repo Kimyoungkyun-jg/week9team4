@@ -4,6 +4,7 @@
 #include "CoinActor.h"
 #include "GhostActor.h"
 #include "PlayerPawn.h"
+#include "FlashlightAttackComponent.h"
 #include "PacmanHUD.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
@@ -52,9 +53,6 @@ APacmanGameMode::APacmanGameMode()
 void APacmanGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-	if (UWorld* PlayWorld = GetWorld())
-		if (UGameInstance* GameInstance = PlayWorld->GetGameInstance())
-			if (!GameInstance->IsRunTimerRunning()) GameInstance->StartRunTimer();
 	if (ScriptComponent)
 	{
 		sol::table Script = ScriptComponent->GetScriptInstance();
@@ -159,7 +157,8 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 {
 	UWorld* World = GetWorld();
 	if (!World || !Ghost || !Player || Player != World->GetPlayerPawn() ||
-		bResultShown || bGhostHitPlaying || GhostHitCooldown > 0.0f || LifeCount <= 0) return;
+		!AllowsPlayerControllerInput() || GhostHitCooldown > 0.0f || LifeCount <= 0 ||
+		!Ghost->CanDealContactDamage()) return;
 	AGameHUD* HUD = World->GetHUD();
 	UCameraComponent* Camera = Player->GetCameraComponent();
 	if (!HUD || !Camera || !Ghost->GetEyesMesh()) return;
@@ -183,6 +182,7 @@ void APacmanGameMode::StartGhostHit(AGhostActor* Ghost, APlayerPawn* Player)
 	SavedCameraFov = Camera->GetFieldOfView();
 	SavedGhostRotation = Ghost->GetActorRotation();
 	bGhostHitPlaying = true;
+	if (auto* Attack = Player->GetFlashlightAttackComponent()) Attack->CancelAttack();
 	if (auto* Movement = Player->GetCharacterMovement()) Movement->SetMovementEnabled(false);
 	Ghost->SetHitFrozen(true);
 	const FVector Offset = Player->GetActorLocation() - Ghost->GetActorLocation();
@@ -316,9 +316,9 @@ void APacmanGameMode::TickGhostHit(float DeltaTime)
 	{
 	case EGhostHitPhase::CloseUp:
 		if (HitImage) HitImage->SetTint({0.8f, 0.0f, 0.0f, 0.05f + 0.07f * std::abs(std::sin(GhostHitElapsed * 11.0f))});
-		if (GhostHitElapsed >= 0.55f) { 
-			GhostHitPhase = EGhostHitPhase::FadeToBlack; 
-			GhostHitElapsed = 0.0f; 
+		if (GhostHitElapsed >= 0.55f) {
+			GhostHitPhase = EGhostHitPhase::FadeToBlack;
+			GhostHitElapsed = 0.0f;
 			if (HUD && HitOverlayHandle) { HUD->RemoveOverlay(HitOverlayHandle); HitOverlayHandle = 0; }
 			HitImage = nullptr;
 			if (APlayerCameraManager* CameraManager = GetPlayerCameraManager())
@@ -361,6 +361,8 @@ void APacmanGameMode::EndPlay()
 		ResultSequenceActor->OnSequenceFinished.RemoveAll(this);
 	if (IntroSequenceActor && IsValid(IntroSequenceActor))
 		IntroSequenceActor->OnSequenceFinished.RemoveAll(this);
+	OnGameplayStarted.Clear();
+	OnClearCinematicStarted.Clear();
 	Super::EndPlay();
 }
 
@@ -431,6 +433,11 @@ void APacmanGameMode::OnResultFadeRendered()
 		if (Sequence->IsPlayingSequence())
 		{
 			ResultSequenceActor = Sequence;
+			if (bPendingClear)
+			{
+				bClearCinematicStarted = true;
+				OnClearCinematicStarted.Broadcast();
+			}
 			Viewport->ClearWidgetRoot();
 		}
 		else
@@ -569,17 +576,17 @@ void APacmanGameMode::OnIntroSequenceFinished()
 		}
 	}
 
-	// 1번 방식(시퀀서/씬 배치 기반): 인트로 연출용 IntroPacman 액터가 월드에 존재하면 종료 시 자동 파괴
+	// Remove the two visual spawnables after the intro hands back the camera.
 	if (UWorld* World = GetWorld())
 	{
 		if (ULevel* Level = World->GetPersistentLevel())
 		{
-			for (AActor* Actor : Level->GetActors())
+			const auto IntroActors = Level->GetActors();
+			for (AActor* Actor : IntroActors)
 			{
-				if (Actor && Actor->GetName() == "IntroPacman")
+				if (Actor && (Actor->GetName() == "IntroPacman" || Actor->GetName() == "IntroFlashlight"))
 				{
 					World->DestroyActor(Actor);
-					break;
 				}
 			}
 		}
@@ -606,6 +613,11 @@ void APacmanGameMode::OnIntroSequenceFinished()
 	if (UGameInstance* GameInstance = World->GetGameInstance())
 	{
 		GameInstance->StartRunTimer();
+	}
+	if (!bGameplayStarted)
+	{
+		bGameplayStarted = true;
+		OnGameplayStarted.Broadcast();
 	}
 }
 

@@ -18,6 +18,12 @@ void APlayerCameraManager::Initialize(APlayerController* InOwner)
 
 namespace
 {
+	bool IsUsableTarget(const AActor* Target, const UWorld* World)
+	{
+		return Target && GUObjectArray.Find(const_cast<AActor*>(Target)) != INDEX_NONE &&
+			IsValid(Target) && !Target->IsActorBeingDestroyed() && Target->GetWorld() == World;
+	}
+
 	FQuat SlerpQuat(const FQuat& QuatA, const FQuat& QuatB, float Slerp)
 	{
 		float CosAlpha = QuatA.X * QuatB.X + QuatA.Y * QuatB.Y + QuatA.Z * QuatB.Z + QuatA.W * QuatB.W;
@@ -59,8 +65,8 @@ void APlayerCameraManager::SetViewTarget(AActor* InTarget)
 
 void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewTarget, float BlendTime, EViewTargetBlendFunction BlendFunc, float BlendExp, bool bLockOutgoing)
 {
-	if (NewTarget && (GUObjectArray.Find(NewTarget) == INDEX_NONE || !IsValid(NewTarget) || NewTarget->IsActorBeingDestroyed() ||
-		NewTarget->GetWorld() != GetWorld())) return;
+	if (IsPendingKillPending() || (NewTarget && !IsUsableTarget(NewTarget, GetWorld()))) return;
+	UWorld::FScopedObjectExecution ObjectScope(GetWorld());
 
 	if (NewTarget == ViewTarget.Target && PendingViewTarget.Target == nullptr)
 	{
@@ -76,9 +82,13 @@ void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewTarget, float Blend
 		}
 		PendingViewTarget.Target = nullptr;
 		BlendTimeToGo = 0.0f;
+		bHasCameraCache = false;
 		return;
 	}
 
+	// A sequence may be destroyed immediately after requesting its return blend.
+	// Freeze the rendered outgoing view instead of evaluating that Actor again.
+	if (bLockOutgoing && bHasCameraCache) ViewTarget.POV = CameraCachePOV;
 	PendingViewTarget.Target = NewTarget;
 	if (NewTarget)
 	{
@@ -93,38 +103,35 @@ void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewTarget, float Blend
 
 AActor* APlayerCameraManager::GetViewTarget() const
 {
-	return ViewTarget.Target && GUObjectArray.Find(ViewTarget.Target) != INDEX_NONE &&
-		IsValid(ViewTarget.Target) && !ViewTarget.Target->IsActorBeingDestroyed() ? ViewTarget.Target : nullptr;
+	return IsUsableTarget(ViewTarget.Target, GetWorld()) ? ViewTarget.Target : nullptr;
 }
 
 AActor* APlayerCameraManager::GetPendingViewTarget() const
 {
-	return PendingViewTarget.Target && GUObjectArray.Find(PendingViewTarget.Target) != INDEX_NONE &&
-		IsValid(PendingViewTarget.Target) && !PendingViewTarget.Target->IsActorBeingDestroyed() ? PendingViewTarget.Target : nullptr;
+	return IsUsableTarget(PendingViewTarget.Target, GetWorld()) ? PendingViewTarget.Target : nullptr;
 }
 
 void APlayerCameraManager::UpdateViewTarget(FTViewTarget& OutVT, float DeltaTime)
 {
-	if (!OutVT.Target || GUObjectArray.Find(OutVT.Target) == INDEX_NONE ||
-		!IsValid(OutVT.Target) || OutVT.Target->IsActorBeingDestroyed())
+	if (!IsUsableTarget(OutVT.Target, GetWorld()))
 	{
 		OutVT.Target = nullptr;
-		if (PCOwner && GUObjectArray.Find(PCOwner) != INDEX_NONE &&
-			IsValid(PCOwner) && !PCOwner->IsActorBeingDestroyed())
+		if (IsUsableTarget(PCOwner, GetWorld()))
 		{
 			OutVT.Target = PCOwner->GetPawn();
-			if (!IsValid(OutVT.Target) || OutVT.Target->IsActorBeingDestroyed()) OutVT.Target = nullptr;
+			if (!IsUsableTarget(OutVT.Target, GetWorld())) OutVT.Target = nullptr;
 		}
 		if (!OutVT.Target && GetWorld())
 		{
 			OutVT.Target = GetWorld()->GetMainCamera();
-			if (!IsValid(OutVT.Target) || OutVT.Target->IsActorBeingDestroyed()) OutVT.Target = nullptr;
+			if (!IsUsableTarget(OutVT.Target, GetWorld())) OutVT.Target = nullptr;
 		}
 	}
 
 	if (OutVT.Target)
 	{
 		OutVT.Target->CalcCamera(DeltaTime, OutVT.POV);
+		if (!IsUsableTarget(OutVT.Target, GetWorld())) OutVT.Target = nullptr;
 	}
 }
 
@@ -157,6 +164,8 @@ void APlayerCameraManager::ClearCameraModifiers()
 void APlayerCameraManager::UpdateCamera(float DeltaTime)
 {
 	if (IsPendingKillPending()) return;
+	UWorld::FScopedObjectExecution ObjectScope(GetWorld());
+	DeltaTime = std::max(0.0f, DeltaTime);
 
 	UpdateCameraFade(DeltaTime);
 	UpdateCameraLetterbox(DeltaTime);
@@ -174,17 +183,6 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 		BlendTimeToGo = 0.0f;
 	}
 
-	// 기본 타겟 복구
-	if (!ViewTarget.Target && !PendingViewTarget.Target)
-	{
-		UpdateViewTarget(ViewTarget, DeltaTime);
-		if (!ViewTarget.Target)
-		{
-			bHasCameraCache = false;
-			return;
-		}
-	}
-
 	FMinimalViewInfo NewPOV;
 
 	// 2. 블렌드 진행 여부 확인
@@ -197,6 +195,13 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 			UpdateViewTarget(ViewTarget, DeltaTime);
 		}
 		UpdateViewTarget(PendingViewTarget, DeltaTime);
+		if (IsPendingKillPending()) return;
+		if (!PendingViewTarget.Target)
+		{
+			BlendTimeToGo = 0.0f;
+			bHasCameraCache = false;
+			return;
+		}
 
 		const float Duration = std::max(BlendParams.BlendTime, 0.0001f);
 		const float Pct = std::clamp(1.0f - (BlendTimeToGo / Duration), 0.0f, 1.0f);
@@ -229,7 +234,7 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 
 		// POV 보간
 		NewPOV.Location = ViewTarget.POV.Location + (PendingViewTarget.POV.Location - ViewTarget.POV.Location) * BlendWeight;
-		
+
 		const FQuat AQuat = ViewTarget.POV.Rotation.Quaternion();
 		const FQuat BQuat = PendingViewTarget.POV.Rotation.Quaternion();
 		NewPOV.Rotation = SlerpQuat(AQuat, BQuat, BlendWeight).ToFRotator();

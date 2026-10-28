@@ -49,10 +49,74 @@
                                 ]
                             },
                             "Name": "UStaticMeshComponent",
-                            "OverrideMaterials": [],
+                            "OverrideMaterials": [
+                                {},
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "Properties": {},
+                                        "BaseColor": {
+                                            "X": 0.016485,
+                                            "Y": 0.016087,
+                                            "Z": 0.017081,
+                                            "W": 1
+                                        },
+                                        "SpecularColor": {
+                                            "X": 0.05,
+                                            "Y": 0.05,
+                                            "Z": 0.05
+                                        },
+                                        "Shininess": 16,
+                                        "UVScrollSpeed": [
+                                            0,
+                                            0
+                                        ],
+                                        "FlipNormalY": false,
+                                        "ShadingModel": "DefaultLit",
+                                        "SamplerState": "LinearWrap",
+                                        "BlendState": "Opaque",
+                                        "PSOType": 0,
+                                        "Textures": [
+                                            "Assets/Textures/Environment/concrete_floor_worn_001/concrete_floor_worn_001_diff_2k.png",
+                                            "Assets/Textures/Environment/concrete_floor_worn_001/concrete_floor_worn_001_nor_dx_2k.png"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "Properties": {},
+                                        "BaseColor": {
+                                            "X": 0.001079,
+                                            "Y": 0,
+                                            "Z": 0.541181,
+                                            "W": 1
+                                        },
+                                        "SpecularColor": {
+                                            "X": 0.05,
+                                            "Y": 0.05,
+                                            "Z": 0.05
+                                        },
+                                        "Shininess": 16,
+                                        "UVScrollSpeed": [
+                                            0,
+                                            0
+                                        ],
+                                        "FlipNormalY": false,
+                                        "ShadingModel": "DefaultLit",
+                                        "SamplerState": "LinearWrap",
+                                        "BlendState": "Opaque",
+                                        "PSOType": 0,
+                                        "Textures": [
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_diff_2k.png",
+                                            "Assets/Textures/Environment/painted_plaster_wall/painted_plaster_wall_nor_dx_2k.png"
+                                        ]
+                                    }
+                                }
+                            ],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
-                                "StaticMesh": "Models/Map/Map.obj",
+                                "StaticMesh": "Models/Map/Map_MainMenu_Textured.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -624,29 +688,29 @@
                                     "Base": "DefaultMaterial",
                                     "Instance": {
                                         "BaseColor": {
-                                            "W": 1.0,
+                                            "W": 1,
                                             "X": 0.09941518306732178,
                                             "Y": 0.11521506309509277,
-                                            "Z": 1.0
+                                            "Z": 1
                                         },
                                         "BlendState": "Opaque",
                                         "FlipNormalY": false,
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
-                                        "Shininess": 32.0,
+                                        "Shininess": 32,
                                         "SpecularColor": {
-                                            "X": 1.0,
-                                            "Y": 1.0,
-                                            "Z": 1.0
+                                            "X": 1,
+                                            "Y": 1,
+                                            "Z": 1
                                         },
                                         "Textures": [
                                             "WhiteTexture",
                                             "FlatNormalTexture"
                                         ],
                                         "UVScrollSpeed": [
-                                            0.0,
-                                            0.0
+                                            0,
+                                            0
                                         ]
                                     }
                                 }
@@ -1410,29 +1474,29 @@
                                     "Base": "DefaultMaterial",
                                     "Instance": {
                                         "BaseColor": {
-                                            "W": 1.0,
-                                            "X": 1.0,
+                                            "W": 1,
+                                            "X": 1,
                                             "Y": 0.4912281036376953,
-                                            "Z": 0.0
+                                            "Z": 0
                                         },
                                         "BlendState": "Opaque",
                                         "FlipNormalY": false,
                                         "PSOType": 0,
                                         "Properties": {},
                                         "SamplerState": "LinearClamp",
-                                        "Shininess": 32.0,
+                                        "Shininess": 32,
                                         "SpecularColor": {
-                                            "X": 1.0,
-                                            "Y": 1.0,
-                                            "Z": 1.0
+                                            "X": 1,
+                                            "Y": 1,
+                                            "Z": 1
                                         },
                                         "Textures": [
                                             "WhiteTexture",
                                             "FlatNormalTexture"
                                         ],
                                         "UVScrollSpeed": [
-                                            0.0,
-                                            0.0
+                                            0,
+                                            0
                                         ]
                                     }
                                 }
@@ -1673,40 +1737,42 @@
                             },
                             "Name": "UStaticMeshComponent",
                             "OverrideMaterials": [
+                                {},
                                 {
                                     "Base": "DefaultMaterial",
                                     "Instance": {
-                                        "BaseColor": {
-                                            "W": 1.0,
-                                            "X": 0.0,
-                                            "Y": 0.0,
-                                            "Z": 0.0
-                                        },
-                                        "BlendState": "Opaque",
-                                        "FlipNormalY": false,
-                                        "PSOType": 0,
                                         "Properties": {},
-                                        "SamplerState": "LinearClamp",
-                                        "Shininess": 32.0,
-                                        "SpecularColor": {
-                                            "X": 1.0,
-                                            "Y": 1.0,
-                                            "Z": 1.0
+                                        "BaseColor": {
+                                            "X": 0.007374,
+                                            "Y": 0.00939,
+                                            "Z": 0.01145,
+                                            "W": 1
                                         },
-                                        "Textures": [
-                                            "WhiteTexture",
-                                            "FlatNormalTexture"
-                                        ],
+                                        "SpecularColor": {
+                                            "X": 0.05,
+                                            "Y": 0.05,
+                                            "Z": 0.05
+                                        },
+                                        "Shininess": 16,
                                         "UVScrollSpeed": [
-                                            0.0,
-                                            0.0
+                                            0,
+                                            0
+                                        ],
+                                        "FlipNormalY": false,
+                                        "ShadingModel": "DefaultLit",
+                                        "SamplerState": "LinearWrap",
+                                        "BlendState": "Opaque",
+                                        "PSOType": 0,
+                                        "Textures": [
+                                            "Assets/Textures/Environment/ceiling_interior/ceiling_interior_diff_2k.png",
+                                            "Assets/Textures/Environment/ceiling_interior/ceiling_interior_nor_dx_2k.png"
                                         ]
                                     }
                                 }
                             ],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
-                                "StaticMesh": "Cube",
+                                "StaticMesh": "Models/Map/Ceiling_MainMenu_Textured.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,

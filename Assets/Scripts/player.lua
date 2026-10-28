@@ -1,60 +1,42 @@
 local Player = {}
 
 function Player:BeginPlay()
-    Log("Player BeginPlay: " .. self.Owner:GetName())
-    -- 액터에 부착된 MovementComponent 탐색 (있으면 사용)
-    self.Movement = self.Owner:FindComponentByName("MovementComponent")
-    self.Speed = 600.0
-    self.bIsSlomo = false;
     self.SlomoDilation = 0.3
+    self.SlomoRequested = false
+    self.SlomoNeedsRelease = false
     self.bIsFadedOut = false
     self.bIsLetterboxActive = false
 end
 
 function Player:Tick(deltaTime)
-    --[[ C++ PlayerController와의 중복 이동 방지를 위해 임시 주석 처리
-    local moveDir = FVector(0, 0, 0)
-
-    -- 키보드 입력 체크 (W, A, S, D)
-    if Input.IsKeyDown(KeyCode.W) then moveDir.X = moveDir.X + 1 end
-    if Input.IsKeyDown(KeyCode.S) then moveDir.X = moveDir.X - 1 end
-    if Input.IsKeyDown(KeyCode.A) then moveDir.Y = moveDir.Y - 1 end
-    if Input.IsKeyDown(KeyCode.D) then moveDir.Y = moveDir.Y + 1 end
-
-    -- 이동 처리
-    if moveDir:Length() > 0 then
-        local delta = moveDir:Normalize() * self.Speed * deltaTime
-
-        if self.Movement then
-            -- MovementComponent를 통한 충돌 이동
-            self.Movement:MoveUpdatedComponent(delta, self.Owner:GetActorRotation(), true)
-        else
-            -- 컴포넌트가 없을 경우 액터 위치 직접 이동
-            local curLoc = self.Owner:GetActorLocation()
-            self.Owner:SetActorLocation(curLoc + delta)
-        end
+    -- A zero owner delta means hitstop; native state preserves its time override.
+    if deltaTime <= 0.0 then return end
+    local pawn = APlayerPawn.Cast(self.Owner)
+    if not pawn then return end
+    local world = self.Owner:GetWorld()
+    local controller = world:GetPlayerController()
+    local mode = world:GetGameMode()
+    if (mode and not mode:AllowsPlayerControllerInput()) or
+       (controller and (controller:IsMoveInputIgnored() or controller:IsLookInputIgnored() or controller:IsInCinematicMode())) then
+        pawn:SetSlomoActive(false)
+        self.SlomoRequested = false
+        return
     end
-    --]]
-    local bKeyDown = Input.IsKeyDown(KeyCode.T)
-    local curGauge = self.Owner:GetSlomoGauge()
 
-    -- 게이지가 있고 T키를 누르고 있을 때 슬로우모션 활성화
-    if bKeyDown and curGauge > 0.0 and not self.bIsSlomo then
-        self.bIsSlomo = true
-        self.Owner:SetSlomoActive(true)
-        local world = self.Owner:GetWorld()
-        local worldDilation = self.SlomoDilation
-        local playerDilation = (worldDilation > 0.0) and (1.0 / worldDilation) or 1.0
-        world:SetWorldTimeDilation(worldDilation)
-        self.Owner:SetCustomTimeDilation(playerDilation)
-        Log("Slomo On (Gauge: " .. tostring(math.floor(curGauge)) .. ")")
-    elseif (not bKeyDown or curGauge <= 0.0) and self.bIsSlomo then
-        self.bIsSlomo = false
-        self.Owner:SetSlomoActive(false)
-        local world = self.Owner:GetWorld()
-        world:SetWorldTimeDilation(1.0)
-        self.Owner:SetCustomTimeDilation(1.0)
-        Log("Slomo Off (Gauge: " .. tostring(math.floor(curGauge)) .. ")")
+    local held = Input.IsKeyDown(KeyCode.T)
+    if not held then
+        pawn:SetSlomoActive(false)
+        self.SlomoRequested = false
+        self.SlomoNeedsRelease = false
+    else
+        -- Depletion ends the request until T is released, even as the gauge recovers.
+        if self.SlomoRequested and not pawn:IsSlomoActive() then
+            self.SlomoNeedsRelease = true
+        end
+        if not self.SlomoNeedsRelease and not pawn:IsSlomoActive() then
+            pawn:StartSlomo(self.SlomoDilation)
+        end
+        self.SlomoRequested = pawn:IsSlomoActive()
     end
 
     -- 키보드 F 키: FadeOut / FadeIn 토글 테스트
@@ -85,6 +67,8 @@ function Player:Tick(deltaTime)
 end
 
 function Player:EndPlay()
+    local pawn = APlayerPawn.Cast(self.Owner)
+    if pawn then pawn:SetSlomoActive(false) end
     Log("Player EndPlay")
 end
 

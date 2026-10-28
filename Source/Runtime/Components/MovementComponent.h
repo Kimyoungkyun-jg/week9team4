@@ -37,9 +37,9 @@ public:
 	float Gravity = 9.81f;
 	// MoveUpdatedComponent가 USceneComponent::MoveComponent의 마지막 인수로 전달한다.
 	EMoveComponentFlags MoveComponentFlags = MOVECOMP_NoFlags;
-	// 프로젝트의 MoveComponent 후퇴 거리(0.001)에 맞춘 여유 거리. UE의 cm 단위 기본값과 다르다.
-	float PenetrationPullbackDistance = 0.001f;
-	float PenetrationOverlapCheckInflation = 0.0005f;
+	// UE defaults (0.125 cm / 0.100 cm), converted to this engine's metres.
+	float PenetrationPullbackDistance = 0.00125f;
+	float PenetrationOverlapCheckInflation = 0.001f;
 
 	// ActorComponent  Interface
 	virtual void InitializeComponent() override;

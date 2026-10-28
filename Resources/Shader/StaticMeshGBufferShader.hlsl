@@ -17,6 +17,7 @@ cbuffer MaterialParams : register(b1)
     float4 BaseColor;
     float2 UVOffset;
     float2 TextureFlags; // x: 노멀맵 인코딩, y: 노멀맵 Y 반전
+    float4 MaterialFlags; // x: 0 DefaultLit, 1 Unlit
 };
 
 struct VS_INPUT
@@ -88,6 +89,13 @@ GBUFFER_OUTPUT mainPS(PS_INPUT Input)
     float4 TextureColor = ColorTexture.Sample(ColorSampler, Input.UV + UVOffset);
     // 색 텍스처는 UNORM으로 읽히므로 sRGB 값을 선형 조명 공간으로 변환한다.
     float3 LinearAlbedo = pow(max(TextureColor.rgb, 0.0f), 2.2f) * BaseColor.rgb;
+    if (MaterialFlags.x > 0.5f)
+    {
+        Output.BaseColorMetallic = float4(LinearAlbedo, 0.0f);
+        // Lit roughness occupies [-1, 1]; 2 marks Unlit in the HDR GBuffer.
+        Output.NormalRoughness = float4(normalize(Input.WorldNormal), 2.0f);
+        return Output;
+    }
     float3 Normal = normalize(Input.WorldNormal);
     if (TextureFlags.x > 0.5f)
     {

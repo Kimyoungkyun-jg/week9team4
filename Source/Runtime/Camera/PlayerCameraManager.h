@@ -46,6 +46,10 @@ class APlayerCameraManager : public AActor
 public:
 	APlayerCameraManager();
 	~APlayerCameraManager() override = default;
+	APlayerCameraManager(const APlayerCameraManager&) = delete;
+	APlayerCameraManager& operator=(const APlayerCameraManager&) = delete;
+	APlayerCameraManager(APlayerCameraManager&&) = delete;
+	APlayerCameraManager& operator=(APlayerCameraManager&&) = delete;
 
 	void Initialize(APlayerController* InOwner);
 	void SetViewTarget(AActor* InTarget);

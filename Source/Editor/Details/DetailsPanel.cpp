@@ -574,6 +574,22 @@ namespace
 					DrawMaterialTextureSlot(MeshComponent, Slot, 1, "Normal Map", Effective, Override);
 
 					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::Text("Shading Model");
+					ImGui::TableSetColumnIndex(1);
+					ImGui::SetNextItemWidth(-1.0f);
+					int ShadingModel = Effective ? static_cast<int>(Effective->ShadingModel) : 0;
+					if (ImGui::Combo("##ShadingModel", &ShadingModel, "Default Lit\0Unlit\0"))
+					{
+						Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
+						if (Override)
+						{
+							Override->ShadingModel = static_cast<EMaterialShadingModel>(ShadingModel);
+							Effective = Override;
+						}
+					}
+
+					ImGui::TableNextRow();
 
 					// 3: Base Color
 					ImGui::TableSetColumnIndex(0);

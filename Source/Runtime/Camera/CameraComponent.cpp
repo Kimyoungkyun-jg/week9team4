@@ -1,6 +1,6 @@
 #include "EnginePCH.h"
-#include "CameraComponent.h"
 #include "Camera/MinimalViewInfo.h"
+#include "CameraComponent.h"
 
 #include "Input/InputSystem.h"
 #include "../Collision/Ray.h"
@@ -104,7 +104,7 @@ FRay UCameraComponent::DeProjection(FVector2 MousePos, float ScreenW, float Scre
     return Ray;
 }
 
-// 카메라 Transform의 역변환으로 View 행렬을 만든다.
+// Actor::CalcCamera와 시퀀서가 사용하는 공통 카메라 뷰.
 void UCameraComponent::GetCameraView(FMinimalViewInfo& OutView) const
 {
 	OutView.Location = GetWorldLocation();
@@ -117,6 +117,7 @@ void UCameraComponent::GetCameraView(FMinimalViewInfo& OutView) const
 	OutView.bIsPerspective = !bIsOrthogonal;
 }
 
+// 카메라 Transform의 역변환으로 View 행렬을 만든다.
 FMatrix UCameraComponent::GetViewMatrix() const
 {
     //return GetWorldMatrix().Inverse();

@@ -43,6 +43,7 @@ UMaterial* UMaterial::CreateInstance(const UMaterial* Source)
 	Instance->UVScrollSpeed = Source->UVScrollSpeed;
 	Instance->bFlipNormalY = Source->bFlipNormalY;
 	Instance->PSOType = Source->PSOType;
+	Instance->ShadingModel = Source->ShadingModel;
 
 	// ParamBuffer는 TUniquePtr라 복사할 수 없다.
 	// 원본이 갖고 있으면 같은 크기로 새로 만들어 준다. 내용은 매 프레임 갱신되므로 옮기지 않는다.
@@ -85,6 +86,7 @@ json UMaterial::SaveMaterial(const UMaterial* Material)
 	const UMaterial* Base = Material->GetBaseAsset();
 	Out["Base"] = Base ? Base->GetPath() : FString("DefaultMaterial");
 	Out["PSOType"] = static_cast<uint8>(Material->PSOType);
+	Out["ShadingModel"] = Material->ShadingModel == EMaterialShadingModel::Unlit ? "Unlit" : "DefaultLit";
 	Out["BaseColor"] = Material->BaseColor;
 	Out["SpecularColor"] = Material->SpecularColor;
 	Out["Shininess"] = Material->Shininess;
@@ -135,6 +137,11 @@ UMaterial* UMaterial::LoadMaterial(const json& In)
 	if (In.contains("BaseColor"))
 	{
 		In["BaseColor"].get_to(Instance->BaseColor);
+	}
+	if (In.contains("ShadingModel"))
+	{
+		Instance->ShadingModel = In["ShadingModel"].get<FString>() == "Unlit"
+			? EMaterialShadingModel::Unlit : EMaterialShadingModel::DefaultLit;
 	}
 	if (In.contains("SpecularColor"))
 	{
@@ -245,6 +252,14 @@ void UMaterial::Serialize(FStructuredArchive::FRecord Record)
 			<< SA_VALUE("Shininess", Shininess)
 			<< SA_VALUE("UVScrollSpeed", UVScrollSpeed)
 			<< SA_VALUE("FlipNormalY", bFlipNormalY);
+
+	FString Shading = ShadingModel == EMaterialShadingModel::Unlit ? "Unlit" : "DefaultLit";
+	if (auto ShadingSlot = Record.TryEnterField("ShadingModel", true))
+	{
+		ShadingSlot.GetValue() << Shading;
+		if (Ar.IsLoading())
+			ShadingModel = Shading == "Unlit" ? EMaterialShadingModel::Unlit : EMaterialShadingModel::DefaultLit;
+	}
 
 	// enum은 이름 문자열로 (UE 텍스트 포맷도 enum을 이름으로 쓴다)
 	FString Sampler = SamplerState == ESamplerState::LinearWrap ? "LinearWrap" : "LinearClamp";

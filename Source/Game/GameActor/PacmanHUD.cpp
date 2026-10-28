@@ -2,8 +2,9 @@
 #include "PacmanHUD.h"
 
 #include "CoinActor.h"
-#include "PlayerPawn.h"
+#include "FlashlightActor.h"
 #include "PacmanGameMode.h"
+#include "PlayerPawn.h"
 #include "ScoreboardUI.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
@@ -90,7 +91,7 @@ void APacmanHUD::Tick(float DeltaTime)
 	if (bScoreboardOpen) ScoreboardUI::Layout(*this);
 	UWorld* World = GetWorld();
 	UMinimapWidget* Minimap = Cast<UMinimapWidget>(FindWidget("Minimap"));
-	if (Minimap) LayoutGameUI();
+	if (Minimap || FindWidget("BatteryPanel")) LayoutGameUI();
 	if (!World || !Minimap || !World->GetPersistentLevel()) return;
 	const AMapActor* Map = nullptr;
 	for (AActor* Actor : World->GetPersistentLevel()->GetActors())
@@ -225,7 +226,7 @@ void APacmanHUD::LayoutGameUI()
 		{
 			if (APlayerPawn* PlayerPawn = Cast<APlayerPawn>(World->GetPlayerPawn()))
 			{
-				GaugeRatio = PlayerPawn->GetMaxSlomoGauge() > 0.0f ? 
+				GaugeRatio = PlayerPawn->GetMaxSlomoGauge() > 0.0f ?
 					(PlayerPawn->GetSlomoGauge() / PlayerPawn->GetMaxSlomoGauge()) : 0.0f;
 			}
 		}
@@ -233,6 +234,40 @@ void APacmanHUD::LayoutGameUI()
 		const float FullWidth = 200.0f * Scale;
 		SlomoBar->SetPosition({(-34.0f - (1.0f - GaugeRatio) * 200.0f) * Scale, -26.0f * Scale});
 		SlomoBar->SetSize({FullWidth * GaugeRatio, 14.0f * Scale});
+	}
+
+	UCanvasWidget* BatteryPanel = Cast<UCanvasWidget>(FindWidget("BatteryPanel"));
+	if (!BatteryPanel) return;
+	BatteryPanel->SetPosition({32.0f * Scale, -32.0f * Scale});
+	BatteryPanel->SetSize({240.0f * Scale, 56.0f * Scale});
+
+	float BatteryFraction = 0.0f;
+	if (UWorld* World = GetWorld())
+		if (const auto* Player = Cast<APlayerPawn>(World->GetPlayerPawn()))
+			if (const AFlashlightActor* Flashlight = Player->GetFlashlightActor())
+				BatteryFraction = Flashlight->GetGaugeFraction();
+
+	const auto LayoutBatteryWidget = [this, Scale](const char* Name, FVector2 Position, FVector2 Size)
+	{
+		if (UWidget* Widget = FindWidget(Name))
+		{
+			Widget->SetPosition(Position * Scale);
+			Widget->SetSize(Size * Scale);
+		}
+	};
+	LayoutBatteryWidget("BatteryLabel", {0.0f, 0.0f}, {240.0f, 20.0f});
+	LayoutBatteryWidget("BatteryFrame", {0.0f, 26.0f}, {144.0f, 28.0f});
+	LayoutBatteryWidget("BatteryBackground", {2.0f, 28.0f}, {140.0f, 24.0f});
+	LayoutBatteryWidget("BatteryFill", {4.0f, 30.0f}, {136.0f * BatteryFraction, 20.0f});
+	LayoutBatteryWidget("BatteryCap", {144.0f, 34.0f}, {5.0f, 12.0f});
+	LayoutBatteryWidget("BatteryPercent", {160.0f, 22.0f}, {80.0f, 34.0f});
+	if (auto* Label = Cast<UTextWidget>(FindWidget("BatteryLabel")))
+		Label->SetFontSize(16.0f * Scale);
+	if (auto* Percent = Cast<UTextWidget>(FindWidget("BatteryPercent")))
+	{
+		Percent->SetFontSize(28.0f * Scale);
+		const int32 Percentage = static_cast<int32>(std::ceil(BatteryFraction * 100.0f));
+		Percent->SetText(std::to_string(Percentage) + "%");
 	}
 }
 

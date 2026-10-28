@@ -1,0 +1,6 @@
+newmtl Ceiling
+Kd 0.007374 0.00939 0.01145
+d 1
+map_Kd ../../Textures/Environment/ceiling_interior/ceiling_interior_diff_2k.png
+map_bump ../../Textures/Environment/ceiling_interior/ceiling_interior_nor_dx_2k.png
+
