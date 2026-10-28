@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Camera/CameraModifier.h"
+#include "Camera/CameraModifier_CameraShake.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 
@@ -178,6 +179,40 @@ void APlayerCameraManager::FlushRemovedCameraModifiers()
 	const auto Modifiers = std::move(RemovedModifiers);
 	RemovedModifiers.Reset();
 	for (UCameraModifier* Modifier : Modifiers) delete Modifier;
+}
+
+FCameraShakeHandle APlayerCameraManager::StartCameraShake(const FCameraShakeSettings& Settings, float Scale)
+{
+	if (IsPendingKillPending() || bIsClearingModifiers || !Settings.IsValid() || !std::isfinite(Scale) || Scale <= 0.0f)
+		return {};
+	auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	if (!Modifier)
+		Modifier = Cast<UCameraModifier_CameraShake>(AddNewCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier ? Modifier->AddCameraShake(Settings, Scale) : FCameraShakeHandle{};
+}
+
+bool APlayerCameraManager::StopCameraShake(FCameraShakeHandle Handle, bool bImmediately)
+{
+	auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier && Modifier->StopCameraShake(Handle, bImmediately);
+}
+
+void APlayerCameraManager::StopAllCameraShakes(bool bImmediately)
+{
+	if (auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass())))
+		Modifier->StopAllCameraShakes(bImmediately);
+}
+
+bool APlayerCameraManager::IsCameraShakeActive(FCameraShakeHandle Handle) const
+{
+	const auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier && Modifier->IsCameraShakeActive(Handle);
+}
+
+int32 APlayerCameraManager::GetActiveCameraShakeCount() const
+{
+	const auto* Modifier = Cast<UCameraModifier_CameraShake>(FindCameraModifier(UCameraModifier_CameraShake::StaticClass()));
+	return Modifier ? Modifier->GetActiveCameraShakeCount() : 0;
 }
 
 void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color)

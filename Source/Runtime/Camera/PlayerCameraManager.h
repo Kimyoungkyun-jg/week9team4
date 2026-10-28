@@ -9,6 +9,7 @@
 #include "Math/EngineMath.h"
 #include "Math/Rotator.h"
 #include "CameraTypes.h"
+#include "Camera/CameraShake.h"
 
 class UCameraModifier;
 class APlayerController;
@@ -50,6 +51,13 @@ public:
 	UCameraModifier* FindCameraModifier(UClass* ModifierClass) const;
 	bool RemoveCameraModifier(UCameraModifier* Modifier);
 	void RemoveAllCameraModifiers();
+
+	// 필요한 경우 Shake Modifier를 생성한다. 잘못된 설정은 빈 핸들을 반환한다.
+	FCameraShakeHandle StartCameraShake(const FCameraShakeSettings& Settings = FCameraShakeSettings{}, float Scale = 1.0f);
+	bool StopCameraShake(FCameraShakeHandle Handle, bool bImmediately = false);
+	void StopAllCameraShakes(bool bImmediately = false);
+	bool IsCameraShakeActive(FCameraShakeHandle Handle) const;
+	int32 GetActiveCameraShakeCount() const;
 
 	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, const FLinearColor& Color);
 	void StopCameraFade();
