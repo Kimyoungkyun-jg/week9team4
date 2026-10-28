@@ -354,6 +354,10 @@ void UAssetManager::Shutdown()
 
 void UAssetManager::RegisterAsset(const FString& Key, URenderAsset* Asset)
 {
+	if (!Asset)
+	{
+		return;
+	}
 	Asset->SetPath(Key);
 	AssetMap[Key] = Asset;
 }
