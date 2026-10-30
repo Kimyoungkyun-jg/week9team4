@@ -566,7 +566,7 @@ void PacmanSkyLightTests()
         World->BeginPlay();
         auto* Mode = CastChecked<APacmanGameMode>(World->GetGameMode());
         Check(Scripts[0]->GetScriptInstance().valid(), "skylight Lua component did not load in BeginPlay");
-        Check(Mode->OnGameplayStarted.IsBound() && Mode->OnClearCinematicStarted.IsBound(), "skylight did not subscribe to cinematic transitions");
+        Check(Mode->OnGameplayStarted.IsBound() && Mode->OnResultCinematicStarted.IsBound(), "skylight did not subscribe to cinematic transitions");
         Check(!Mode->HasGameplayStarted() && Near(Light->GetIntensity(), 2.5f), "intro brightness changed before gameplay");
         for (int I = 0; I < 600 && !Mode->HasGameplayStarted(); ++I) World->Tick(0.01f);
         Check(Mode->HasGameplayStarted(), "intro did not signal gameplay start");
@@ -583,15 +583,16 @@ void PacmanSkyLightTests()
         Mode->ShowGameResult(Cleared);
         Check(Near(Light->GetIntensity(), 0.f), "result fade restored brightness before the cinematic started");
         for (int I = 0; I < 80; ++I) World->Tick(0.01f);
-        Check(!Mode->HasClearCinematicStarted() && Near(Light->GetIntensity(), 0.f), "clear brightness changed before the black frame was rendered");
+        Check(!Mode->HasResultCinematicStarted() && Near(Light->GetIntensity(), 0.f), "result brightness changed before the black frame was rendered");
         Context.GameViewport->OnUIRendered.Broadcast();
+        Check(Mode->HasResultCinematicStarted(), "result cinematic did not start");
         Check(Mode->HasClearCinematicStarted() == Cleared, "game over and clear cinematic signals were confused");
-        Check(Near(Light->GetIntensity(), Cleared ? 2.5f : 0.f), "clear cinematic did not synchronously restore the authored skylight intensity");
+        Check(Near(Light->GetIntensity(), 2.5f), "result cinematic did not synchronously restore the authored skylight intensity");
         Scripts[0]->TickComponent(1.f);
-        Check(Near(Light->GetIntensity(), Cleared ? 2.5f : 0.f), "old fade overwrote cinematic brightness");
+        Check(Near(Light->GetIntensity(), 2.5f), "old fade overwrote cinematic brightness");
         // Component removal must release callbacks while the game mode is still alive.
         Scripts[0]->EndPlay();
-        Check(!Mode->OnGameplayStarted.IsBound() && !Mode->OnClearCinematicStarted.IsBound(), "skylight script leaked cinematic callbacks");
+        Check(!Mode->OnGameplayStarted.IsBound() && !Mode->OnResultCinematicStarted.IsBound(), "skylight script leaked cinematic callbacks");
         Check(Near(Light->GetIntensity(), 2.5f), "skylight EndPlay did not restore authored brightness");
         World->EndPlay();
         Instance.Shutdown();

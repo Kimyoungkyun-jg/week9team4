@@ -68,6 +68,23 @@ public:
 	const FLevelSequenceData& GetSequenceData() const { return SequenceData; }
 
 private:
+	struct FComponentState
+	{
+		class USceneComponent* Component = nullptr;
+		bool bVisible = true;
+		bool bHiddenInGame = false;
+	};
+	struct FActorState
+	{
+		AActor* Actor = nullptr;
+		bool bRestoreState = true;
+		FTransform Transform{};
+		class UCameraComponent* Camera = nullptr;
+		float FieldOfView = 0.0f;
+		TArray<FComponentState> Components;
+	};
+	void CaptureActorStates();
+	void RestoreActorStates();
 	void ApplyFrameEvaluation(float EvalFrame, float PrevEvalFrame, bool bTriggerAudio);
 	void RestorePlayerCameraViewTarget();
 	void RestorePlayerInput();
@@ -93,5 +110,7 @@ private:
 	bool bOverrodeCameraTarget = false;
 	bool bInputDisabledBySequence = false;
 	AActor* PreviousCameraTarget = nullptr;
+	TArray<FActorState> SavedActorStates;
+	TArray<AActor*> SpawnedSequenceActors;
 	sol::function LuaFinishedCallback;
 };

@@ -40,7 +40,7 @@ namespace
 		if (!Track.bSmoothPath || Track.TransformKeys.Num() < 3)
 			return From + (To - From) * Alpha;
 
-		// 이웃 키로 베지에 접선을 만들어 각 키를 지나는 부드러운 경로를 만든다.
+		// 이웃 키에서 접선을 구한 뒤 3차 베지에 제어점으로 변환한다.
 		const FVector& Prev = Track.TransformKeys[std::max(Segment - 1, 0)].Location;
 		const FVector& Next = Track.TransformKeys[std::min(Segment + 2, Track.TransformKeys.Num() - 1)].Location;
 		FVector TangentFrom = (To - Prev) * 0.5f;
@@ -48,10 +48,13 @@ namespace
 		const float SegmentLength = (To - From).Length();
 		if (TangentFrom.Length() > SegmentLength) TangentFrom = TangentFrom.Normalized() * SegmentLength;
 		if (TangentTo.Length() > SegmentLength) TangentTo = TangentTo.Normalized() * SegmentLength;
+		const FVector ControlFrom = From + TangentFrom * (1.0f / 3.0f);
+		const FVector ControlTo = To - TangentTo * (1.0f / 3.0f);
+		const float U = 1.0f - Alpha;
+		const float U2 = U * U;
 		const float T2 = Alpha * Alpha;
-		const float T3 = T2 * Alpha;
-		return From * (2.0f * T3 - 3.0f * T2 + 1.0f) + TangentFrom * (T3 - 2.0f * T2 + Alpha) +
-			To * (-2.0f * T3 + 3.0f * T2) + TangentTo * (T3 - T2);
+		return From * (U2 * U) + ControlFrom * (3.0f * U2 * Alpha) +
+			ControlTo * (3.0f * U * T2) + To * (T2 * Alpha);
 	}
 }
 

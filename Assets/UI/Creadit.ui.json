@@ -1,0 +1,241 @@
+{
+    "Root": {
+        "Children": [
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        22.143699645996094,
+                        26.431089401245117
+                    ],
+                    "Size": [
+                        2151.492919921875,
+                        1091.9788818359375
+                    ],
+                    "TexturePath": "Assets/Icons/Creadit.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1",
+                    "ZOrder": 1,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UButtonWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "BackgroundColor": [
+                        0.20000000298023224,
+                        0.3499999940395355,
+                        0.6499999761581421,
+                        1.0
+                    ],
+                    "FontPath": "Assets/Fonts/Pretendard.json",
+                    "FontSize": 20.0,
+                    "HoverBackgroundColor": [
+                        0.30000001192092896,
+                        0.5,
+                        0.800000011920929,
+                        1.0
+                    ],
+                    "HoverTextColor": [
+                        1.0,
+                        0.8999999761581421,
+                        0.4000000059604645,
+                        1.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        20.0,
+                        20.0
+                    ],
+                    "Size": [
+                        2155.7822265625,
+                        1100.5535888671875
+                    ],
+                    "Text": "Button",
+                    "TextColor": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Button3",
+                    "ZOrder": 0,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        946.0760498046875,
+                        281.53070068359375
+                    ],
+                    "Size": [
+                        312.20220947265625,
+                        123.02934265136719
+                    ],
+                    "TexturePath": "Assets/Icons/Jo.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1",
+                    "ZOrder": 2,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        940.3518676757813,
+                        430.1524658203125
+                    ],
+                    "Size": [
+                        312.20220947265625,
+                        123.02934265136719
+                    ],
+                    "TexturePath": "Assets/Icons/Kim.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1Copy",
+                    "ZOrder": 2,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        938.9151000976563,
+                        580.9180297851563
+                    ],
+                    "Size": [
+                        312.20220947265625,
+                        123.02934265136719
+                    ],
+                    "TexturePath": "Assets/Icons/Ko.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1CopyCopy",
+                    "ZOrder": 2,
+                    "bVisible": true
+                }
+            },
+            {
+                "Children": [],
+                "Class": "UImageWidget",
+                "Properties": {
+                    "Anchor": [
+                        0.0,
+                        0.0
+                    ],
+                    "Pivot": [
+                        0.0,
+                        0.0
+                    ],
+                    "Position": [
+                        941.7654418945313,
+                        727.3963623046875
+                    ],
+                    "Size": [
+                        312.20220947265625,
+                        123.02934265136719
+                    ],
+                    "TexturePath": "Assets/Icons/Lee.png",
+                    "Tint": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "WidgetName": "Image1CopyCopyCopy",
+                    "ZOrder": 2,
+                    "bVisible": true
+                }
+            }
+        ],
+        "Class": "UCanvasWidget",
+        "Properties": {
+            "Anchor": [
+                0.0,
+                0.0
+            ],
+            "Pivot": [
+                0.0,
+                0.0
+            ],
+            "Position": [
+                0.0,
+                0.0
+            ],
+            "Size": [
+                100.0,
+                100.0
+            ],
+            "WidgetName": "Root",
+            "ZOrder": 0,
+            "bVisible": true
+        }
+    },
+    "Version": 1
+}

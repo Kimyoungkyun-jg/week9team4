@@ -20,25 +20,25 @@ function PacmanSkyLight:BindGameMode()
 
     self.Mode = mode
     self.GameplayHandle = mode.OnGameplayStarted:Add(function() self:OnGameplayStarted() end)
-    self.ClearHandle = mode.OnClearCinematicStarted:Add(function() self:OnClearCinematicStarted() end)
+    self.ResultHandle = mode.OnResultCinematicStarted:Add(function() self:OnResultCinematicStarted() end)
 
     -- Also support a component activated after the corresponding event.
-    if mode:HasClearCinematicStarted() then
-        self:OnClearCinematicStarted()
+    if mode:HasResultCinematicStarted() then
+        self:OnResultCinematicStarted()
     elseif mode:HasGameplayStarted() then
         self:OnGameplayStarted()
     end
 end
 
 function PacmanSkyLight:OnGameplayStarted()
-    if self.GameplayStarted or self.ClearStarted then return end
+    if self.GameplayStarted or self.ResultStarted then return end
     self.GameplayStarted = true
     self.FadeStartIntensity = self.Light:GetIntensity()
     self.FadeElapsed = 0.0
 end
 
-function PacmanSkyLight:OnClearCinematicStarted()
-    self.ClearStarted = true
+function PacmanSkyLight:OnResultCinematicStarted()
+    self.ResultStarted = true
     self.FadeElapsed = nil
     self.Light:SetIntensity(self.OriginalIntensity)
 end
@@ -64,7 +64,7 @@ function PacmanSkyLight:EndPlay()
     local mode = world and APacmanGameMode.Cast(world:GetGameMode())
     if mode and mode == self.Mode then
         if self.GameplayHandle then mode.OnGameplayStarted:Remove(self.GameplayHandle) end
-        if self.ClearHandle then mode.OnClearCinematicStarted:Remove(self.ClearHandle) end
+        if self.ResultHandle then mode.OnResultCinematicStarted:Remove(self.ResultHandle) end
     end
     self.Mode = nil
     if self.Light then self.Light:SetIntensity(self.OriginalIntensity) end

@@ -89,6 +89,7 @@ void APacmanHUD::Tick(float DeltaTime)
 	if (bResultScreenOpen) LayoutResultScreen();
 	if (bNameEntryOpen) LayoutNameEntry();
 	if (bScoreboardOpen) ScoreboardUI::Layout(*this);
+	if (FindWidget("Button3")) LayoutCreditScreen();
 	UWorld* World = GetWorld();
 	UMinimapWidget* Minimap = Cast<UMinimapWidget>(FindWidget("Minimap"));
 	if (Minimap || FindWidget("BatteryPanel")) LayoutGameUI();
@@ -157,16 +158,23 @@ void APacmanHUD::OnWidgetShown(const FString& Path)
 		BindButton("SaveScore", [this] { SaveScore(); });
 		return;
 	}
+	if (Path == "Assets/UI/Creadit.ui.json")
+	{
+		bScoreboardOpen = false;
+		LayoutCreditScreen();
+		BindButton("Button3", [this]
+		{
+			if (FGameViewportClient* Viewport = GetGameViewport())
+				Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
+		});
+		return;
+	}
 	if (Path != "Assets/UI/Scoreboard.ui.json") return;
 	bNameEntryOpen = false;
 	bScoreboardOpen = true;
 	ScoreboardUI::Layout(*this);
 	ScoreboardUI::Populate(*this, ClearSeconds);
-	BindButton("BackToMenu", [this]
-	{
-		if (FGameViewportClient* Viewport = GetGameViewport())
-			Viewport->RequestSceneChange("Scenes/MainMenu.scene", "Scenes/MainMenu.scene");
-	});
+	BindButton("BackToMenu", [this] { ShowWidget("Assets/UI/Creadit.ui.json"); });
 }
 
 void APacmanHUD::LayoutGameUI()
@@ -296,6 +304,29 @@ void APacmanHUD::LayoutResultScreen()
 		Image->SetPivot({0, 0});
 		Image->SetPosition({(Width - ArtWidth * Scale) * 0.5f, (Height - ArtHeight * Scale) * 0.5f});
 		Image->SetSize({ArtWidth * Scale, ArtHeight * Scale});
+	}
+}
+
+void APacmanHUD::LayoutCreditScreen()
+{
+	FGameViewportClient* Viewport = GetGameViewport();
+	if (!Viewport) return;
+	const float Width = static_cast<float>(Viewport->GetWidth());
+	const float Height = static_cast<float>(Viewport->GetHeight());
+	if (Width <= 0.0f || Height <= 0.0f) return;
+	const float Scale = std::min(Width / 1672.0f, Height / 941.0f);
+	if (UButtonWidget* Button = Cast<UButtonWidget>(FindWidget("Button3")))
+	{
+		Button->SetPosition({0, 0});
+		Button->SetSize({Width, Height});
+		Button->SetText("");
+		Button->SetBackgroundColor({0, 0, 0, 1});
+		Button->SetHoverBackgroundColor({0, 0, 0, 1});
+	}
+	if (UImageWidget* Image = Cast<UImageWidget>(FindWidget("Image1")))
+	{
+		Image->SetPosition({(Width - 1672.0f * Scale) * 0.5f, (Height - 941.0f * Scale) * 0.5f});
+		Image->SetSize({1672.0f * Scale, 941.0f * Scale});
 	}
 }
 
